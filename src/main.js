@@ -1,275 +1,126 @@
-import * as THREE from "three";
-import { SparkRenderer, SplatMesh, SparkControls } from "@sparkjsdev/spark";
+import { createSceneManager } from "./sceneManager.js";
+import { createWorldMode } from "./modes/world.js";
+import { createHomeMode } from "./modes/home.js";
+import { buildSparkles } from "./ui/sparkles.js";
+import { createCharacterPicker } from "./ui/characterPicker.js";
+import { createWorldPicker } from "./ui/worldPicker.js";
+import { createVRController } from "./three/vrButton.js";
+import { createCompanion } from "./ui/companion.js";
+import { CHARACTERS, DEFAULT_CHARACTER_ID } from "./data/characters.js";
+import { SCENES } from "./data/scenes.js";
 
-const SCENES = [
-  {
-    id: "heart-pool-1-1-1004",
-    world: "Heart Pool Pavilion",
-    title: "Heart Pool Pavilion 1.1-1004",
-    url: "/splats/Heart%20Pool%20Pavilion.spz",
-    spawn: {
-      position: [0, 1.5, 0.82],
-      quaternion: [0, 0, 0, 1],
-    },
-  },
-  {
-    id: "heart-pool-1-1",
-    world: "Heart Pool Pavilion",
-    title: "Heart Pool Pavilion 1.1",
-    url: "/splats/Heart%20Pool%20Pavilion%201-1.spz",
-    spawn: {
-      position: [0, 1.5, 0.82],
-      quaternion: [0, 0, 0, 1],
-    },
-  },
-  {
-    id: "heart-pool-1-0",
-    world: "Heart Pool Pavilion",
-    title: "Heart Pool Pavilion 1.0",
-    url: "/splats/Heart%20Pool%20Pavilion%201-0.spz",
-    spawn: {
-      position: [-0.02, 1.36, 0.72],
-      quaternion: [-0.048, 0.014, 0.001, 0.999],
-    },
-  },
-  {
-    id: "berry-dream-kitchen-1-1",
-    world: "Berry Dream Kitchen",
-    title: "Berry Dream Kitchen 1.1",
-    url: "/splats/Berry%20Dream%20Kitchen%201-1.spz",
-    spawn: {
-      position: [-0.02, 1.36, 0.72],
-      quaternion: [-0.048, 0.014, 0.001, 0.999],
-    },
-  },
-  {
-    id: "berry-dream-kitchen-1-0",
-    world: "Berry Dream Kitchen",
-    title: "Berry Dream Kitchen 1.0",
-    url: "/splats/Berry%20Dream%20Kitchen%201-0.spz",
-    spawn: {
-      position: [-0.02, 1.36, 0.72],
-      quaternion: [-0.048, 0.014, 0.001, 0.999],
-    },
-  },
-  {
-    id: "pink-cherry-plane-1-1",
-    world: "Pink Cherry Plane",
-    title: "Pink Cherry Plane 1.1",
-    url: "/splats/Pink%20Cherry%20Plane%201-1.spz",
-    spawn: {
-      position: [-0.21, 1.57, 0.82],
-      quaternion: [-0.007, -0.115, -0.000, 0.993],
-    },
-  },
-  {
-    id: "pink-cherry-plane-1-0",
-    world: "Pink Cherry Plane",
-    title: "Pink Cherry Plane 1.0",
-    url: "/splats/Pink%20Cherry%20Plane%201-0.spz",
-    spawn: {
-      position: [-0.21, 1.57, 0.82],
-      quaternion: [-0.007, -0.115, -0.000, 0.993],
-    },
-  },
-];
+const CHARACTER_KEY = "fairy-worlds-character";
+const CONFIG_KEY = "fairy-worlds-character-config";
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  60,
-  window.innerWidth / window.innerHeight,
-  0.01,
-  1000,
-);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-const spark = new SparkRenderer({ renderer });
-scene.add(spark);
-
-const controls = new SparkControls({ canvas: renderer.domElement });
-
-let currentSplat = null;
-let currentSceneId = null;
-let loadToken = 0;
-
-const loader = document.getElementById("loader");
-const loaderTitle = loader.querySelector(".loader-title");
-const loaderFill = loader.querySelector(".loader-bar-fill");
-const loaderPct = loader.querySelector(".loader-pct");
-
-function showLoader(title) {
-  loaderTitle.textContent = title;
-  loaderFill.style.width = "0%";
-  loaderPct.textContent = "0%";
-  loader.hidden = false;
+function loadSavedCharacterId() {
+  const id = localStorage.getItem(CHARACTER_KEY);
+  return CHARACTERS.some((c) => c.id === id) ? id : DEFAULT_CHARACTER_ID;
 }
-function updateLoader(pct) {
-  const clamped = Math.max(0, Math.min(99, pct));
-  loaderFill.style.width = `${clamped}%`;
-  loaderPct.textContent = `${Math.round(clamped)}%`;
-}
-function hideLoader() {
-  loaderFill.style.width = "100%";
-  loaderPct.textContent = "100%";
-  setTimeout(() => {
-    loader.hidden = true;
-  }, 280);
-}
-
-function loadScene(sceneDef) {
-  const myToken = ++loadToken;
-
-  if (currentSplat) {
-    scene.remove(currentSplat);
-    currentSplat.dispose?.();
-    currentSplat = null;
-  }
-
-  showLoader(sceneDef.title);
-
-  const splat = new SplatMesh({
-    url: sceneDef.url,
-    onProgress: (event) => {
-      if (myToken !== loadToken) return;
-      if (event && event.total > 0) {
-        updateLoader((event.loaded / event.total) * 100);
-      }
-    },
-    onLoad: () => {
-      if (myToken !== loadToken) return;
-      hideLoader();
-    },
-  });
-  splat.position.set(0, 0, 0);
-  scene.add(splat);
-  currentSplat = splat;
-  currentSceneId = sceneDef.id;
-
-  const [px, py, pz] = sceneDef.spawn.position;
-  const [qx, qy, qz, qw] = sceneDef.spawn.quaternion;
-  camera.position.set(px, py, pz);
-  camera.quaternion.set(qx, qy, qz, qw);
-
-  updateNavActive();
-}
-
-const nav = document.getElementById("scenes");
-let openGroupEl = null;
-
-function closeOpenGroup() {
-  if (openGroupEl) {
-    openGroupEl.classList.remove("open");
-    openGroupEl = null;
+function loadSavedConfig() {
+  try {
+    const raw = localStorage.getItem(CONFIG_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
   }
 }
+function saveCharacterId(id) {
+  localStorage.setItem(CHARACTER_KEY, id);
+}
+function saveConfig(config) {
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+}
 
-function buildNav() {
-  nav.innerHTML = "";
-  const groups = new Map();
-  for (const s of SCENES) {
-    const world = s.world ?? "Other";
-    if (!groups.has(world)) groups.set(world, []);
-    groups.get(world).push(s);
-  }
-  for (const [world, sceneList] of groups) {
-    const groupEl = document.createElement("div");
-    groupEl.className = "scene-group";
-    groupEl.dataset.world = world;
+buildSparkles("sparkle-field");
+buildSparkles("transition-sparkle-field", 40);
 
-    const pill = document.createElement("button");
-    pill.className = "group-pill";
-    pill.innerHTML = `<span class="flourish">♡</span><span class="group-label">${world}</span><span class="arrow">▼</span>`;
-    pill.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const wasOpen = groupEl.classList.contains("open");
-      closeOpenGroup();
-      if (!wasOpen) {
-        groupEl.classList.add("open");
-        openGroupEl = groupEl;
-      }
-    });
-    groupEl.appendChild(pill);
+const manager = createSceneManager();
+const homeMode = createHomeMode({ renderer: manager.renderer });
+const worldMode = createWorldMode({
+  renderer: manager.renderer,
+  onSceneLoaded: (sceneDef) => worldPicker.setActiveScene(sceneDef.id),
+});
+manager.register(homeMode);
+manager.register(worldMode);
 
-    const panel = document.createElement("div");
-    panel.className = "group-scenes";
-    for (const s of sceneList) {
-      const btn = document.createElement("button");
-      btn.className = "scene-btn";
-      btn.dataset.sceneId = s.id;
-      const label =
-        s.world && s.title.startsWith(s.world)
-          ? s.title.slice(s.world.length).trim() || s.title
-          : s.title;
-      btn.textContent = label;
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        loadScene(s);
-        closeOpenGroup();
-      });
-      panel.appendChild(btn);
+const companion = createCompanion({
+  containerEl: document.getElementById("companion"),
+  canvasEl: document.getElementById("companion-canvas"),
+  bubbleEl: document.getElementById("companion-bubble"),
+  onBubbleClick: () => vr.toggle(),
+});
+
+const worldPicker = createWorldPicker({
+  container: document.getElementById("scenes"),
+  scenes: SCENES,
+  onSelectScene: async (sceneDef) => {
+    if (manager.currentName() === "world") {
+      worldMode.loadScene(sceneDef);
+    } else {
+      picker?.close();
+      await manager.transitionTo("world", { scene: sceneDef });
+      companion.show();
     }
-    groupEl.appendChild(panel);
-
-    nav.appendChild(groupEl);
-  }
-}
-
-function updateNavActive() {
-  for (const btn of nav.querySelectorAll(".scene-btn")) {
-    btn.classList.toggle("active", btn.dataset.sceneId === currentSceneId);
-  }
-  for (const g of nav.querySelectorAll(".scene-group")) {
-    const hasActive = !!g.querySelector(".scene-btn.active");
-    g.classList.toggle("has-active", hasActive);
-  }
-}
-
-document.addEventListener("click", (e) => {
-  if (!e.target.closest(".scene-group")) closeOpenGroup();
+    worldPicker.setActiveScene(sceneDef.id);
+  },
 });
 
-function buildSparkles(count = 28) {
-  const host = document.getElementById("sparkle-field");
-  if (!host) return;
-  host.innerHTML = "";
-  const glyphs = ["✦", "✧", "★", "✶", "❋"];
-  for (let i = 0; i < count; i++) {
-    const s = document.createElement("span");
-    s.className = "sparkle";
-    s.textContent = glyphs[Math.floor(Math.random() * glyphs.length)];
-    s.style.setProperty("--x", `${Math.random() * 100}%`);
-    s.style.setProperty("--y", `${Math.random() * 100}%`);
-    s.style.setProperty("--d", `${(Math.random() * 2.2).toFixed(2)}s`);
-    s.style.setProperty("--s", `${10 + Math.random() * 16}px`);
-    host.appendChild(s);
-  }
+manager.setMode("home");
+manager.start();
+
+const picker = createCharacterPicker({
+  modalEl: document.getElementById("character-picker"),
+  galleryEl: document.getElementById("picker-gallery"),
+  customizationEl: document.getElementById("picker-customization"),
+  closeBtn: document.getElementById("picker-close"),
+  characters: CHARACTERS,
+  onSelectCharacter: async (id) => {
+    const def = CHARACTERS.find((c) => c.id === id);
+    const config = id === savedId ? loadSavedConfig() : undefined;
+    const character = await homeMode.setCharacter(id, config);
+    savedId = id;
+    saveCharacterId(id);
+    if (character?.getState) saveConfig(character.getState());
+    picker.setActive(id, character, def);
+    companion.setCharacter(id, character?.getState?.());
+  },
+  onCustomize: () => {
+    const character = homeMode.getCharacter();
+    if (character?.getState) {
+      const state = character.getState();
+      saveConfig(state);
+      companion.applyState(state);
+    }
+  },
+});
+
+const isFirstRun = !localStorage.getItem(CHARACTER_KEY);
+let savedId = loadSavedCharacterId();
+const initialConfig = loadSavedConfig();
+const initialCharacter = await homeMode.setCharacter(savedId, initialConfig);
+picker.setActive(savedId, initialCharacter, CHARACTERS.find((c) => c.id === savedId));
+saveCharacterId(savedId);
+companion.setCharacter(savedId, initialCharacter?.getState?.());
+
+if (isFirstRun) {
+  picker.open();
 }
-buildSparkles();
 
-buildNav();
-loadScene(SCENES[0]);
-
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById("btn-enter-world")?.addEventListener("click", async () => {
+  picker.close();
+  await manager.transitionTo("world");
+  companion.show();
+});
+document.getElementById("btn-home")?.addEventListener("click", () => {
+  manager.transitionTo("home");
+  companion.hide();
+});
+document.getElementById("btn-change-character")?.addEventListener("click", () => {
+  const character = homeMode.getCharacter();
+  picker.setActive(savedId, character, CHARACTERS.find((c) => c.id === savedId));
+  picker.open();
 });
 
-renderer.setAnimationLoop(() => {
-  controls.update(camera);
-  renderer.render(scene, camera);
+const vr = createVRController(manager.renderer, (label) => {
+  companion.setDialogue(label);
 });
-
-window.camera = camera;
-window.logPose = () => {
-  const p = camera.position;
-  const q = camera.quaternion;
-  console.log(
-    `position: [${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}],\n` +
-      `quaternion: [${q.x.toFixed(3)}, ${q.y.toFixed(3)}, ${q.z.toFixed(3)}, ${q.w.toFixed(3)}],`,
-  );
-};

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@pixiv/three-vrm": "^3.5.2",
     "@sparkjsdev/spark": "^2.0.0",
     "three": "^0.180.0"
   },
