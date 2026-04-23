@@ -9,7 +9,6 @@ export function createCharacterPicker({
   onSelectCharacter,
   onCustomize,
 }) {
-  let activeId = null;
   let activeCharacter = null;
 
   function open() {
@@ -127,30 +126,31 @@ export function createCharacterPicker({
       return;
     }
 
-    const sec = makeSection("✧♡ change colors ♡✧");
+    const sec = makeSection("⋆✴︎˚｡⋆♡ change colors ♡⋆✴︎˚｡⋆");
     for (const { name, label, material } of materials) {
       const wrap = document.createElement("label");
       wrap.className = "picker-color";
+      const sphere = document.createElement("span");
+      sphere.className = "picker-sphere";
       const input = document.createElement("input");
       input.type = "color";
       const current = material.color ?? material.uniforms?.color?.value;
-      input.value = current ? "#" + current.getHexString() : "#ffffff";
+      const initial = current ? "#" + current.getHexString() : "#ffffff";
+      input.value = initial;
+      sphere.style.setProperty("--swatch-color", initial);
       input.addEventListener("input", () => {
         character.setMaterialColor(name, input.value);
+        sphere.style.setProperty("--swatch-color", input.value);
         onCustomize?.();
       });
+      sphere.appendChild(input);
       const txt = document.createElement("span");
       txt.textContent = label ?? name;
-      wrap.appendChild(input);
+      wrap.appendChild(sphere);
       wrap.appendChild(txt);
       sec.row.appendChild(wrap);
     }
     customizationEl.appendChild(sec.section);
-
-    const note = document.createElement("div");
-    note.className = "picker-note";
-    note.textContent = "tip: names come from the model — try them to see which is which";
-    customizationEl.appendChild(note);
   }
 
   function makeSection(labelText) {
@@ -167,7 +167,6 @@ export function createCharacterPicker({
   }
 
   function setActive(id, character, def) {
-    activeId = id;
     renderGallery(id);
     renderCustomization(character, def);
   }

@@ -138,6 +138,3 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Splat assets — keep large binaries out of git, commit URLs/manifest instead
-public/splats/*
-!public/splats/.gitkeep

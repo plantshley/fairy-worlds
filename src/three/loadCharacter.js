@@ -19,10 +19,10 @@ function collectMaterials(root) {
 function materialApi(materials, tintable) {
   let exposed = materials;
   if (tintable && tintable.length) {
-    const labelByName = new Map(tintable.map((t) => [t.name, t.label ?? t.name]));
-    exposed = materials
-      .filter((m) => labelByName.has(m.name))
-      .map((m) => ({ ...m, name: m.name, label: labelByName.get(m.name) }));
+    const materialByName = new Map(materials.map((m) => [m.name, m]));
+    exposed = tintable
+      .filter((t) => materialByName.has(t.name))
+      .map((t) => ({ ...materialByName.get(t.name), name: t.name, label: t.label ?? t.name }));
   }
   function setMaterialColor(name, hex) {
     const mat = exposed.find((m) => m.name === name);
