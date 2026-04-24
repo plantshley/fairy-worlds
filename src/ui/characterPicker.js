@@ -67,6 +67,17 @@ export function createCharacterPicker({
       });
       colorSection.row.appendChild(wrap);
     }
+    const accessoryColorRows = {};
+    for (const { id, label, defaultColor } of PROCEDURAL_CUSTOMIZATION_SCHEMA.accessories) {
+      const initial = state.accessoryColors?.[id] ?? defaultColor;
+      const row = makeSphereColorRow(label, initial, (hex) => {
+        character.setAccessoryColor?.(id, hex);
+        onCustomize?.();
+      });
+      row.hidden = !state.accessories[id];
+      accessoryColorRows[id] = row;
+      colorSection.row.appendChild(row);
+    }
     customizationEl.appendChild(colorSection.section);
 
     for (const { id, label, options } of PROCEDURAL_CUSTOMIZATION_SCHEMA.variants) {
@@ -89,35 +100,21 @@ export function createCharacterPicker({
     }
 
     const accSec = makeSection("accessories");
-    for (const { id, label, defaultColor } of PROCEDURAL_CUSTOMIZATION_SCHEMA.accessories) {
-      const row = document.createElement("div");
-      row.className = "picker-accessory-row";
-
-      const wrap = document.createElement("label");
-      wrap.className = "picker-toggle";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = !!state.accessories[id];
-      wrap.appendChild(cb);
-      const txt = document.createElement("span");
-      txt.textContent = label;
-      wrap.appendChild(txt);
-      row.appendChild(wrap);
-
-      const initialColor = state.accessoryColors?.[id] ?? defaultColor;
-      const sphere = makeSphereSwatch(initialColor, (hex) => {
-        character.setAccessoryColor?.(id, hex);
+    for (const { id, label } of PROCEDURAL_CUSTOMIZATION_SCHEMA.accessories) {
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = "picker-pill";
+      pill.textContent = label;
+      if (state.accessories[id]) pill.classList.add("active");
+      pill.addEventListener("click", () => {
+        const next = !pill.classList.contains("active");
+        pill.classList.toggle("active", next);
+        character.setAccessory(id, next);
+        const colorRow = accessoryColorRows[id];
+        if (colorRow) colorRow.hidden = !next;
         onCustomize?.();
       });
-      sphere.hidden = !cb.checked;
-      row.appendChild(sphere);
-
-      cb.addEventListener("change", () => {
-        character.setAccessory(id, cb.checked);
-        sphere.hidden = !cb.checked;
-        onCustomize?.();
-      });
-      accSec.row.appendChild(row);
+      accSec.row.appendChild(pill);
     }
     customizationEl.appendChild(accSec.section);
   }

@@ -26,36 +26,37 @@ const BODY = {
 };
 
 const ACCESSORY_DEFS = [
-  { id: "bow", label: "bow", defaultColor: "#ff8fd8" },
+  { id: "bow", label: "bow", defaultColor: "#ff008c" },
   { id: "halo", label: "halo", defaultColor: "#fff1a8" },
   { id: "horns", label: "horns", defaultColor: "#2a1830" },
   { id: "ears", label: "cat ears", defaultColor: "#ffb0de" },
-  { id: "lashes", label: "lashes", defaultColor: "#2a1830" },
+  { id: "lashes", label: "lashes", defaultColor: "#591246" },
   { id: "star", label: "star", defaultColor: "#fff6e8" },
 ];
 
 const DEFAULTS = {
   colors: {
     skin: "#936a4e",
-    hair: "#e8a3d0",
-    shirt: "#ffcce8",
-    bottom: "#c8b3fb",
-    wings: "#fff6e8",
-    eyes: "#d858ff",
-    blush: "#ffaad0",
+    hair: "#c0008d",
+    shirt: "#ff59b4",
+    bottom: "#ff008c",
+    wings: "#ff0044",
+    eyes: "#901685",
+    blush: "#dc2c7b",
+    shoes: "#ff0044",
   },
   variants: {
     hair: "bob",
     bottom: "skirt",
-    wings: "butterfly",
+    wings: "bat",
   },
   accessories: {
-    bow: false,
+    bow: true,
     halo: false,
     horns: false,
     ears: false,
     lashes: true,
-    star: true,
+    star: false,
   },
   accessoryColors: Object.fromEntries(
     ACCESSORY_DEFS.map((a) => [a.id, a.defaultColor]),
@@ -75,7 +76,7 @@ function softMat(color, opts = {}) {
   });
 }
 
-function darkerShade(hex, factor = 0.3) {
+function darkerShade(hex, factor = 0.55) {
   const c = new THREE.Color(hex);
   c.multiplyScalar(factor);
   return c;
@@ -112,7 +113,7 @@ function makeBody(skinMat) {
   return group;
 }
 
-function makeLegs(skinMat) {
+function makeLegs(skinMat, shoesMat) {
   const group = new THREE.Group();
   for (const side of [-1, 1]) {
     const leg = new THREE.Mesh(
@@ -124,7 +125,7 @@ function makeLegs(skinMat) {
 
     const foot = new THREE.Mesh(
       new THREE.SphereGeometry(0.08, 16, 12),
-      skinMat,
+      shoesMat,
     );
     foot.position.set(side * BODY.hipHalfWidth, ANCHORS.floor + 0.03, 0.04);
     foot.scale.set(0.95, 0.5, 1.4);
@@ -366,12 +367,12 @@ function makeBottomVariant(id, material) {
     hem.material.side = THREE.DoubleSide;
     group.add(hem);
   } else if (id === "pants") {
-    // hip yoke: shorter + bottom radius flush to the legs (no overhang)
     const yokeHeight = 0.13;
+    const yokeBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.014;
     const yoke = new THREE.Mesh(
       new THREE.CylinderGeometry(
         BODY.torsoRadius + 0.022,
-        BODY.hipHalfWidth + BODY.legRadius,
+        yokeBottomR,
         yokeHeight,
         28,
       ),
@@ -379,7 +380,17 @@ function makeBottomVariant(id, material) {
     );
     yoke.position.y = waistY - yokeHeight / 2;
     group.add(yoke);
-    const legTop = waistY - yokeHeight + 0.005;
+
+    // seat cap fills the crotch so no skin shows between the legs
+    const seat = new THREE.Mesh(
+      new THREE.SphereGeometry(yokeBottomR, 24, 16),
+      material,
+    );
+    seat.position.y = waistY - yokeHeight + 0.005;
+    seat.scale.set(1, 0.55, 1);
+    group.add(seat);
+
+    const legTop = waistY - yokeHeight + 0.02;
     for (const side of [-1, 1]) {
       const leg = new THREE.Mesh(
         new THREE.CylinderGeometry(BODY.legRadius + 0.012, BODY.legRadius + 0.008, legTop - ANCHORS.ankle, 20),
@@ -389,18 +400,29 @@ function makeBottomVariant(id, material) {
       group.add(leg);
     }
   } else if (id === "shorts") {
+    const shortsHeight = 0.16;
+    const shortsBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.014;
     const shorts = new THREE.Mesh(
-      new THREE.CylinderGeometry(BODY.torsoRadius + 0.022, BODY.torsoRadius + 0.04, 0.16, 28),
+      new THREE.CylinderGeometry(BODY.torsoRadius + 0.022, shortsBottomR, shortsHeight, 28),
       material,
     );
-    shorts.position.y = waistY - 0.08;
+    shorts.position.y = waistY - shortsHeight / 2;
     group.add(shorts);
+
+    const seat = new THREE.Mesh(
+      new THREE.SphereGeometry(shortsBottomR, 24, 16),
+      material,
+    );
+    seat.position.y = waistY - shortsHeight + 0.005;
+    seat.scale.set(1, 0.55, 1);
+    group.add(seat);
+
     for (const side of [-1, 1]) {
       const cuff = new THREE.Mesh(
         new THREE.CylinderGeometry(BODY.legRadius + 0.022, BODY.legRadius + 0.02, 0.04, 16),
         material,
       );
-      cuff.position.set(side * BODY.hipHalfWidth, waistY - 0.18, 0);
+      cuff.position.set(side * BODY.hipHalfWidth, waistY - shortsHeight - 0.005, 0);
       group.add(cuff);
     }
   }
@@ -475,6 +497,11 @@ function makeWingsVariant(id, material) {
       group.add(mesh);
     }
   }
+
+  const wingsScale = 0.72;
+  group.scale.setScalar(wingsScale);
+  group.position.y = anchorY * (1 - wingsScale);
+  group.position.z = anchorZ * (1 - wingsScale);
   return group;
 }
 
@@ -561,10 +588,10 @@ function buildLashes(material) {
 
     // dark thin arc along the top of the eye
     const arc = new THREE.Mesh(
-      new THREE.TorusGeometry(0.048, 0.005, 8, 18, Math.PI),
+      new THREE.TorusGeometry(0.048, 0.005, 5, 18, Math.PI),
       material,
     );
-    arc.position.z = BODY.headRadius -0.0001;
+    arc.position.z = BODY.headRadius -0.001;
     arc.scale.set(1.1, 1, 1);
     arc.rotation.z = side * 0;
     pivot.add(arc);
@@ -650,6 +677,7 @@ export function createProceduralCharacter(initialState = {}) {
   const shirtMat = softMat(state.colors.shirt);
   const bottomMat = softMat(state.colors.bottom);
   const wingsMat = softMat(state.colors.wings, { transparent: true, opacity: 0.78 });
+  const shoesMat = softMat(state.colors.shoes, { roughness: 0.6 });
   const irisMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(state.colors.eyes) });
   const pupilMat = new THREE.MeshBasicMaterial({ color: darkerShade(state.colors.eyes) });
   const blushMat = new THREE.MeshBasicMaterial({
@@ -660,7 +688,7 @@ export function createProceduralCharacter(initialState = {}) {
   });
 
   root.add(makeBody(skinMat));
-  root.add(makeLegs(skinMat));
+  root.add(makeLegs(skinMat, shoesMat));
   root.add(makeArms(skinMat));
   root.add(makeHead(skinMat, blushMat));
   root.add(makeEyes(irisMat, pupilMat));
@@ -708,6 +736,7 @@ export function createProceduralCharacter(initialState = {}) {
     else if (partId === "shirt") shirtMat.color.copy(color);
     else if (partId === "bottom") bottomMat.color.copy(color);
     else if (partId === "wings") wingsMat.color.copy(color);
+    else if (partId === "shoes") shoesMat.color.copy(color);
     else if (partId === "blush") blushMat.color.copy(color);
     else if (partId === "eyes") {
       irisMat.color.copy(color);
@@ -766,6 +795,7 @@ export const PROCEDURAL_CUSTOMIZATION_SCHEMA = {
     { id: "shirt", label: "shirt", default: DEFAULTS.colors.shirt },
     { id: "bottom", label: "bottom", default: DEFAULTS.colors.bottom },
     { id: "wings", label: "wings", default: DEFAULTS.colors.wings },
+    { id: "shoes", label: "shoes", default: DEFAULTS.colors.shoes },
   ],
   variants: [
     { id: "hair", label: "hair style", options: ["bob", "long", "pigtails", "bun"] },
