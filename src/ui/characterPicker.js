@@ -60,19 +60,11 @@ export function createCharacterPicker({
 
     const colorSection = makeSection("colors");
     for (const { id, label, default: defaultColor } of PROCEDURAL_CUSTOMIZATION_SCHEMA.colors) {
-      const wrap = document.createElement("label");
-      wrap.className = "picker-color";
-      const input = document.createElement("input");
-      input.type = "color";
-      input.value = state.colors[id] ?? defaultColor;
-      input.addEventListener("input", () => {
-        character.setColor(id, input.value);
+      const initial = state.colors[id] ?? defaultColor;
+      const wrap = makeSphereColorRow(label, initial, (hex) => {
+        character.setColor(id, hex);
         onCustomize?.();
       });
-      const txt = document.createElement("span");
-      txt.textContent = label;
-      wrap.appendChild(input);
-      wrap.appendChild(txt);
       colorSection.row.appendChild(wrap);
     }
     customizationEl.appendChild(colorSection.section);
@@ -97,21 +89,35 @@ export function createCharacterPicker({
     }
 
     const accSec = makeSection("accessories");
-    for (const { id, label } of PROCEDURAL_CUSTOMIZATION_SCHEMA.accessories) {
+    for (const { id, label, defaultColor } of PROCEDURAL_CUSTOMIZATION_SCHEMA.accessories) {
+      const row = document.createElement("div");
+      row.className = "picker-accessory-row";
+
       const wrap = document.createElement("label");
       wrap.className = "picker-toggle";
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.checked = !!state.accessories[id];
-      cb.addEventListener("change", () => {
-        character.setAccessory(id, cb.checked);
-        onCustomize?.();
-      });
       wrap.appendChild(cb);
       const txt = document.createElement("span");
       txt.textContent = label;
       wrap.appendChild(txt);
-      accSec.row.appendChild(wrap);
+      row.appendChild(wrap);
+
+      const initialColor = state.accessoryColors?.[id] ?? defaultColor;
+      const sphere = makeSphereSwatch(initialColor, (hex) => {
+        character.setAccessoryColor?.(id, hex);
+        onCustomize?.();
+      });
+      sphere.hidden = !cb.checked;
+      row.appendChild(sphere);
+
+      cb.addEventListener("change", () => {
+        character.setAccessory(id, cb.checked);
+        sphere.hidden = !cb.checked;
+        onCustomize?.();
+      });
+      accSec.row.appendChild(row);
     }
     customizationEl.appendChild(accSec.section);
   }
@@ -151,6 +157,31 @@ export function createCharacterPicker({
       sec.row.appendChild(wrap);
     }
     customizationEl.appendChild(sec.section);
+  }
+
+  function makeSphereSwatch(initial, onChange) {
+    const sphere = document.createElement("span");
+    sphere.className = "picker-sphere";
+    sphere.style.setProperty("--swatch-color", initial);
+    const input = document.createElement("input");
+    input.type = "color";
+    input.value = initial;
+    input.addEventListener("input", () => {
+      sphere.style.setProperty("--swatch-color", input.value);
+      onChange(input.value);
+    });
+    sphere.appendChild(input);
+    return sphere;
+  }
+
+  function makeSphereColorRow(label, initial, onChange) {
+    const wrap = document.createElement("label");
+    wrap.className = "picker-color";
+    wrap.appendChild(makeSphereSwatch(initial, onChange));
+    const txt = document.createElement("span");
+    txt.textContent = label;
+    wrap.appendChild(txt);
+    return wrap;
   }
 
   function makeSection(labelText) {

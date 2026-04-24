@@ -71,10 +71,12 @@ function filterByNodePrefix(scene, prefix) {
   }
 }
 
-function wrapWithScale(root, scale) {
-  if (!scale || scale === 1) return root;
+function wrapWithScale(root, scale, offsetY) {
+  const needsWrap = (scale && scale !== 1) || offsetY;
+  if (!needsWrap) return root;
   const wrapper = new THREE.Group();
-  wrapper.scale.setScalar(scale);
+  if (scale && scale !== 1) wrapper.scale.setScalar(scale);
+  if (offsetY) wrapper.position.y = offsetY;
   wrapper.add(root);
   return wrapper;
 }
@@ -88,6 +90,7 @@ export async function loadCharacter(def, initialState) {
       setColor: proc.setColor,
       setVariant: proc.setVariant,
       setAccessory: proc.setAccessory,
+      setAccessoryColor: proc.setAccessoryColor,
       getState: proc.getState,
       update: () => {},
     };
@@ -98,7 +101,7 @@ export async function loadCharacter(def, initialState) {
     const gltf = await loader.loadAsync(def.url);
     if (def.nodePrefix) filterByNodePrefix(gltf.scene, def.nodePrefix);
     const materials = collectMaterials(gltf.scene);
-    const root = wrapWithScale(gltf.scene, def.scale);
+    const root = wrapWithScale(gltf.scene, def.scale, def.offsetY);
     const api = materialApi(materials, def.tintable);
     api.applyState(initialState);
     return {
@@ -119,7 +122,7 @@ export async function loadCharacter(def, initialState) {
     vrm.scene.rotation.y = Math.PI;
 
     const materials = collectMaterials(vrm.scene);
-    const root = wrapWithScale(vrm.scene, def.scale);
+    const root = wrapWithScale(vrm.scene, def.scale, def.offsetY);
     const api = materialApi(materials, def.tintable);
     api.applyState(initialState);
     return {
