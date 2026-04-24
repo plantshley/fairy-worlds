@@ -37,7 +37,7 @@ const ACCESSORY_DEFS = [
 const DEFAULTS = {
   colors: {
     skin: "#936a4e",
-    hair: "#c0008d",
+    hair: "#ea1dc8",
     shirt: "#ff59b4",
     bottom: "#ff008c",
     wings: "#ff0044",
@@ -368,7 +368,7 @@ function makeBottomVariant(id, material) {
     group.add(hem);
   } else if (id === "pants") {
     const yokeHeight = 0.13;
-    const yokeBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.014;
+    const yokeBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.0;
     const yoke = new THREE.Mesh(
       new THREE.CylinderGeometry(
         BODY.torsoRadius + 0.022,
