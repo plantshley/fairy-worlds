@@ -612,8 +612,8 @@ function buildCatEars(material) {
   return ears;
 }
 
-function buildLashes(material) {
-  const lashes = new THREE.Group();
+function buildLashArcs(material) {
+  const arcs = new THREE.Group();
   const eyeX = 0.085;
   const eyeY = -0.03;
   for (const side of [-1, 1]) {
@@ -627,28 +627,65 @@ function buildLashes(material) {
     const normal = new THREE.Vector3(xLocal, yLocal, zLocal).normalize();
     pivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
 
-    // dark thin arc along the top of the eye
     const arc = new THREE.Mesh(
       new THREE.TorusGeometry(0.048, 0.005, 5, 18, Math.PI),
       material,
     );
-    arc.position.z = BODY.headRadius -0.001;
+    arc.position.z = BODY.headRadius - 0.001;
     arc.scale.set(1.1, 1, 1);
-    arc.rotation.z = side * 0;
     pivot.add(arc);
+    arcs.add(pivot);
+  }
+  return arcs;
+}
 
-    // outer corner flick
-    const flick = new THREE.Mesh(
+function buildLashes(material) {
+  const flicks = new THREE.Group();
+  const eyeX = 0.085;
+  const eyeY = -0.03;
+  for (const side of [-1, 1]) {
+    const xLocal = side * eyeX;
+    const yLocal = eyeY;
+    const zLocal = Math.sqrt(
+      Math.max(0, BODY.headRadius * BODY.headRadius - yLocal * yLocal - xLocal * xLocal),
+    );
+    const pivot = new THREE.Group();
+    pivot.position.set(0, ANCHORS.headCenter, 0);
+    const normal = new THREE.Vector3(xLocal, yLocal, zLocal).normalize();
+    pivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+
+    // outer corner flick — original position/rotation preserved
+    const outer = new THREE.Mesh(
       new THREE.CylinderGeometry(0.005, 0.003, 0.03, 6),
       material,
     );
-    flick.position.set(side * 0.067, 0.006, BODY.headRadius -0.0001);
-    flick.rotation.z = side * (Math.PI / 2 + 0.3);
-    pivot.add(flick);
+    outer.position.set(side * 0.067, 0.006, BODY.headRadius - 0.0001);
+    outer.rotation.z = side * (Math.PI / 2 + 0.3);
+    pivot.add(outer);
 
-    lashes.add(pivot);
+    // three more lashes radiating along the top of the arc
+    const lashLayout = [
+      { t: Math.PI / 6, len: 0.028, r: 0.055 },
+      { t: Math.PI / 3, len: 0.026, r: 0.054 },
+      { t: Math.PI / 2, len: 0.024, r: 0.054 },
+    ];
+    for (const { t, len, r } of lashLayout) {
+      const flick = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.005, 0.003, len, 6),
+        material,
+      );
+      flick.position.set(
+        side * Math.cos(t) * r,
+        Math.sin(t) * r + 0.006,
+        BODY.headRadius - 0.0001,
+      );
+      flick.rotation.z = side * (Math.PI / 2 + t);
+      pivot.add(flick);
+    }
+
+    flicks.add(pivot);
   }
-  return lashes;
+  return flicks;
 }
 
 function buildMustache(material) {
@@ -774,6 +811,9 @@ export function createProceduralCharacter(initialState = {}) {
   root.add(bottomGroup);
   root.add(wingsGroup);
   root.add(accessoriesGroup);
+  // lash arcs always visible regardless of the lashes accessory toggle —
+  // they share the lashes accessory material so color stays in sync
+  root.add(buildLashArcs(accessoryMaterials.lashes));
 
   // apply initial accessory visibility + colors
   for (const def of ACCESSORY_DEFS) {
