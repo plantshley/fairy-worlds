@@ -56,6 +56,10 @@ export function createHomeMode({ renderer }) {
       currentCharacter = null;
     }
     currentCharacter = await loadCharacter(def, savedConfig);
+    if (def.kind === "procedural") {
+      currentCharacter.root.scale.setScalar(1.25);
+      currentCharacter.baseScale = 1.25;
+    }
     characterAnchor.add(currentCharacter.root);
     return currentCharacter;
   }

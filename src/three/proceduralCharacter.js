@@ -31,6 +31,7 @@ const ACCESSORY_DEFS = [
   { id: "horns", label: "horns", defaultColor: "#2a1830" },
   { id: "ears", label: "cat ears", defaultColor: "#ffb0de" },
   { id: "lashes", label: "lashes", defaultColor: "#591246" },
+  { id: "mustache", label: "mustache", defaultColor: "#2a1830" },
   { id: "star", label: "star", defaultColor: "#fff6e8" },
 ];
 
@@ -56,6 +57,7 @@ const DEFAULTS = {
     horns: false,
     ears: false,
     lashes: true,
+    mustache: false,
     star: false,
   },
   accessoryColors: Object.fromEntries(
@@ -319,6 +321,45 @@ function makeHairVariant(id, material) {
     const bun = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 16), material);
     bun.position.y = ANCHORS.headTop + 0.04;
     group.add(bun);
+  } else if (id === "afro") {
+    const puff = new THREE.Mesh(
+      new THREE.SphereGeometry(BODY.headRadius + 0.11, 28, 22),
+      material,
+    );
+    puff.position.y = ANCHORS.headCenter + 0.05;
+    puff.scale.set(1.05, 1.0, 1.05);
+    group.add(puff);
+    // a few smaller bumps to sell the curly volume silhouette
+    const bumpPositions = [
+      [0.22, 0.18, 0.05],
+      [-0.22, 0.18, 0.05],
+      [0.0, 0.28, 0.0],
+      [0.18, 0.05, -0.18],
+      [-0.18, 0.05, -0.18],
+      [0.18, 0.05, 0.18],
+      [-0.18, 0.05, 0.18],
+    ];
+    for (const [bx, by, bz] of bumpPositions) {
+      const bump = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), material);
+      bump.position.set(bx, ANCHORS.headCenter + by, bz);
+      group.add(bump);
+    }
+  } else if (id === "fade") {
+    // tight cap hugging the crown; shorter on the sides
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(r + 0.005, 28, 22, 0, Math.PI * 2, 0, Math.PI * 0.42),
+      material,
+    );
+    cap.position.y = capY;
+    group.add(cap);
+    // forehead/temple sides — short fade band
+    const band = new THREE.Mesh(
+      new THREE.SphereGeometry(r + 0.002, 28, 22, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.05),
+      material,
+    );
+    band.position.y = capY +0.01;
+    band.scale.y = 0.5;
+    group.add(band);
   }
   return group;
 }
@@ -352,14 +393,14 @@ function makeBottomVariant(id, material) {
   if (id === "skirt") {
     const h = 0.26;
     const skirt = new THREE.Mesh(
-      new THREE.CylinderGeometry(BODY.torsoRadius + 0.03, BODY.torsoRadius + 0.22, h, 28, 1, true),
+      new THREE.CylinderGeometry(BODY.torsoRadius + 0.03, BODY.torsoRadius + 0.13, h, 28, 1, true),
       material,
     );
     skirt.position.y = waistY - h / 2;
     skirt.material.side = THREE.DoubleSide;
     group.add(skirt);
     const hem = new THREE.Mesh(
-      new THREE.RingGeometry(BODY.torsoRadius + 0.03, BODY.torsoRadius + 0.22, 28),
+      new THREE.RingGeometry(BODY.torsoRadius + 0.03, BODY.torsoRadius + 0.13, 28),
       material,
     );
     hem.rotation.x = Math.PI / 2;
@@ -387,10 +428,10 @@ function makeBottomVariant(id, material) {
       material,
     );
     seat.position.y = waistY - yokeHeight + 0.005;
-    seat.scale.set(1, 0.55, 1);
+    seat.scale.set(1, 0.3, 1);
     group.add(seat);
 
-    const legTop = waistY - yokeHeight + 0.02;
+    const legTop = waistY - yokeHeight + 0.1;
     for (const side of [-1, 1]) {
       const leg = new THREE.Mesh(
         new THREE.CylinderGeometry(BODY.legRadius + 0.012, BODY.legRadius + 0.008, legTop - ANCHORS.ankle, 20),
@@ -400,8 +441,8 @@ function makeBottomVariant(id, material) {
       group.add(leg);
     }
   } else if (id === "shorts") {
-    const shortsHeight = 0.16;
-    const shortsBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.014;
+    const shortsHeight = 0.13;
+    const shortsBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.0;
     const shorts = new THREE.Mesh(
       new THREE.CylinderGeometry(BODY.torsoRadius + 0.022, shortsBottomR, shortsHeight, 28),
       material,
@@ -414,12 +455,12 @@ function makeBottomVariant(id, material) {
       material,
     );
     seat.position.y = waistY - shortsHeight + 0.005;
-    seat.scale.set(1, 0.55, 1);
+    seat.scale.set(1, 0.3, 1);
     group.add(seat);
 
     for (const side of [-1, 1]) {
       const cuff = new THREE.Mesh(
-        new THREE.CylinderGeometry(BODY.legRadius + 0.022, BODY.legRadius + 0.02, 0.04, 16),
+        new THREE.CylinderGeometry(BODY.legRadius + 0.015, BODY.legRadius + 0.0175, 0.2, 18),
         material,
       );
       cuff.position.set(side * BODY.hipHalfWidth, waistY - shortsHeight - 0.005, 0);
@@ -440,13 +481,13 @@ function makeWingsVariant(id, material) {
 
   if (id === "butterfly") {
     for (const side of [-1, 1]) {
-      const upper = new THREE.Mesh(new THREE.CircleGeometry(0.26, 28), material);
-      upper.position.set(side * 0.22, anchorY + 0.06, anchorZ);
+      const upper = new THREE.Mesh(new THREE.CircleGeometry(0.34, 28), material);
+      upper.position.set(side * 0.28, anchorY + 0.08, anchorZ);
       upper.rotation.y = side * -0.5;
       upper.rotation.z = side * -0.1;
       group.add(upper);
-      const lower = new THREE.Mesh(new THREE.CircleGeometry(0.18, 28), material);
-      lower.position.set(side * 0.2, anchorY - 0.16, anchorZ);
+      const lower = new THREE.Mesh(new THREE.CircleGeometry(0.24, 28), material);
+      lower.position.set(side * 0.26, anchorY - 0.2, anchorZ);
       lower.rotation.y = side * -0.5;
       lower.rotation.z = side * 0.2;
       group.add(lower);
@@ -474,7 +515,7 @@ function makeWingsVariant(id, material) {
         wing.add(f);
       }
       wing.position.set(side * 0.12, anchorY + 0.05, anchorZ);
-      wing.rotation.y = side * -0.45;
+      wing.rotation.y = side * 0.15;
       wing.scale.x = side;
       group.add(wing);
     }
@@ -610,6 +651,34 @@ function buildLashes(material) {
   return lashes;
 }
 
+function buildMustache(material) {
+  const mustache = new THREE.Group();
+  // sit just above the chin/mouth area on the front of the face
+  const yLocal = -0.11;
+  const halfX = 0.05;
+  for (const side of [-1, 1]) {
+    const xLocal = side * halfX;
+    const zLocal = Math.sqrt(
+      Math.max(0, BODY.headRadius * BODY.headRadius - yLocal * yLocal - xLocal * xLocal),
+    );
+    const pivot = new THREE.Group();
+    pivot.position.set(0, ANCHORS.headCenter, 0);
+    const normal = new THREE.Vector3(xLocal, yLocal, zLocal).normalize();
+    pivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+
+    const half = new THREE.Mesh(
+      new THREE.TorusGeometry(0.035, 0.011, 8, 14, Math.PI * 0.7),
+      material,
+    );
+    half.position.z = BODY.headRadius - 0.001;
+    half.scale.set(1.1, 0.85, 1);
+    half.rotation.z = side > 0 ? Math.PI : 0;
+    pivot.add(half);
+    mustache.add(pivot);
+  }
+  return mustache;
+}
+
 function buildStar(material) {
   const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.055, 0), material);
   star.position.set(0, ANCHORS.headTop + 0.1, 0);
@@ -650,6 +719,7 @@ function makeAccessories() {
     else if (def.id === "horns") node = buildHorns(mat);
     else if (def.id === "ears") node = buildCatEars(mat);
     else if (def.id === "lashes") node = buildLashes(mat);
+    else if (def.id === "mustache") node = buildMustache(mat);
     else if (def.id === "star") node = buildStar(mat);
 
     node.name = def.id;
@@ -798,7 +868,7 @@ export const PROCEDURAL_CUSTOMIZATION_SCHEMA = {
     { id: "shoes", label: "shoes", default: DEFAULTS.colors.shoes },
   ],
   variants: [
-    { id: "hair", label: "hair style", options: ["bob", "long", "pigtails", "bun"] },
+    { id: "hair", label: "hair style", options: ["bob", "long", "pigtails", "bun", "afro", "fade"] },
     { id: "bottom", label: "bottom", options: ["skirt", "pants", "shorts"] },
     { id: "wings", label: "wings", options: ["off", "butterfly", "angel", "bat"] },
   ],

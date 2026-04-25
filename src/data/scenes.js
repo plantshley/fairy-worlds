@@ -91,12 +91,22 @@ export const SCENES = [
   },
   {
     id: "sunkissed-glow-lounge-1-1",
-    world: "Sunkissed Glow Lounge",
-    title: "Sunkissed Glow Lounge 1.1",
+    world: "Sunkissed Sparkle Lounge",
+    title: "Sunkissed Sparkle Lounge 1.1",
     url: import.meta.env.BASE_URL + "splats/Sunkissed%20Glow%20Lounge%201-1.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
       quaternion: [-0.038, -0.051, -0.001, 0.998],
+    },
+  },
+  {
+    id: "angelic-satin-chamber-1-1",
+    world: "Angelic Satin Chamber",
+    title: "Angelic Quartz Chamber 1.1",
+    url: import.meta.env.BASE_URL + "splats/Angelic%20Satin%20Chamber%201-1.spz",
+    spawn: {
+      position: [-0.45, 0.91, 0.48],
+      quaternion: [-0.026, 0.008, 0.001, 1.000],
     },
   },
 ];

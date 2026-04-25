@@ -20,15 +20,23 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick
   scene.add(boost);
 
   const camera = new THREE.PerspectiveCamera(24, 1, 0.01, 100);
-  camera.position.set(0, 1.4, 4.6);
-  camera.lookAt(0, 1.0, 0);
+  camera.position.set(0, 1.3, 4.6);
+  camera.lookAt(0, 0.9, 0);
 
   const anchor = new THREE.Group();
+  anchor.scale.setScalar(1);
   scene.add(anchor);
 
   let currentCharacter = null;
+  let baseOffsetY = 0;
+  let characterTopY = 1.4;
   let loadToken = 0;
   let t = 0;
+
+  // every character is anchored to this Y at their feet — so they all stand on the
+  // same baseline. their actual on-screen height varies, and the bubble follows the
+  // top each frame via projection (see loop()).
+  const FOOT_Y = 0;
 
   async function setCharacter(id, config) {
     const myToken = ++loadToken;
@@ -38,6 +46,17 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick
     if (currentCharacter) anchor.remove(currentCharacter.root);
     currentCharacter = char;
     anchor.add(char.root);
+    char.root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(char.root);
+    if (box.isEmpty()) {
+      baseOffsetY = char.root.position.y;
+      characterTopY = 1.4;
+    } else {
+      // shift so the bottom of the bbox sits at FOOT_Y in world space
+      baseOffsetY = char.root.position.y + (FOOT_Y - box.min.y);
+      characterTopY = FOOT_Y + (box.max.y - box.min.y);
+    }
+    char.root.position.y = baseOffsetY;
   }
 
   function applyState(state) {
@@ -82,6 +101,7 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick
 
   if (onBubbleClick) bubbleEl.addEventListener("click", onBubbleClick);
 
+  const headWorld = new THREE.Vector3();
   let last = performance.now();
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
@@ -104,9 +124,19 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick
     if (currentCharacter) {
       const baseY = currentCharacter.baseScale ?? 1;
       const breath = 1 + Math.sin(t * 1.8) * 0.015;
+      const floatDelta = Math.sin(t * 1.4) * 0.05;
       currentCharacter.root.scale.y = baseY * breath;
-      currentCharacter.root.position.y = Math.sin(t * 1.4) * 0.05;
+      currentCharacter.root.position.y = baseOffsetY + floatDelta;
       currentCharacter.update?.(dt);
+
+      // project the character's top into canvas pixel space and pin the bubble above it
+      headWorld.set(0, characterTopY + floatDelta, 0);
+      headWorld.project(camera);
+      const projectedY = ((1 - headWorld.y) / 2) * r.height;
+      // tail tip should sit ~14px above the projected head; bubble bottom is
+      // ~12px above its translateY position relative to canvas top, so subtract ~26
+      const offset = Math.max(0, projectedY - 26);
+      bubbleEl.style.transform = `translateY(${offset}px)`;
     }
 
     renderer.render(scene, camera);
