@@ -347,7 +347,7 @@ function makeHairVariant(id, material) {
   } else if (id === "fade") {
     // tight cap hugging the crown; shorter on the sides
     const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(r + 0.005, 28, 22, 0, Math.PI * 2, 0, Math.PI * 0.42),
+      new THREE.SphereGeometry(r + 0.005, 28, 22, 0, Math.PI * 2, 0, Math.PI * 0.4),
       material,
     );
     cap.position.y = capY;
@@ -357,7 +357,7 @@ function makeHairVariant(id, material) {
       new THREE.SphereGeometry(r + 0.002, 28, 22, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.05),
       material,
     );
-    band.position.y = capY +0.01;
+    band.position.y = capY+0.025;
     band.scale.y = 0.5;
     group.add(band);
   }
