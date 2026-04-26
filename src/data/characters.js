@@ -15,22 +15,6 @@ export const CHARACTERS = [
     offsetY: 1.2,
   },
   {
-    id: "jewel",
-    kind: "glb",
-    title: "jewel",
-    description: "GLB — tint materials",
-    url: import.meta.env.BASE_URL + "characters/garnet_jewelpet_rigged_jp.glb",
-    scale: 1.3,
-  },
-  {
-    id: "ruby",
-    kind: "glb",
-    title: "ruby",
-    description: "GLB — tint materials",
-    url: import.meta.env.BASE_URL + "characters/jewelpet_ruby.glb",
-    scale: 3,
-  },
-  {
     id: "kitty",
     kind: "glb",
     title: "kitty",

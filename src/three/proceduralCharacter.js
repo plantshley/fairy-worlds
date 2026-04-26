@@ -322,43 +322,126 @@ function makeHairVariant(id, material) {
     bun.position.y = ANCHORS.headTop + 0.04;
     group.add(bun);
   } else if (id === "afro") {
-    const puff = new THREE.Mesh(
-      new THREE.SphereGeometry(BODY.headRadius + 0.11, 28, 22),
-      material,
+    const puffR = 0.31;
+    const headR = BODY.headRadius;
+    const innerOffset = 0.005;
+    const cy = ANCHORS.headCenter + 0.02;
+    const sx = 1.05, sy = 1.0, sz = 1.05;
+    const afroMat = material.clone();
+    afroMat.color = material.color;
+    afroMat.side = THREE.DoubleSide;
+    // top hemisphere covers crown + forehead (full 360 around)
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(puffR, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.5),
+      afroMat,
     );
-    puff.position.y = ANCHORS.headCenter + 0.05;
-    puff.scale.set(1.05, 1.0, 1.05);
-    group.add(puff);
-    // a few smaller bumps to sell the curly volume silhouette
-    const bumpPositions = [
-      [0.22, 0.18, 0.05],
-      [-0.22, 0.18, 0.05],
-      [0.0, 0.28, 0.0],
-      [0.18, 0.05, -0.18],
-      [-0.18, 0.05, -0.18],
-      [0.18, 0.05, 0.18],
-      [-0.18, 0.05, 0.18],
-    ];
-    for (const [bx, by, bz] of bumpPositions) {
-      const bump = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), material);
-      bump.position.set(bx, ANCHORS.headCenter + by, bz);
-      group.add(bump);
+    dome.position.y = cy;
+    dome.scale.set(sx, sy, sz);
+    group.add(dome);
+    // skirt — solid thick band on sides+back, lathed from a closed cross-section
+    const phiStart = Math.PI * 0.25;
+    const phiLength = Math.PI * 1.5;
+    const thetaStart = Math.PI * 0.5;
+    const thetaEnd = Math.PI * 0.72;
+    const N = 12;
+    const outerPts = [];
+    const innerPts = [];
+    for (let i = 0; i <= N; i++) {
+      const t = thetaStart + (thetaEnd - thetaStart) * (i / N);
+      const yLocal = puffR * Math.cos(t) * sy;
+      const yWorld = cy + yLocal;
+      const headLocalY = yWorld - ANCHORS.headCenter;
+      const innerR =
+        Math.sqrt(Math.max(0, headR * headR - headLocalY * headLocalY)) + innerOffset;
+      outerPts.push(new THREE.Vector2(puffR * Math.sin(t) * sx, yLocal));
+      innerPts.push(new THREE.Vector2(innerR, yLocal));
     }
+    const profile = [...outerPts];
+    for (let i = innerPts.length - 1; i >= 0; i--) profile.push(innerPts[i]);
+    profile.push(profile[0].clone());
+    const skirt = new THREE.Mesh(
+      new THREE.LatheGeometry(profile, 48, phiStart, phiLength),
+      afroMat,
+    );
+    skirt.position.y = cy;
+    group.add(skirt);
+    // caps at the two cut edges so the front of the band reads solid, not hollow
+    const capShape = new THREE.Shape();
+    capShape.moveTo(profile[0].x, profile[0].y);
+    for (let i = 1; i < profile.length; i++) capShape.lineTo(profile[i].x, profile[i].y);
+    const capGeo = new THREE.ShapeGeometry(capShape);
+    for (const phi of [phiStart, phiStart + phiLength]) {
+      const cap = new THREE.Mesh(capGeo, afroMat);
+      cap.rotation.y = phi - Math.PI / 2;
+      cap.position.y = cy;
+      group.add(cap);
+    }
+    // close the front-cut underside of the dome with a horizontal annulus that fits to the head
+    const headXZAtCy = Math.sqrt(
+      Math.max(0, headR * headR - (cy - ANCHORS.headCenter) ** 2),
+    );
+    const floor = new THREE.Mesh(
+      new THREE.RingGeometry(
+        headXZAtCy + 0.001,
+        puffR * sx,
+        32,
+        1,
+        Math.PI * 0.25,
+        Math.PI * 0.5,
+      ),
+      afroMat,
+    );
+    floor.rotation.x = Math.PI / 2;
+    floor.position.y = cy;
+    group.add(floor);
+    // forehead-level closure: another horizontal ring higher up, fitting to the head and dome
+    const foreheadY = cy + 0.06;
+    const foreheadHeadXZ = Math.sqrt(
+      Math.max(0, headR * headR - (foreheadY - ANCHORS.headCenter) ** 2),
+    );
+    const foreheadDomeT = Math.acos((foreheadY - cy) / (puffR * sy));
+    const foreheadDomeXZ = puffR * Math.sin(foreheadDomeT) * sx;
+    const forehead = new THREE.Mesh(
+      new THREE.RingGeometry(
+        foreheadHeadXZ + 0.001,
+        foreheadDomeXZ,
+        32,
+        1,
+        Math.PI * 0.25,
+        Math.PI * 0.5,
+      ),
+      afroMat,
+    );
+    forehead.rotation.x = Math.PI / 2;
+    forehead.position.y = foreheadY;
+    group.add(forehead);
   } else if (id === "fade") {
-    // tight cap hugging the crown; shorter on the sides
+    // flared cylinder: slightly larger at top, tapering to meet the head exactly at the bottom
+    const bottomOffset = 0.075;
+    const bottomRadius = Math.sqrt(
+      Math.max(0, BODY.headRadius * BODY.headRadius - bottomOffset * bottomOffset),
+    );
+    const topRadius = BODY.headRadius + 0.0025;
+    const cylHeight = 0.15;
     const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(r + 0.005, 28, 22, 0, Math.PI * 2, 0, Math.PI * 0.4),
+      new THREE.CylinderGeometry(topRadius, bottomRadius, cylHeight, 28, 1, false),
       material,
     );
-    cap.position.y = capY;
+    cap.position.y = ANCHORS.headCenter + bottomOffset + cylHeight / 2;
     group.add(cap);
-    // forehead/temple sides — short fade band
-    const band = new THREE.Mesh(
-      new THREE.SphereGeometry(r + 0.002, 28, 22, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.05),
+    const top = new THREE.Mesh(
+      new THREE.CircleGeometry(topRadius, 28),
       material,
     );
-    band.position.y = capY+0.025;
-    band.scale.y = 0.5;
+    top.rotation.x = -Math.PI / 2;
+    top.position.y = ANCHORS.headCenter + bottomOffset + cylHeight;
+    group.add(top);
+    // forehead/temple sides — short fade band, flush with head
+    const band = new THREE.Mesh(
+      new THREE.SphereGeometry(BODY.headRadius + 0.001, 32, 24, 0, Math.PI * 2, Math.PI * 0.405, Math.PI * 0.02),
+      material,
+    );
+    band.position.y = ANCHORS.headCenter;
     group.add(band);
   }
   return group;
@@ -665,9 +748,10 @@ function buildLashes(material) {
 
     // three more lashes radiating along the top of the arc
     const lashLayout = [
-      { t: Math.PI / 6, len: 0.028, r: 0.055 },
-      { t: Math.PI / 3, len: 0.026, r: 0.054 },
-      { t: Math.PI / 2, len: 0.024, r: 0.054 },
+      { t: Math.PI / 6, len: 0.02, r: 0.06 },
+      { t: Math.PI / 3, len: 0.02, r: 0.054 },
+      { t: Math.PI / 2, len: 0.02, r: 0.054 },
+      { t: Math.PI / 1.5, len: 0.02, r: 0.054 },
     ];
     for (const { t, len, r } of lashLayout) {
       const flick = new THREE.Mesh(
