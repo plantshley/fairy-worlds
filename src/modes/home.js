@@ -69,7 +69,13 @@ export function createHomeMode({ renderer }) {
     radius: RESTING_RADIUS,
     height: RESTING_HEIGHT,
     autoRotate: true,
+    target: new THREE.Vector3(0, PLATFORM_TARGET_Y, 0),
   };
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const focusPlane = new THREE.Plane();
+  const cursorWorld = new THREE.Vector3();
+  const camForward = new THREE.Vector3();
 
   const drag = { active: false, lastX: 0, lastY: 0, pointerId: null, enabled: false };
   const canvas = renderer.domElement;
@@ -109,8 +115,34 @@ export function createHomeMode({ renderer }) {
     if (!drag.enabled) return;
     e.preventDefault();
     orbit.autoRotate = false;
-    const factor = Math.exp(e.deltaY * 0.001);
-    orbit.radius = Math.max(RADIUS_MIN, Math.min(RADIUS_MAX, orbit.radius * factor));
+    const factor = Math.exp(e.deltaY * 0.0004);
+    const newRadius = Math.max(RADIUS_MIN, Math.min(RADIUS_MAX, orbit.radius * factor));
+    const k = newRadius / orbit.radius;
+    orbit.radius = newRadius;
+    if (k === 1) return;
+
+    // raycast cursor onto the focus plane to find the world point under the cursor.
+    // shift target height toward/away from that point so vertical framing tracks the
+    // cursor — but leave target.x/z alone so the view doesn't rotate/pan laterally.
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    ndc.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+    raycaster.setFromCamera(ndc, camera);
+
+    // place a plane perpendicular to the view direction passing through the target,
+    // then raycast cursor against it to find the world point under the cursor at
+    // target depth. shift only target.y — not x/z — so framing tracks cursor
+    // vertically without lateral pan/rotation.
+    camForward.subVectors(orbit.target, camera.position).normalize();
+    focusPlane.setFromNormalAndCoplanarPoint(camForward, orbit.target);
+    if (!raycaster.ray.intersectPlane(focusPlane, cursorWorld)) return;
+
+    const sy = (1 - k) * (cursorWorld.y - orbit.target.y);
+    orbit.target.y = Math.max(
+      PLATFORM_TARGET_Y - 0.2,
+      Math.min(PLATFORM_TARGET_Y + 1.2, orbit.target.y + sy),
+    );
   };
 
   canvas.addEventListener("pointerdown", onPointerDown);
@@ -123,10 +155,10 @@ export function createHomeMode({ renderer }) {
     const xrActive = renderer.xr?.isPresenting;
     if (!xrActive) {
       if (orbit.autoRotate) orbit.angle += dt * 0.08;
-      camera.position.x = Math.sin(orbit.angle) * orbit.radius;
-      camera.position.z = Math.cos(orbit.angle) * orbit.radius;
+      camera.position.x = orbit.target.x + Math.sin(orbit.angle) * orbit.radius;
+      camera.position.z = orbit.target.z + Math.cos(orbit.angle) * orbit.radius;
       camera.position.y = orbit.height;
-      camera.lookAt(0, PLATFORM_TARGET_Y, 0);
+      camera.lookAt(orbit.target);
     }
 
     if (currentCharacter) {
@@ -153,6 +185,7 @@ export function createHomeMode({ renderer }) {
     orbit.autoRotate = true;
     orbit.radius = RESTING_RADIUS;
     orbit.height = RESTING_HEIGHT;
+    orbit.target.set(0, PLATFORM_TARGET_Y, 0);
     camera.fov = RESTING_FOV;
     camera.updateProjectionMatrix();
   }

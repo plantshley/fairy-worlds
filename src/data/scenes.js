@@ -101,7 +101,7 @@ export const SCENES = [
   },
   {
     id: "angelic-satin-chamber-1-1",
-    world: "Angelic Satin Chamber",
+    world: "Angelic Quartz Chamber",
     title: "Angelic Quartz Chamber 1.1",
     url: import.meta.env.BASE_URL + "splats/Angelic%20Satin%20Chamber%201-1.spz",
     spawn: {

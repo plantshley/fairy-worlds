@@ -109,7 +109,7 @@ function makeBody(skinMat) {
     skinMat,
   );
   hip.position.y = ANCHORS.hip;
-  hip.scale.set(1.15, 0.7, 1);
+  hip.scale.set(1.15, 0.95, 1);
   group.add(hip);
 
   return group;
@@ -325,8 +325,8 @@ function makeHairVariant(id, material) {
     const puffR = 0.31;
     const headR = BODY.headRadius;
     const innerOffset = 0.005;
-    const cy = ANCHORS.headCenter + 0.02;
-    const sx = 1.05, sy = 1.0, sz = 1.05;
+    const cy = ANCHORS.headCenter + 0.05;
+    const sx = 1.05, sy = 0.9, sz = 1.05;
     const afroMat = material.clone();
     afroMat.color = material.color;
     afroMat.side = THREE.DoubleSide;
@@ -339,10 +339,10 @@ function makeHairVariant(id, material) {
     dome.scale.set(sx, sy, sz);
     group.add(dome);
     // skirt — solid thick band on sides+back, lathed from a closed cross-section
-    const phiStart = Math.PI * 0.25;
-    const phiLength = Math.PI * 1.5;
+    const phiStart = Math.PI / 3;
+    const phiLength = (Math.PI * 4) / 3;
     const thetaStart = Math.PI * 0.5;
-    const thetaEnd = Math.PI * 0.72;
+    const thetaEnd = Math.PI * 0.69;
     const N = 12;
     const outerPts = [];
     const innerPts = [];
@@ -357,6 +357,17 @@ function makeHairVariant(id, material) {
       innerPts.push(new THREE.Vector2(innerR, yLocal));
     }
     const profile = [...outerPts];
+    // round the bottom edge with a half-circle arc connecting outer bottom to inner bottom
+    const arcN = 8;
+    const ax = (outerPts[N].x + innerPts[N].x) / 2;
+    const ay = outerPts[N].y;
+    const ar = (outerPts[N].x - innerPts[N].x) / 2;
+    for (let k = 1; k < arcN; k++) {
+      const ang = -Math.PI * (k / arcN);
+      profile.push(
+        new THREE.Vector2(ax + ar * Math.cos(ang), ay + ar * Math.sin(ang)),
+      );
+    }
     for (let i = innerPts.length - 1; i >= 0; i--) profile.push(innerPts[i]);
     profile.push(profile[0].clone());
     const skirt = new THREE.Mesh(
@@ -386,8 +397,8 @@ function makeHairVariant(id, material) {
         puffR * sx,
         32,
         1,
-        Math.PI * 0.25,
-        Math.PI * 0.5,
+        Math.PI / 6,
+        (Math.PI * 2) / 3,
       ),
       afroMat,
     );
@@ -407,8 +418,8 @@ function makeHairVariant(id, material) {
         foreheadDomeXZ,
         32,
         1,
-        Math.PI * 0.25,
-        Math.PI * 0.5,
+        Math.PI / 6,
+        (Math.PI * 2) / 3,
       ),
       afroMat,
     );
@@ -449,11 +460,11 @@ function makeHairVariant(id, material) {
 
 function makeShirt(material) {
   const group = new THREE.Group();
-  const top = ANCHORS.shoulder - 0.02;
+  const top = ANCHORS.shoulder + 0.02;
   const bottom = ANCHORS.waist;
   const h = top - bottom;
   const tube = new THREE.Mesh(
-    new THREE.CylinderGeometry(BODY.torsoRadius + 0.018, BODY.torsoRadius + 0.022, h, 28),
+    new THREE.CylinderGeometry(BODY.torsoRadius + 0.001, BODY.torsoRadius + 0.022, h, 28),
     material,
   );
   tube.position.y = (top + bottom) / 2;
@@ -491,7 +502,8 @@ function makeBottomVariant(id, material) {
     hem.material.side = THREE.DoubleSide;
     group.add(hem);
   } else if (id === "pants") {
-    const yokeHeight = 0.13;
+    const yokeHeight = 0.1;
+    const seatY = waistY - yokeHeight +0.01;
     const yokeBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.0;
     const yoke = new THREE.Mesh(
       new THREE.CylinderGeometry(
@@ -505,16 +517,17 @@ function makeBottomVariant(id, material) {
     yoke.position.y = waistY - yokeHeight / 2;
     group.add(yoke);
 
-    // seat cap fills the crotch so no skin shows between the legs
+    // seat cap fills the crotch so no skin shows between the legs;
+    // its widest point sits exactly at the yoke's bottom edge for a flush join
     const seat = new THREE.Mesh(
       new THREE.SphereGeometry(yokeBottomR, 24, 16),
       material,
     );
-    seat.position.y = waistY - yokeHeight + 0.005;
-    seat.scale.set(1, 0.3, 1);
+    seat.position.y = seatY;
+    seat.scale.set(1, 0.55, 1);
     group.add(seat);
 
-    const legTop = waistY - yokeHeight + 0.1;
+    const legTop = seatY + 0.05;
     for (const side of [-1, 1]) {
       const leg = new THREE.Mesh(
         new THREE.CylinderGeometry(BODY.legRadius + 0.012, BODY.legRadius + 0.008, legTop - ANCHORS.ankle, 20),
@@ -524,7 +537,9 @@ function makeBottomVariant(id, material) {
       group.add(leg);
     }
   } else if (id === "shorts") {
-    const shortsHeight = 0.13;
+    const yokeHeight = 0.1;
+    const shortsHeight = 0.1;
+    const seatY = waistY - yokeHeight +0.01;
     const shortsBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.0;
     const shorts = new THREE.Mesh(
       new THREE.CylinderGeometry(BODY.torsoRadius + 0.022, shortsBottomR, shortsHeight, 28),
@@ -537,8 +552,8 @@ function makeBottomVariant(id, material) {
       new THREE.SphereGeometry(shortsBottomR, 24, 16),
       material,
     );
-    seat.position.y = waistY - shortsHeight + 0.005;
-    seat.scale.set(1, 0.3, 1);
+    seat.position.y = seatY;
+    seat.scale.set(1, 0.55, 1);
     group.add(seat);
 
     for (const side of [-1, 1]) {
