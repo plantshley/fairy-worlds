@@ -56,7 +56,7 @@ export const CHARACTERS = [
   {
     id: "bunny-1",
     kind: "glb",
-    title: "bunny 1",
+    title: "honeybun",
     description: "GLB — tint materials",
     url: import.meta.env.BASE_URL + "characters/bunny_gltf.glb",
     nodePrefix: "bunny1_",
@@ -73,7 +73,7 @@ export const CHARACTERS = [
   {
     id: "bunny-2",
     kind: "glb",
-    title: "bunny 2",
+    title: "mochi",
     description: "GLB — tint materials",
     url: import.meta.env.BASE_URL + "characters/bunny_gltf.glb",
     nodePrefix: "bunny2_",

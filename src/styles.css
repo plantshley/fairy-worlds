@@ -549,12 +549,13 @@ html, body {
 }
 .picker-pill.active {
   background: linear-gradient(135deg,
-    rgba(252,204,131,0.7) 0%,
-    rgba(255,172,234,0.7) 50%,
-    rgba(200,179,251,0.7) 100%);
-  border-color: transparent;
+    rgba(252, 204, 131, 0.55) 0%,
+    rgba(242, 0, 222, 0.45) 80%);
+  border: none;
+  box-shadow: 0 0 0 3px rgba(255, 143, 216, 0), 0 0px 0px rgba(181, 0, 242, 0.5);
   color: #fff;
-  text-shadow: 0 1px 2px rgba(120,60,140,0.4);
+  font-family: var(font-ui);
+
 }
 .picker-toggle {
   display: flex; align-items: center; gap: 6px;

@@ -309,15 +309,15 @@ function makeHairVariant(id, material) {
     group.add(bobShell(Math.PI * 0.15, Math.PI * 0.2));
     for (const side of [-1, 1]) {
       const tail = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.065, 0.32, 8, 12),
+        new THREE.CapsuleGeometry(0.065, 0.4, 8, 12),
         material,
       );
-      tail.position.set(side * (r + 0.04), capY - 0.1, -0.02);
+      tail.position.set(side * (r + 0.04), capY - 0.125, -0.02);
       tail.rotation.z = side * 0.25;
       group.add(tail);
     }
   } else if (id === "bun") {
-    group.add(bobShell(Math.PI * 0.1, Math.PI * 0.2));
+    group.add(bobShell(Math.PI * 0.17, Math.PI * 0.2));
     const bun = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 16), material);
     bun.position.y = ANCHORS.headTop + 0.04;
     group.add(bun);
@@ -464,7 +464,7 @@ function makeShirt(material) {
   const bottom = ANCHORS.waist;
   const h = top - bottom;
   const tube = new THREE.Mesh(
-    new THREE.CylinderGeometry(BODY.torsoRadius + 0.001, BODY.torsoRadius + 0.022, h, 28),
+    new THREE.CylinderGeometry(BODY.torsoRadius + 0.001, BODY.torsoRadius + 0.03, h, 28),
     material,
   );
   tube.position.y = (top + bottom) / 2;
@@ -530,10 +530,10 @@ function makeBottomVariant(id, material) {
     const legTop = seatY + 0.05;
     for (const side of [-1, 1]) {
       const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(BODY.legRadius + 0.012, BODY.legRadius + 0.008, legTop - ANCHORS.ankle, 20),
+        new THREE.CylinderGeometry(BODY.legRadius + 0.012, BODY.legRadius + 0.008, legTop - ANCHORS.ankle-0.03, 20),
         material,
       );
-      leg.position.set(side * BODY.hipHalfWidth, (legTop + ANCHORS.ankle) / 2, 0);
+      leg.position.set(side * BODY.hipHalfWidth, 0.03+(legTop + ANCHORS.ankle) / 2, 0);
       group.add(leg);
     }
   } else if (id === "shorts") {
@@ -580,13 +580,13 @@ function makeWingsVariant(id, material) {
   if (id === "butterfly") {
     for (const side of [-1, 1]) {
       const upper = new THREE.Mesh(new THREE.CircleGeometry(0.34, 28), material);
-      upper.position.set(side * 0.28, anchorY + 0.08, anchorZ);
-      upper.rotation.y = side * -0.5;
+      upper.position.set(side * 0.3, anchorY + 0.08, anchorZ-0.15);
+      upper.rotation.y = side * 0.5;
       upper.rotation.z = side * -0.1;
       group.add(upper);
       const lower = new THREE.Mesh(new THREE.CircleGeometry(0.24, 28), material);
-      lower.position.set(side * 0.26, anchorY - 0.2, anchorZ);
-      lower.rotation.y = side * -0.5;
+      lower.position.set(side * 0.28, anchorY - 0.2, anchorZ-0.15);
+      lower.rotation.y = side * 0.5;
       lower.rotation.z = side * 0.2;
       group.add(lower);
     }
@@ -612,8 +612,8 @@ function makeWingsVariant(id, material) {
         f.rotation.z = L.rot;
         wing.add(f);
       }
-      wing.position.set(side * 0.12, anchorY + 0.05, anchorZ);
-      wing.rotation.y = side * 0.15;
+      wing.position.set(side * 0.12, anchorY + 0.05, anchorZ-0.05);
+      wing.rotation.y = side * 0.2;
       wing.scale.x = side;
       group.add(wing);
     }
@@ -621,7 +621,7 @@ function makeWingsVariant(id, material) {
     // scalloped membrane silhouette via THREE.Shape
     for (const side of [-1, 1]) {
       const shape = new THREE.Shape();
-      shape.moveTo(0, 0.08);
+      shape.moveTo(0, 0.3);
       shape.lineTo(0.85, 0.26);
       shape.quadraticCurveTo(0.78, 0.02, 0.7, 0.1);
       shape.quadraticCurveTo(0.64, -0.1, 0.55, 0.03);
@@ -630,8 +630,9 @@ function makeWingsVariant(id, material) {
       shape.quadraticCurveTo(0.12, -0.12, 0.0, 0.08);
       const geom = new THREE.ShapeGeometry(shape);
       const mesh = new THREE.Mesh(geom, material);
-      mesh.position.set(side * 0.12, anchorY, anchorZ);
-      mesh.rotation.y = side * -0.4;
+      mesh.position.set(side * 0.001, anchorY-0.15, anchorZ);
+      mesh.rotation.y = side * 0.2;
+      mesh.rotation.z = side * 0.35;
       mesh.scale.x = side;
       group.add(mesh);
     }
@@ -693,16 +694,16 @@ function buildCatEars(material) {
   const innerColor = new THREE.Color(material.color).lerp(new THREE.Color(0xffffff), 0.55);
   const innerMat = softMat(innerColor.getHex(), { roughness: 0.75 });
   for (const side of [-1, 1]) {
-    const outer = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 4), material);
-    outer.position.set(side * 0.13, ANCHORS.headTop + 0.04, -0.015);
-    outer.rotation.z = side * -0.25;
-    outer.rotation.y = Math.PI / 4;
-    outer.scale.set(1, 1, 0.45);
+    const outer = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.16, 20), material);
+    outer.position.set(side * 0.15, ANCHORS.headTop - 0.01, -0.015);
+    outer.rotation.z = side * -0.4;
+    outer.rotation.y = Math.PI/5;
+    outer.scale.set(1.75, 1, 0.5);
     ears.add(outer);
-    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.1, 4), innerMat);
-    inner.position.set(side * 0.13, ANCHORS.headTop + 0.02, 0.005);
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.1, 30), innerMat);
+    inner.position.set(side * 0.15, ANCHORS.headTop - 0.01, 0.0005);
     inner.rotation.copy(outer.rotation);
-    inner.scale.set(1, 1, 0.3);
+    inner.scale.set(1, 0.7, 0.5);
     ears.add(inner);
   }
   // keep a pointer so we can update the inner tint when outer color changes
