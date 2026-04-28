@@ -123,6 +123,17 @@ document.getElementById("btn-change-character")?.addEventListener("click", () =>
   picker.open();
 });
 
-const vr = createVRController(manager.renderer, (label) => {
-  companion.setDialogue(label);
-});
+const vr = createVRController(
+  manager.renderer,
+  (label) => {
+    companion.setDialogue(label);
+  },
+  {
+    onCycleNext: () => {
+      if (manager.currentName() === "world") worldMode.cycleScene(1);
+    },
+    onCyclePrev: () => {
+      if (manager.currentName() === "world") worldMode.cycleScene(-1);
+    },
+  },
+);

@@ -33,6 +33,22 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
   let currentSceneId = null;
   let loadToken = 0;
   const dollySpawnPos = new THREE.Vector3();
+  const _spawnVec = new THREE.Vector3();
+  const _headPos = new THREE.Vector3();
+  const _headQuat = new THREE.Quaternion();
+  const _spawnQuat = new THREE.Quaternion();
+  const _yawQuat = new THREE.Quaternion();
+  const _forward = new THREE.Vector3();
+  const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+  // Pull yaw (rotation around Y) out of a quaternion by rotating the
+  // canonical "forward" vector and projecting onto the ground plane.
+  // Pitch/roll are intentionally discarded — tilting the dolly in VR
+  // is nauseating, so we only recenter heading.
+  function extractYaw(quat) {
+    _forward.set(0, 0, -1).applyQuaternion(quat);
+    return Math.atan2(_forward.x, -_forward.z);
+  }
 
   function loadScene(sceneDef) {
     const myToken = ++loadToken;
@@ -74,8 +90,27 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     const [px, py, pz] = sceneDef.spawn.position;
     const [qx, qy, qz, qw] = sceneDef.spawn.quaternion;
     if (renderer.xr?.isPresenting) {
-      dolly.position.set(px, py, pz);
-      dolly.quaternion.set(qx, qy, qz, qw);
+      // In VR, the user's actual head pose = dolly + headset_local_offset.
+      // Two corrections:
+      //   (1) Yaw recenter: rotate dolly around the head's world position so
+      //       the head ends up facing the spawn yaw direction. Pitch/roll on
+      //       the spawn are discarded — a tilted dolly is nauseating in VR.
+      //   (2) Position recenter: shift dolly so the head lands on spawn.pos.
+      const xrCam = renderer.xr.getCamera();
+      xrCam.getWorldPosition(_headPos);
+      xrCam.getWorldQuaternion(_headQuat);
+      _spawnQuat.set(qx, qy, qz, qw);
+
+      const deltaYaw = extractYaw(_spawnQuat) - extractYaw(_headQuat);
+      _yawQuat.setFromAxisAngle(Y_AXIS, deltaYaw);
+      // Pivot dolly around the head world position, then apply yaw to dolly.
+      dolly.position.sub(_headPos).applyQuaternion(_yawQuat).add(_headPos);
+      dolly.quaternion.premultiply(_yawQuat);
+
+      // After rotation the head is still at _headPos. Now translate dolly so
+      // the head lands at spawn.position.
+      _spawnVec.set(px, py, pz);
+      dolly.position.add(_spawnVec.sub(_headPos));
       camera.position.set(0, 0, 0);
       camera.quaternion.identity();
     } else {
@@ -105,6 +140,14 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
 
   function loadDefault() {
     loadScene(SCENES[0]);
+  }
+
+  function cycleScene(direction) {
+    if (!currentSceneId) return;
+    const idx = SCENES.findIndex((s) => s.id === currentSceneId);
+    if (idx < 0) return;
+    const nextIdx = (idx + direction + SCENES.length) % SCENES.length;
+    loadScene(SCENES[nextIdx]);
   }
 
   function activate(payload) {
@@ -142,5 +185,6 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     deactivate,
     loadDefault,
     loadScene,
+    cycleScene,
   };
 }

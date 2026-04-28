@@ -4,11 +4,19 @@ import {
   noteVRControllerUsed,
 } from "../utils/analytics.js";
 
-export function createVRController(renderer, onStatus) {
+export function createVRController(renderer, onStatus, handlers = {}) {
   let currentSession = null;
 
-  function onControllerInput() {
+  function onSelectStart(event) {
     noteVRControllerUsed();
+    const hand = event.inputSource?.handedness;
+    if (hand === "right") handlers.onCycleNext?.();
+    else if (hand === "left") handlers.onCyclePrev?.();
+  }
+
+  function onSqueezeStart() {
+    noteVRControllerUsed();
+    currentSession?.end();
   }
 
   const sessionInit = {
@@ -21,8 +29,8 @@ export function createVRController(renderer, onStatus) {
 
   async function onSessionStarted(session) {
     session.addEventListener("end", onSessionEnded);
-    session.addEventListener("selectstart", onControllerInput);
-    session.addEventListener("squeezestart", onControllerInput);
+    session.addEventListener("selectstart", onSelectStart);
+    session.addEventListener("squeezestart", onSqueezeStart);
     currentSession = session;
     trackVRSessionStart();
     setLabel("✦ exit VR ✦");
@@ -36,8 +44,8 @@ export function createVRController(renderer, onStatus) {
   function onSessionEnded() {
     if (!currentSession) return;
     currentSession.removeEventListener("end", onSessionEnded);
-    currentSession.removeEventListener("selectstart", onControllerInput);
-    currentSession.removeEventListener("squeezestart", onControllerInput);
+    currentSession.removeEventListener("selectstart", onSelectStart);
+    currentSession.removeEventListener("squeezestart", onSqueezeStart);
     currentSession = null;
     trackVRSessionEnd();
     setLabel("✦ open in VR ✦");

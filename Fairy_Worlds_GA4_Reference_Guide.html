@@ -520,7 +520,14 @@
             </div>
 
             <div class="tip-box">
-                <strong>Headset context:</strong> This site is being demoed at the CSU CHHS Ideation Lab on HTC VIVE Pro headsets with the standard wand-controller kit. <code>controller_used</code> picks up trigger + grip presses on the wands. <code>worlds_visited</code> currently relies on the DOM world-picker, which is invisible in immersive mode — so it will usually be <code>0</code> until we add an in-VR scene-swap UI.
+                <strong>Headset context:</strong> This site is being demoed at the CSU CHHS Ideation Lab on HTC VIVE Pro headsets with the standard wand-controller kit. In-VR controls:
+                <ul>
+                    <li><strong>Right wand trigger</strong> → next scene (cycles in array order, wraps at the end)</li>
+                    <li><strong>Left wand trigger</strong> → previous scene</li>
+                    <li><strong>Either wand grip</strong> → exit VR (returns to desktop where DOM picker is visible)</li>
+                    <li>Left trackpad axes → walk; right trackpad axes → snap-turn (handled by <code>vrLocomotion</code>)</li>
+                </ul>
+                Scene order keeps world groups together (e.g. all Heart Pool Pavilion versions before any Berry Dream Kitchen scene), so trigger-cycling moves through versions of the current world before jumping to the next world.
             </div>
 
             <div class="tip-box">

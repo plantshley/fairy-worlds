@@ -6,6 +6,18 @@ Fairy worlds has WebXR wired into [src/sceneManager.js](../src/sceneManager.js) 
 button lives in the world-mode HUD. To exercise it without owning a headset,
 use a browser emulator.
 
+## In-VR controls (HTC VIVE wand mapping)
+
+| Input | Action | Wired in |
+| --- | --- | --- |
+| Left trackpad axes | Walk (forward/back/strafe relative to head direction) | [src/three/vrLocomotion.js](../src/three/vrLocomotion.js) |
+| Right trackpad X-axis flick | 30° snap-turn (left or right) | [src/three/vrLocomotion.js](../src/three/vrLocomotion.js) |
+| **Right wand trigger** (`selectstart`, handedness `right`) | **Next scene** (cycles in [SCENES](../src/data/scenes.js) order, wraps at end) | [src/three/vrButton.js](../src/three/vrButton.js) → [src/main.js](../src/main.js) → `worldMode.cycleScene(1)` |
+| **Left wand trigger** (`selectstart`, handedness `left`) | **Previous scene** (wraps at start) | same |
+| **Either wand grip** (`squeezestart`) | **Exit VR session** | [src/three/vrButton.js](../src/three/vrButton.js) calls `currentSession.end()` |
+
+Scene cycle order keeps world groups together (e.g. all Heart Pool Pavilion versions before any Berry Dream Kitchen scene) because [src/data/scenes.js](../src/data/scenes.js) is already authored that way. Cycling moves through versions of the current world, then jumps to the next world.
+
 ## Emulator: WebXR API Emulator
 
 - **Name:** WebXR API Emulator (originally by Mozilla, now maintained by Meta)
@@ -42,6 +54,31 @@ Implemented in [src/three/vrLocomotion.js](../src/three/vrLocomotion.js). Dead z
 - [ ] **Right thumbstick flick left/right past 0.8** → 30° snap turn
 - [ ] Right stick re-arms after returning near center (can't hold for continuous spin)
 
+### Scene cycling + grip-to-exit (WebXR Emulator steps)
+Wired in [src/three/vrButton.js](../src/three/vrButton.js) +
+[src/main.js](../src/main.js) → `worldMode.cycleScene(±1)`.
+
+The WebXR API Emulator's DevTools panel has, per controller, a row of buttons labeled
+**Trigger / Grip / Touchpad / Button A / Button B**. The `selectstart` and
+`squeezestart` WebXR events fire when you click **Trigger** and **Grip** respectively.
+
+- [ ] In the Emulator panel, set device to **HTC Vive** (or any profile with two
+      controllers + handedness "left" / "right")
+- [ ] Enter VR, then in the Emulator panel:
+  - [ ] Click **right controller → Trigger** → scene loader appears, splat reloads,
+        next scene in [src/data/scenes.js](../src/data/scenes.js) is shown
+  - [ ] Click **right controller → Trigger** repeatedly → cycles through every scene
+        in array order, wraps from `lavender-laundry-1-1` back to `heart-pool-1-1-1004`
+  - [ ] Click **left controller → Trigger** → goes one scene backward; from the
+        first scene wraps to the last
+  - [ ] Click **right controller → Grip** → VR session ends, label flips back to
+        `✦ open in VR ✦`, DOM picker is interactable again
+  - [ ] Click **left controller → Grip** → same exit-VR behavior
+- [ ] World-picker highlight in the side rail updates as you cycle (driven by
+      `onSceneLoaded` callback in [src/modes/world.js](../src/modes/world.js))
+- [ ] Cycling rapidly (multiple trigger clicks before splat finishes loading) does
+      not crash — `loadToken` in `loadScene` cancels stale loads
+
 ### Likely first failure mode
 Three.js WebXR typically respects `camera.position` / `camera.rotation` as a
 player-rig offset, but some versions ignore direct rotation on the user camera.
@@ -75,6 +112,6 @@ scene.add(dolly);
 
 - Teleport locomotion (alternative to smooth movement — some people need it for comfort)
 - Controller models visible in the scene
-- UI / picker interaction from inside VR (currently DOM-only, not shown in headset)
+- 3D in-VR scene picker (current cycle-by-trigger works for navigating, but jump-to-specific-scene requires exiting VR and using the DOM picker)
 - VR in home mode (button is world-mode only)
 - Collision with splat scenes

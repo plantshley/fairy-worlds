@@ -100,13 +100,23 @@ export const SCENES = [
     },
   },
   {
-    id: "angelic-satin-chamber-1-1",
+    id: "angelic-quartz-chamber-1-1",
     world: "Angelic Quartz Chamber",
     title: "Angelic Quartz Chamber 1.1",
-    url: import.meta.env.BASE_URL + "splats/Angelic%20Satin%20Chamber%201-1.spz",
+    url: import.meta.env.BASE_URL + "splats/Angelic%20Quartz%20Chamber%201-1.spz",
     spawn: {
       position: [-0.45, 0.91, 0.48],
       quaternion: [-0.026, 0.008, 0.001, 1.000],
+    },
+  },
+  {
+    id: "angelic-quartz-chamber-1-1-pano",
+    world: "Angelic Quartz Chamber",
+    title: "Angelic Quartz Chamber 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Angelic%20Quartz%20Chamber%201-1-pano.spz",
+    spawn: {
+      position: [-0.51, 0.93, 0.92],
+      quaternion: [-0.035, 0.045, 0.002, 0.998],
     },
   },
   {
