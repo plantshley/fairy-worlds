@@ -58,7 +58,7 @@ export function createCharacterPicker({
 
     const state = character.getState();
 
-    const colorSection = makeSection("colors");
+    const colorSection = makeSection("⋆✴︎˚｡⋆♡ colors ♡⋆✴︎˚｡⋆");
     for (const { id, label, default: defaultColor } of PROCEDURAL_CUSTOMIZATION_SCHEMA.colors) {
       const initial = state.colors[id] ?? defaultColor;
       const wrap = makeSphereColorRow(label, initial, (hex) => {
@@ -99,7 +99,7 @@ export function createCharacterPicker({
       customizationEl.appendChild(sec.section);
     }
 
-    const accSec = makeSection("accessories");
+    const accSec = makeSection("⋆.˚⟡꣑ৎ accessories ꣑ৎ⟡˚.⋆");
     for (const { id, label } of PROCEDURAL_CUSTOMIZATION_SCHEMA.accessories) {
       const pill = document.createElement("button");
       pill.type = "button";

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Analytics 4 Reference Guide - Fairy Worlds</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalnia+Glaze:wght@100..700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #4a4a4a;
+            background: linear-gradient(135deg, #ffd1dc 0%, #e0b0ff 50%, #ffc8dd 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #fff5f7 0%, #fef6fb 100%);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 3px solid rgba(255, 182, 243, 0.5);
+        }
+
+        header {
+            background: linear-gradient(135deg, #ffb6f0 0%, #d4a5ff 50%, #ffccf9 100%);
+            color: #663366;
+            padding: 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-family: 'Kalnia Glaze', serif;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        h2 {
+            color: #c084fc;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #f9a8d4;
+            font-size: 2em;
+        }
+
+        h3 {
+            color: #d946ef;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        h4 {
+            color: #a855f7;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .event-section {
+            background: linear-gradient(135deg, #fef3f9 0%, #fdf4ff 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border-left: 5px solid #f9a8d4;
+        }
+
+        .parameter-list {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 10px 0;
+            border: 1px solid rgba(249, 168, 212, 0.2);
+        }
+
+        .parameter-item {
+            display: flex;
+            align-items: baseline;
+            margin: 8px 0;
+            padding: 10px;
+            background: linear-gradient(135deg, #fef9fc 0%, #fdf6ff 100%);
+            border-radius: 8px;
+            border: 1px solid rgba(232, 121, 249, 0.15);
+        }
+
+        .parameter-name {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #e879f9 0%, #d8b4fe 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-right: 10px;
+            font-weight: bold;
+            min-width: 250px;
+        }
+
+        .parameter-desc {
+            color: #555;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .high-priority {
+            background: linear-gradient(135deg, #fda4af 0%, #fb7185 100%);
+            color: white;
+        }
+
+        .medium-priority {
+            background: linear-gradient(135deg, #ffc4df 0%, #f1a8ff 100%);
+            color: #ffffff;
+        }
+
+        .low-priority {
+            background: linear-gradient(135deg, #d8b4fe 0%, #c084fc 100%);
+            color: white;
+        }
+
+        .query-box {
+            background: linear-gradient(135deg, #fff0f9 0%, #fef3fb 100%);
+            color: #7c3668;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            border: 2px solid #f9a8d4;
+        }
+
+        .query-title {
+            color: #c084fc;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .query-details {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .tip-box {
+            background: linear-gradient(135deg, #fff5f0 0%, #ffe9e0 100%);
+            border-left: 5px solid #ffb89d;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .tip-box strong {
+            color: #b45309;
+        }
+
+        ol, ul {
+            margin-left: 30px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        .section-nav {
+            background: linear-gradient(135deg, #ffe9f5 0%, #f8e9ff 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 2px solid #f9a8d4;
+        }
+
+        .section-nav a {
+            color: #c084fc;
+            text-decoration: none;
+            font-weight: bold;
+            margin-right: 20px;
+        }
+
+        .section-nav a:hover {
+            color: #d946ef;
+            text-decoration: underline;
+        }
+
+        .emoji {
+            font-size: 1.3em;
+            margin-right: 8px;
+        }
+
+        footer {
+            background: linear-gradient(135deg, #ffd1f7 0%, #e8c5ff 100%);
+            color: #d946ef;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9em;
+        }
+
+        code {
+            background: rgba(232, 121, 249, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Google Analytics 4 Reference Guide</h1>
+            <p>Fairy Worlds — Custom Event Tracking & Analytics Queries</p>
+        </header>
+
+        <div class="content">
+            <div class="section-nav">
+                <strong>Quick Navigation:</strong><br><br>
+                <a href="#sample-queries">Sample Queries</a>
+                <a href="#parameters-by-event">Parameters by Event</a>
+                <a href="#all-parameters">All Parameters</a>
+                <a href="#priority-list">Priority List</a>
+                <a href="#setup">How to Register Dimensions</a>
+                <a href="#files">Files Modified</a>
+            </div>
+
+            <!-- SAMPLE QUERIES SECTION -->
+            <h2 id="sample-queries"><span class="emoji">🌷</span>Sample Queries You Can Run</h2>
+            <p>Once data is flowing, try these in <strong>Explore</strong> mode in GA4:</p>
+
+            <div class="query-box">
+                <div class="query-title">🌍 "Which world group is most popular?"</div>
+                <div class="query-details">
+                    <strong>Dimension:</strong> world<br>
+                    <strong>Metrics:</strong> Event count<br>
+                    <strong>Filter:</strong> Event name = world_enter<br>
+                    <strong>Visualization:</strong> Bar chart, sorted by count
+                </div>
+            </div>
+
+            <div class="query-box">
+                <div class="query-title">✨ "Within Heart Pool Pavilion, which version do people open?"</div>
+                <div class="query-details">
+                    <strong>Dimensions:</strong> world, version<br>
+                    <strong>Metrics:</strong> Event count<br>
+                    <strong>Filter:</strong> Event name = world_enter, world = "Heart Pool Pavilion"<br>
+                    <strong>Result:</strong> Distribution across 1.0, 1.1, 1.1-1004, etc.
+                </div>
+            </div>
+
+            <div class="query-box">
+                <div class="query-title">🚪 "How are visitors arriving in worlds — first entry vs. scene-swap?"</div>
+                <div class="query-details">
+                    <strong>Dimension:</strong> from<br>
+                    <strong>Metrics:</strong> Event count<br>
+                    <strong>Filter:</strong> Event name = world_enter<br>
+                    <strong>Result:</strong> <code>home</code> = entered from home stage; <code>world</code> = swapped scenes from the world picker
+                </div>
+            </div>
+
+            <div class="query-box">
+                <div class="query-title">🧚 "Which character do visitors pick most?"</div>
+                <div class="query-details">
+                    <strong>Dimension:</strong> character_id<br>
+                    <strong>Metrics:</strong> Event count<br>
+                    <strong>Filter:</strong> Event name = character_select<br>
+                    <strong>Visualization:</strong> Bar chart
+                </div>
+            </div>
+
+            <div class="query-box">
+                <div class="query-title">🥽 "Does anyone actually use VR?"</div>
+                <div class="query-details">
+                    <strong>Metrics:</strong> Event count<br>
+                    <strong>Filter:</strong> Event name = vr_session_start<br>
+                    <strong>Compare with:</strong> total users to get VR adoption rate
+                </div>
+            </div>
+
+            <div class="query-box">
+                <div class="query-title">⏱ "How long are VR sessions?"</div>
+                <div class="query-details">
+                    <strong>Metric:</strong> duration_seconds (custom metric, average / max)<br>
+                    <strong>Filter:</strong> Event name = vr_session_end<br>
+                    <strong>Result:</strong> Tells you if visitors are quickly bouncing out of VR or actually exploring
+                </div>
+            </div>
+
+            <!-- PARAMETERS BY EVENT TYPE SECTION -->
+            <h2 id="parameters-by-event"><span class="emoji">💐</span>Custom Parameters by Event Type</h2>
+
+            <div class="event-section">
+                <h3><span class="emoji">🧚</span>character_select Event</h3>
+                <p>Fires when a visitor picks a different character in the picker (does not fire on initial restore-from-localStorage, only on actual change).</p>
+                <div class="parameter-list">
+                    <div class="parameter-item">
+                        <span class="parameter-name">character_id</span>
+                        <span class="parameter-desc">Character identifier (e.g., <code>procedural-fairy</code>, <code>alien</code>, <code>kitty</code>, <code>kuromi</code>, <code>molly</code>)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="event-section">
+                <h3><span class="emoji">🌍</span>world_enter Event</h3>
+                <p>Fires every time a splat scene loads — both the first entry from the home stage and every scene-swap inside world mode.</p>
+                <div class="parameter-list">
+                    <div class="parameter-item">
+                        <span class="parameter-name">scene_id</span>
+                        <span class="parameter-desc">Unique scene id (e.g., <code>heart-pool-1-1</code>, <code>berry-dream-kitchen-1-0</code>)</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-name">world</span>
+                        <span class="parameter-desc">World group name (e.g., <code>Heart Pool Pavilion</code>, <code>Berry Dream Kitchen</code>) — same value across versions of the same world</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-name">version</span>
+                        <span class="parameter-desc">Version token derived from the scene title (e.g., <code>1.0</code>, <code>1.1</code>, <code>1.1-1004</code>). Empty string if the title has no trailing version.</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-name">from</span>
+                        <span class="parameter-desc"><code>home</code> = first entry into world mode; <code>world</code> = swapped scenes from the world picker while already in world mode</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="event-section">
+                <h3><span class="emoji">🥽</span>vr_session_start Event</h3>
+                <p>Fires when an immersive WebXR session is successfully started (the user clicked "✦ open in VR ✦" and the headset accepted).</p>
+                <div class="parameter-list">
+                    <div class="parameter-item">
+                        <span class="parameter-desc"><em>No custom parameters.</em></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="event-section">
+                <h3><span class="emoji">⏱</span>vr_session_end Event</h3>
+                <p>Fires when the VR session ends (user exits, headset disconnects, or browser closes the session). Carries aggregate session metrics so you can answer "did anyone meaningfully use VR?" without firehose pose tracking.</p>
+                <div class="parameter-list">
+                    <div class="parameter-item">
+                        <span class="parameter-name">duration_seconds</span>
+                        <span class="parameter-desc">Length of the VR session in seconds (rounded). Register as a <strong>Custom Metric</strong> so you can average it.</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-name">worlds_visited</span>
+                        <span class="parameter-desc">Number of scenes loaded <em>during</em> the VR session (i.e. scene swaps after entering VR). <code>0</code> means they entered VR and stayed in the scene they started in. Register as a <strong>Custom Metric</strong>.</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-name">max_distance_from_spawn</span>
+                        <span class="parameter-desc">Furthest the dolly traveled (in meters) from its spawn point during the session, reset on each scene load — so this is "max distance reached in any single scene". Tells you whether the visitor walked / locomoted around or just stood still. Register as a <strong>Custom Metric</strong>.</span>
+                    </div>
+                    <div class="parameter-item">
+                        <span class="parameter-name">controller_used</span>
+                        <span class="parameter-desc"><code>true</code> if any VIVE wand trigger (<code>selectstart</code>) or grip (<code>squeezestart</code>) was pressed during the session, otherwise <code>false</code>. Useful for distinguishing "look-only" sessions from interactive ones.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ALL UNIQUE PARAMETERS SECTION -->
+            <h2 id="all-parameters"><span class="emoji">🌸</span>All Unique Parameters (Alphabetical)</h2>
+            <p>Every parameter you can register as a custom dimension or metric:</p>
+
+            <div class="parameter-list">
+                <div class="parameter-item">
+                    <span class="parameter-name">character_id</span>
+                    <span class="parameter-desc">Selected character (e.g., procedural-fairy, alien, kitty)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">controller_used</span>
+                    <span class="parameter-desc">Whether trigger or grip was ever pressed during VR session (boolean)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">duration_seconds</span>
+                    <span class="parameter-desc">VR session length in seconds (numeric — register as metric)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">from</span>
+                    <span class="parameter-desc">How a world_enter happened: <code>home</code> or <code>world</code></span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">max_distance_from_spawn</span>
+                    <span class="parameter-desc">Furthest meters traveled from spawn during VR session (numeric — register as metric)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">scene_id</span>
+                    <span class="parameter-desc">Unique scene identifier</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">version</span>
+                    <span class="parameter-desc">Scene version token (e.g., 1.0, 1.1, 1.1-1004)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">world</span>
+                    <span class="parameter-desc">World group name (shared across versions)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">worlds_visited</span>
+                    <span class="parameter-desc">Number of scene swaps during VR session (numeric — register as metric)</span>
+                </div>
+            </div>
+
+            <!-- PRIORITY LIST SECTION -->
+            <h2 id="priority-list"><span class="emoji">⭐</span>Recommended Custom Dimensions to Register</h2>
+            <p>Prioritized list (you can register up to 50 custom dimensions in GA4):</p>
+
+            <h3><span class="emoji">💖</span>High Priority (Register These First)</h3>
+            <div class="parameter-list">
+                <div class="parameter-item">
+                    <span class="parameter-name">world</span>
+                    <span class="parameter-desc">World group popularity — the headline insight</span>
+                    <span class="priority-badge high-priority">HIGH</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">version</span>
+                    <span class="parameter-desc">Which scene version within a world gets opened</span>
+                    <span class="priority-badge high-priority">HIGH</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">character_id</span>
+                    <span class="parameter-desc">Which characters resonate with visitors</span>
+                    <span class="priority-badge high-priority">HIGH</span>
+                </div>
+            </div>
+
+            <h3><span class="emoji">🌟</span>Medium Priority (Good Insights)</h3>
+            <div class="parameter-list">
+                <div class="parameter-item">
+                    <span class="parameter-name">duration_seconds</span>
+                    <span class="parameter-desc">VR session length — register as a <strong>Custom Metric</strong> (numeric), not a dimension</span>
+                    <span class="priority-badge medium-priority">MEDIUM</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">worlds_visited</span>
+                    <span class="parameter-desc">VR scene-swap count — register as a <strong>Custom Metric</strong></span>
+                    <span class="priority-badge medium-priority">MEDIUM</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">max_distance_from_spawn</span>
+                    <span class="parameter-desc">"Did they actually move around?" — register as a <strong>Custom Metric</strong></span>
+                    <span class="priority-badge medium-priority">MEDIUM</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">controller_used</span>
+                    <span class="parameter-desc">Whether VIVE wand trigger/grip was ever pressed — distinguishes look-only from interactive sessions</span>
+                    <span class="priority-badge medium-priority">MEDIUM</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">from</span>
+                    <span class="parameter-desc">First-entry vs. scene-swap — useful for understanding browse vs. arrive behavior</span>
+                    <span class="priority-badge medium-priority">MEDIUM</span>
+                </div>
+            </div>
+
+            <h3><span class="emoji">🌱</span>Low Priority (Nice to Have)</h3>
+            <div class="parameter-list">
+                <div class="parameter-item">
+                    <span class="parameter-name">scene_id</span>
+                    <span class="parameter-desc">Granular per-scene id — most insights come from <code>world</code> + <code>version</code> together</span>
+                    <span class="priority-badge low-priority">LOW</span>
+                </div>
+            </div>
+
+            <div class="tip-box">
+                <strong>Pro Tip:</strong> Start with the 3 High Priority dimensions. Those alone answer "which worlds, which versions, which characters" — the questions you actually want answered. Add <code>duration_seconds</code> as a custom metric only if VR usage shows up at all.
+            </div>
+
+            <h2 id="setup"><span class="emoji">🎀</span>How to Register Custom Dimensions</h2>
+            <ol>
+                <li>Go to <strong>Admin</strong> (gear icon in bottom left of Google Analytics)</li>
+                <li>In the <strong>Property</strong> column, click <strong>Custom definitions</strong></li>
+                <li>Click <strong>Create custom dimension</strong></li>
+                <li>For each parameter:
+                    <ul>
+                        <li><strong>Dimension name:</strong> Use a friendly name (e.g., "World")</li>
+                        <li><strong>Scope:</strong> Select "Event"</li>
+                        <li><strong>Description:</strong> Add a brief description</li>
+                        <li><strong>Event parameter:</strong> Enter the exact parameter name (e.g., <code>world</code>)</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Save</strong></li>
+                <li>Repeat for each parameter you want to track</li>
+            </ol>
+
+            <div class="tip-box">
+                <strong>For numeric values</strong> like <code>duration_seconds</code>: register these as <strong>Custom Metrics</strong> (not Dimensions) so you can compute average / sum / range in Explore reports.
+            </div>
+
+            <div class="tip-box">
+                <strong>Important:</strong> Custom dimensions can take 24-48 hours to start collecting data. Events sent BEFORE you create the dimension won't be retroactively updated, but all new events will include the dimension automatically.
+            </div>
+
+            <div class="tip-box">
+                <strong>Headset context:</strong> This site is being demoed at the CSU CHHS Ideation Lab on HTC VIVE Pro headsets with the standard wand-controller kit. <code>controller_used</code> picks up trigger + grip presses on the wands. <code>worlds_visited</code> currently relies on the DOM world-picker, which is invisible in immersive mode — so it will usually be <code>0</code> until we add an in-VR scene-swap UI.
+            </div>
+
+            <div class="tip-box">
+                <strong>Verifying events fire:</strong> GA4 has a <strong>DebugView</strong> (Admin → DebugView) that shows events in near-real-time. To see your own dev/localhost traffic there, install the <a href="https://chromewebstore.google.com/detail/google-analytics-debugger/jnkmfdileelhofjcijamephohjechhna">GA Debugger</a> Chrome extension and enable it before browsing the site. Otherwise localhost traffic is invisible (which is usually what you want — it keeps your own sessions out of production reports).
+            </div>
+
+            <h2 id="files"><span class="emoji">🦋</span>Implementation Details</h2>
+
+            <h3>Measurement IDs:</h3>
+            <ul>
+                <li><strong>Measurement ID:</strong> G-34EW956ZHJ</li>
+                <li><strong>Stream ID:</strong> 14598819305</li>
+            </ul>
+
+            <h3>Files Modified for GA4 Tracking:</h3>
+            <ul>
+                <li><strong>index.html</strong> — gtag script tag in <code>&lt;head&gt;</code></li>
+                <li><strong>src/utils/analytics.js</strong> — analytics utility module (all tracking functions + version-derivation helper)</li>
+                <li><strong>src/main.js</strong> — <code>character_select</code> event (in <code>onSelectCharacter</code> callback, fires only on actual change)</li>
+                <li><strong>src/modes/world.js</strong> — <code>world_enter</code> event (fires inside <code>loadScene</code>, covers both first-entry and scene-swap paths)</li>
+                <li><strong>src/three/vrButton.js</strong> — <code>vr_session_start</code> + <code>vr_session_end</code> events (with duration tracking via <code>performance.now()</code>)</li>
+            </ul>
+
+            <h3>Offline Behavior:</h3>
+            <ul>
+                <li>All tracking calls go through <code>gtagSafe()</code> in <code>src/utils/analytics.js</code> which is wrapped in try/catch</li>
+                <li>If <code>window.gtag</code> isn't loaded (localhost without GA debugger, ad-blocker, offline), the calls silently no-op</li>
+                <li>No impact on app performance or behavior</li>
+            </ul>
+
+            <h3>World Group Reference:</h3>
+            <div class="parameter-list">
+                <div class="parameter-item">
+                    <span class="parameter-name">Heart Pool Pavilion</span>
+                    <span class="parameter-desc">Versions: 1.0, 1.1, 1.1-1004</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">Berry Dream Kitchen</span>
+                    <span class="parameter-desc">Versions: 1.0, 1.1</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">Pink Cherry Plane</span>
+                    <span class="parameter-desc">Versions: 1.0, 1.1</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">Twinkle Butterfly Lounge</span>
+                    <span class="parameter-desc">Versions: 1.1</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">Glitter Frutiger Lounge</span>
+                    <span class="parameter-desc">Versions: 1.1</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">Sunkissed Sparkle Lounge</span>
+                    <span class="parameter-desc">Versions: 1.1</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">Angelic Quartz Chamber</span>
+                    <span class="parameter-desc">Versions: 1.1</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">Lavender Laundry</span>
+                    <span class="parameter-desc">Versions: 1.1</span>
+                </div>
+            </div>
+
+            <h3>Character ID Reference:</h3>
+            <div class="parameter-list">
+                <div class="parameter-item">
+                    <span class="parameter-name">procedural-fairy</span>
+                    <span class="parameter-desc">fairy — customizable procedural fairy (default)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">alien</span>
+                    <span class="parameter-desc">alien — cute alien (GLB)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">kitty</span>
+                    <span class="parameter-desc">kitty — Hello Kitty (GLB)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">kuromi</span>
+                    <span class="parameter-desc">kuromi — Kuromi (GLB)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">molly</span>
+                    <span class="parameter-desc">molly — Animal Crossing duck, tintable shirt (GLB)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">bob</span>
+                    <span class="parameter-desc">bob — Animal Crossing Pocket Camp, tintable shirt (GLB)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">bunny-1</span>
+                    <span class="parameter-desc">honeybun — bunny with tintable body, scarf, ears, eyes (GLB)</span>
+                </div>
+                <div class="parameter-item">
+                    <span class="parameter-name">bunny-2</span>
+                    <span class="parameter-desc">mochi — bunny variant with tintable body, scarf, ears, eyes (GLB)</span>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Fairy Worlds — Google Analytics 4 Reference Guide</p>
+            <p>Measurement ID: G-34EW956ZHJ | Stream ID: 14598819305</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -8,6 +8,7 @@ import { createVRController } from "./three/vrButton.js";
 import { createCompanion } from "./ui/companion.js";
 import { CHARACTERS, DEFAULT_CHARACTER_ID } from "./data/characters.js";
 import { SCENES } from "./data/scenes.js";
+import { trackCharacterSelect } from "./utils/analytics.js";
 
 const CHARACTER_KEY = "fairy-worlds-character";
 const CONFIG_KEY = "fairy-worlds-character-config";
@@ -78,6 +79,7 @@ const picker = createCharacterPicker({
     const def = CHARACTERS.find((c) => c.id === id);
     const config = id === savedId ? loadSavedConfig() : undefined;
     const character = await homeMode.setCharacter(id, config);
+    if (id !== savedId) trackCharacterSelect(id);
     savedId = id;
     saveCharacterId(id);
     if (character?.getState) saveConfig(character.getState());

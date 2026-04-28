@@ -3,6 +3,12 @@ import { SparkRenderer, SplatMesh, SparkControls } from "@sparkjsdev/spark";
 import { SCENES } from "../data/scenes.js";
 import { showLoader, updateLoader, hideLoader } from "../ui/loader.js";
 import { createVRLocomotion } from "../three/vrLocomotion.js";
+import {
+  trackWorldEnter,
+  sceneVersionFromTitle,
+  noteVRWorldVisited,
+  noteVRDistance,
+} from "../utils/analytics.js";
 
 export function createWorldMode({ renderer, onSceneLoaded }) {
   const scene = new THREE.Scene();
@@ -26,9 +32,18 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
   let currentSplat = null;
   let currentSceneId = null;
   let loadToken = 0;
+  const dollySpawnPos = new THREE.Vector3();
 
   function loadScene(sceneDef) {
     const myToken = ++loadToken;
+
+    trackWorldEnter({
+      sceneId: sceneDef.id,
+      world: sceneDef.world,
+      version: sceneVersionFromTitle(sceneDef.title),
+      from: currentSceneId ? "world" : "home",
+    });
+    if (renderer.xr?.isPresenting) noteVRWorldVisited();
 
     if (currentSplat) {
       scene.remove(currentSplat);
@@ -69,6 +84,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       camera.position.set(px, py, pz);
       camera.quaternion.set(qx, qy, qz, qw);
     }
+    dollySpawnPos.copy(dolly.position);
 
     onSceneLoaded?.(sceneDef);
   }
@@ -76,6 +92,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
   function update(dt) {
     if (renderer.xr?.isPresenting) {
       vrLocomotion.update(dt, dolly);
+      noteVRDistance(dolly.position.distanceTo(dollySpawnPos));
       return;
     }
     controls.update(camera);

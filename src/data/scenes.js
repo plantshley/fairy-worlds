@@ -109,4 +109,14 @@ export const SCENES = [
       quaternion: [-0.026, 0.008, 0.001, 1.000],
     },
   },
+  {
+    id: "lavender-laundry-1-1",
+    world: "Lavender Laundry",
+    title: "Lavender Laundry 1.1",
+    url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1.spz",
+    spawn: {
+      position: [-0.31, 1.32, -0.46],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
+    },
+  },
 ];

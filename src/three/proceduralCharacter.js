@@ -39,12 +39,12 @@ const DEFAULTS = {
   colors: {
     skin: "#936a4e",
     hair: "#ea1dc8",
-    shirt: "#ff59b4",
+    shirt: "#ff7ec5",
     bottom: "#ff008c",
-    wings: "#ff0044",
-    eyes: "#901685",
-    blush: "#dc2c7b",
-    shoes: "#ff0044",
+    wings: "#d37df8",
+    eyes: "#930d9d",
+    blush: "#c91d6a",
+    shoes: "#d37df8",
   },
   variants: {
     hair: "bob",
@@ -326,7 +326,7 @@ function makeHairVariant(id, material) {
     const headR = BODY.headRadius;
     const innerOffset = 0.005;
     const cy = ANCHORS.headCenter + 0.05;
-    const sx = 1.05, sy = 0.9, sz = 1.05;
+    const sx = 1.0, sy = 0.9, sz = 1.0;
     const afroMat = material.clone();
     afroMat.color = material.color;
     afroMat.side = THREE.DoubleSide;
@@ -1008,13 +1008,13 @@ export const PROCEDURAL_CUSTOMIZATION_SCHEMA = {
     { id: "shoes", label: "shoes", default: DEFAULTS.colors.shoes },
   ],
   variants: [
-    { id: "hair", label: "hair style", options: ["bob", "long", "pigtails", "bun", "afro", "fade"] },
-    { id: "bottom", label: "bottom", options: ["skirt", "pants", "shorts"] },
-    { id: "wings", label: "wings", options: ["off", "butterfly", "angel", "bat"] },
+    { id: "hair", label: "⋆.˚⟡ hair styles ⟡˚.⋆", options: ["bob", "long", "pigtails", "bun", "afro", "fade"] },
+    { id: "bottom", label: "*ೃ.⋆❀ bottoms ❀⋆.ೃ࿔*", options: ["skirt", "pants", "shorts"] },
+    { id: "wings", label: "꒰ა ⊹ wings ⊹ ࣪໒꒱", options: ["off", "butterfly", "angel", "bat"] },
   ],
   accessories: ACCESSORY_DEFS.map(({ id, label, defaultColor }) => ({
     id,
-    label,
+    label, 
     defaultColor,
   })),
 };

@@ -155,10 +155,11 @@ html, body {
 }
 
 .home-btn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-3px);
+  transform: translateX(3px);
   border-color: rgba(255, 216, 242, 0.95);
   box-shadow: 0 8px 24px rgba(255, 172, 234, 0.55),
-              0 0 0 1px rgba(255,255,255,0.3) inset;
+              0 0 0 0px rgba(255,255,255,0.3) inset;
 }
 
 
@@ -170,10 +171,12 @@ html, body {
   max-height: 90vh; overflow-y: auto;
   padding-right: 4px;
   width: 200px;
+  overflow:visible;
 }
 #scenes[hidden] { display: none; }
 .scene-group {
   display: flex; flex-direction: column; gap: 4px;
+
 }
 
 .group-pill {
@@ -197,12 +200,12 @@ html, body {
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   transition: transform 160ms, box-shadow 160ms, border-color 160ms;
+  overflow: visible;
 }
 .group-pill:hover {
   transform: translateX(3px);
-  border-color: rgba(255, 216, 242, 0.9);
-  box-shadow: 0 8px 24px rgba(255, 172, 234, 0.5),
-              0 0 0 1px rgba(255,255,255,0.25) inset;
+  border: none;
+  
 }
 .group-pill .flourish {
   font-size: 20px;
@@ -229,9 +232,11 @@ html, body {
 .scene-group.open .group-pill .arrow { transform: rotate(180deg); }
 .scene-group.open .group-pill,
 .scene-group.has-active .group-pill {
-  border-color: rgba(255,255,255,0.9);
-  box-shadow: 0 0 18px rgba(255, 172, 234, 0.55),
-              0 0 0 1px rgba(255,255,255,0.3) inset;
+  border: 0px solid rgba(255,255,255,0.5);
+  box-shadow: 0 0px 50px rgba(255, 255, 255, 0.25),
+              0 0px 15px rgba(255,255,255,0.25);
+
+              
 }
 
 /* accordion panel: card that expands inline below its pill, scenes flow horizontally */
@@ -257,7 +262,7 @@ html, body {
   font: 10px/1.2 var(--font-ui);
   color: #fff; 
   background: rgba(118, 48, 142, 0.45);
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 0px solid rgba(255,255,255,0.2);
   padding: 5px 11px; border-radius: 999px;
   cursor: pointer; text-align: center;
   transition: background 120ms, border-color 120ms, transform 120ms;
@@ -274,7 +279,7 @@ html, body {
     rgba(252,203,131,0.55) 0%,
     rgba(255,172,234,0.55) 50%,
     rgba(200,179,251,0.55) 100%);
-  border-color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.5);
   box-shadow: 0 0 12px rgba(255,172,234,0.55);
 }
 
@@ -306,14 +311,15 @@ html, body {
   background: linear-gradient(135deg, #fccb83 0%, #ffacea 50%, #c8b3fb 100%);
   box-shadow:
     0 12px 48px rgba(255, 172, 234, 0.45),
-    0 0 0 1px rgba(255,255,255,0.5) inset,
-    0 -18px 36px rgba(200, 179, 251, 0.3) inset;
+    0 0px 25px rgba(255,255,255,0.5),
+    0 -12px 48px rgba(200, 179, 251, 0.3);
   color: #fff;
   font: 500 15px/1.3 var(--font-ui);
   min-width: 260px; text-align: center;
   text-shadow: 0 1px 3px rgba(120, 60, 140, 0);
   animation: card-breathe 3.2s ease-in-out infinite;
   z-index: 1;
+  border: none;
 }
 @keyframes card-breathe {
   0%, 100% { transform: scale(1); }
@@ -417,7 +423,7 @@ html, body {
   font-size: 18px;
   letter-spacing: 0.06em;
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 5px;
   color: #6b3a7a;
 }
 .picker-gallery {
@@ -489,7 +495,7 @@ html, body {
   border-radius: 999px;
   background: rgba(255,255,255,0);
   border: 1px solid rgba(255,255,255,0);
-  font-size: 12px; color: #6b3a7a;
+  font-size: 11px; color: #6b3a7a;
   flex: 0 0 calc(33.3333% - 6px);
   box-sizing: border-box;
 }
@@ -535,14 +541,15 @@ html, body {
   appearance: none;
 }
 .picker-pill {
-  padding: 6px 12px;
+  padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.55);
-  font-size: 12px;
+  border: 0px solid rgba(255,255,255,0.7);
+  background: rgba(168, 131, 255, 0.45);
+  font-size: 11px;
   color: #6b3a7a;
   cursor: pointer;
   transition: background 120ms, border-color 120ms;
+  font-family: var(--font-ui);
 }
 .picker-pill:hover {
   background: rgba(255, 172, 234, 0.3);
@@ -551,10 +558,10 @@ html, body {
   background: linear-gradient(135deg,
     rgba(252, 204, 131, 0.55) 0%,
     rgba(242, 0, 222, 0.45) 80%);
-  border: none;
+  border: 1px solid rgba(255, 196, 108, 0.9);
   box-shadow: 0 0 0 3px rgba(255, 143, 216, 0), 0 0px 0px rgba(181, 0, 242, 0.5);
   color: #fff;
-  font-family: var(font-ui);
+  
 
 }
 .picker-toggle {

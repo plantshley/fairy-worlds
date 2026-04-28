@@ -1,5 +1,15 @@
+import {
+  trackVRSessionStart,
+  trackVRSessionEnd,
+  noteVRControllerUsed,
+} from "../utils/analytics.js";
+
 export function createVRController(renderer, onStatus) {
   let currentSession = null;
+
+  function onControllerInput() {
+    noteVRControllerUsed();
+  }
 
   const sessionInit = {
     optionalFeatures: ["local-floor", "bounded-floor", "hand-tracking"],
@@ -11,7 +21,10 @@ export function createVRController(renderer, onStatus) {
 
   async function onSessionStarted(session) {
     session.addEventListener("end", onSessionEnded);
+    session.addEventListener("selectstart", onControllerInput);
+    session.addEventListener("squeezestart", onControllerInput);
     currentSession = session;
+    trackVRSessionStart();
     setLabel("✦ exit VR ✦");
     try {
       await renderer.xr.setSession(session);
@@ -23,7 +36,10 @@ export function createVRController(renderer, onStatus) {
   function onSessionEnded() {
     if (!currentSession) return;
     currentSession.removeEventListener("end", onSessionEnded);
+    currentSession.removeEventListener("selectstart", onControllerInput);
+    currentSession.removeEventListener("squeezestart", onControllerInput);
     currentSession = null;
+    trackVRSessionEnd();
     setLabel("✦ open in VR ✦");
   }
 
