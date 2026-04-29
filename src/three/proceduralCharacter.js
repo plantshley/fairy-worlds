@@ -31,7 +31,7 @@ const ACCESSORY_DEFS = [
   { id: "horns", label: "horns", defaultColor: "#2a1830" },
   { id: "ears", label: "cat ears", defaultColor: "#ffb0de" },
   { id: "lashes", label: "lashes", defaultColor: "#591246" },
-  { id: "mustache", label: "mustache", defaultColor: "#2a1830" },
+  { id: "mustache", label: "mustache", defaultColor: "#591246" },
   { id: "star", label: "star", defaultColor: "#fff6e8" },
 ];
 
@@ -47,7 +47,7 @@ const DEFAULTS = {
     shoes: "#d37df8",
   },
   variants: {
-    hair: "bob",
+    hair: "long",
     bottom: "skirt",
     wings: "bat",
   },
@@ -791,8 +791,8 @@ function buildLashes(material) {
 function buildMustache(material) {
   const mustache = new THREE.Group();
   // sit just above the chin/mouth area on the front of the face
-  const yLocal = -0.11;
-  const halfX = 0.05;
+  const yLocal = -0.09;
+  const halfX = 0.03;
   for (const side of [-1, 1]) {
     const xLocal = side * halfX;
     const zLocal = Math.sqrt(
@@ -803,13 +803,27 @@ function buildMustache(material) {
     const normal = new THREE.Vector3(xLocal, yLocal, zLocal).normalize();
     pivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
 
-    const half = new THREE.Mesh(
-      new THREE.TorusGeometry(0.035, 0.011, 8, 14, Math.PI * 0.7),
-      material,
-    );
+    // arc built from a chain of beads with shrinking radius — tapers the outer
+    // edge to a rounded point while the inner end keeps the full tube thickness
+    const half = new THREE.Group();
+    const N = 16;
+    const arcRadius = 0.02;
+    const arcSweep = Math.PI * 0.7;
+    const baseTube = 0.012;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      const beta = t * arcSweep;
+      // side>0 (rotation.z=π): β=0 → toward center, β=0.7π → outer (tip at t=1)
+      // side<0 (rotation.z=-0.7π): β=0 → outer, β=0.7π → toward center (tip at t=0)
+      const tipFraction = side > 0 ? t : 1 - t;
+      const tube = baseTube * (1 - tipFraction * tipFraction * 0.92);
+      const bead = new THREE.Mesh(new THREE.SphereGeometry(tube, 10, 8), material);
+      bead.position.set(arcRadius * Math.cos(beta), arcRadius * Math.sin(beta), 0);
+      half.add(bead);
+    }
     half.position.z = BODY.headRadius - 0.001;
-    half.scale.set(1.1, 0.85, 1);
-    half.rotation.z = side > 0 ? Math.PI : 0;
+    half.scale.set(1.1, 1, 1);
+    half.rotation.z = side > 0 ? Math.PI : -Math.PI * 0.7;
     pivot.add(half);
     mustache.add(pivot);
   }
