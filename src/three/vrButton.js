@@ -7,11 +7,31 @@ import {
 export function createVRController(renderer, onStatus, handlers = {}) {
   let currentSession = null;
 
+  // Double-trigger detection: hold the single-trigger action for
+  // DOUBLE_WINDOW_MS; if a second trigger on the same hand fires within that
+  // window, cancel and fire the world-skip action instead. Adds ~250ms
+  // latency to a single trigger but matches scene-load times anyway.
+  const DOUBLE_WINDOW_MS = 250;
+  const pendingSingle = { left: null, right: null };
+
   function onSelectStart(event) {
     noteVRControllerUsed();
     const hand = event.inputSource?.handedness;
-    if (hand === "right") handlers.onCycleNext?.();
-    else if (hand === "left") handlers.onCyclePrev?.();
+    if (hand !== "left" && hand !== "right") return;
+
+    if (pendingSingle[hand]) {
+      clearTimeout(pendingSingle[hand]);
+      pendingSingle[hand] = null;
+      if (hand === "right") handlers.onWorldNext?.();
+      else handlers.onWorldPrev?.();
+      return;
+    }
+
+    pendingSingle[hand] = setTimeout(() => {
+      pendingSingle[hand] = null;
+      if (hand === "right") handlers.onCycleNext?.();
+      else handlers.onCyclePrev?.();
+    }, DOUBLE_WINDOW_MS);
   }
 
   function onSqueezeStart() {
@@ -36,6 +56,8 @@ export function createVRController(renderer, onStatus, handlers = {}) {
     setLabel("✦ exit VR ✦");
     try {
       await renderer.xr.setSession(session);
+      // Defer to next frame so xrCam has a valid pose before recentering.
+      requestAnimationFrame(() => handlers.onSessionStart?.());
     } catch (err) {
       console.error("renderer.xr.setSession failed:", err);
     }
@@ -46,6 +68,9 @@ export function createVRController(renderer, onStatus, handlers = {}) {
     currentSession.removeEventListener("end", onSessionEnded);
     currentSession.removeEventListener("selectstart", onSelectStart);
     currentSession.removeEventListener("squeezestart", onSqueezeStart);
+    if (pendingSingle.left) clearTimeout(pendingSingle.left);
+    if (pendingSingle.right) clearTimeout(pendingSingle.right);
+    pendingSingle.left = pendingSingle.right = null;
     currentSession = null;
     trackVRSessionEnd();
     setLabel("✦ open in VR ✦");

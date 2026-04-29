@@ -135,5 +135,14 @@ const vr = createVRController(
     onCyclePrev: () => {
       if (manager.currentName() === "world") worldMode.cycleScene(-1);
     },
+    onWorldNext: () => {
+      if (manager.currentName() === "world") worldMode.cycleWorld(1);
+    },
+    onWorldPrev: () => {
+      if (manager.currentName() === "world") worldMode.cycleWorld(-1);
+    },
+    onSessionStart: () => {
+      if (manager.currentName() === "world") worldMode.recenterToCurrentSpawn();
+    },
   },
 );

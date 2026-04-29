@@ -31,6 +31,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
 
   let currentSplat = null;
   let currentSceneId = null;
+  let currentWorld = null;
   let loadToken = 0;
   const dollySpawnPos = new THREE.Vector3();
   const _spawnVec = new THREE.Vector3();
@@ -46,8 +47,38 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
   // Pitch/roll are intentionally discarded — tilting the dolly in VR
   // is nauseating, so we only recenter heading.
   function extractYaw(quat) {
+    // Rotating (0,0,-1) by yaw θ around +Y gives (-sin θ, 0, -cos θ), so
+    // recover θ = atan2(-forward.x, -forward.z). The previous version used
+    // atan2(forward.x, -forward.z) and returned -θ, which made deltaYaw the
+    // wrong sign and rotated the head AWAY from the spawn yaw.
     _forward.set(0, 0, -1).applyQuaternion(quat);
-    return Math.atan2(_forward.x, -_forward.z);
+    return Math.atan2(-_forward.x, -_forward.z);
+  }
+
+  // Apply the current scene's spawn to the dolly using VR-aware math, without
+  // touching the splat. Call this on VR session start, since loadScene only
+  // ran the VR branch if isPresenting was true at load time — entering VR
+  // after the scene was already loaded on desktop leaves the dolly at origin.
+  function recenterToCurrentSpawn() {
+    if (!currentSceneId || !renderer.xr?.isPresenting) return;
+    const sceneDef = SCENES.find((s) => s.id === currentSceneId);
+    if (!sceneDef) return;
+    const [px, py, pz] = sceneDef.spawn.position;
+    const [qx, qy, qz, qw] = sceneDef.spawn.quaternion;
+    const xrCam = renderer.xr.getCamera();
+    xrCam.updateMatrixWorld(true);
+    xrCam.getWorldPosition(_headPos);
+    xrCam.getWorldQuaternion(_headQuat);
+    _spawnQuat.set(qx, qy, qz, qw);
+    const deltaYaw = extractYaw(_spawnQuat) - extractYaw(_headQuat);
+    _yawQuat.setFromAxisAngle(Y_AXIS, deltaYaw);
+    dolly.position.sub(_headPos).applyQuaternion(_yawQuat).add(_headPos);
+    dolly.quaternion.premultiply(_yawQuat);
+    _spawnVec.set(px, py, pz);
+    dolly.position.add(_spawnVec.sub(_headPos));
+    camera.position.set(0, 0, 0);
+    camera.quaternion.identity();
+    dollySpawnPos.copy(dolly.position);
   }
 
   function loadScene(sceneDef) {
@@ -87,8 +118,15 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     currentSplat = splat;
     currentSceneId = sceneDef.id;
 
+    const isNewWorld = sceneDef.world !== currentWorld;
+    currentWorld = sceneDef.world;
+
     const [px, py, pz] = sceneDef.spawn.position;
     const [qx, qy, qz, qw] = sceneDef.spawn.quaternion;
+    if (!isNewWorld) {
+      onSceneLoaded?.(sceneDef);
+      return;
+    }
     if (renderer.xr?.isPresenting) {
       // In VR, the user's actual head pose = dolly + headset_local_offset.
       // Two corrections:
@@ -97,6 +135,8 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       //       the spawn are discarded — a tilted dolly is nauseating in VR.
       //   (2) Position recenter: shift dolly so the head lands on spawn.pos.
       const xrCam = renderer.xr.getCamera();
+      // selectstart fires between renders; xrCam pose can be one frame stale.
+      xrCam.updateMatrixWorld(true);
       xrCam.getWorldPosition(_headPos);
       xrCam.getWorldQuaternion(_headQuat);
       _spawnQuat.set(qx, qy, qz, qw);
@@ -150,6 +190,28 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     loadScene(SCENES[nextIdx]);
   }
 
+  // Step until we land on a scene whose `world` differs from the current
+  // world group, then keep stepping while still inside that new group going
+  // backward so we land on its FIRST scene (in array order). For forward
+  // direction this naturally lands on the first scene of the next group.
+  function cycleWorld(direction) {
+    if (!currentSceneId) return;
+    const startIdx = SCENES.findIndex((s) => s.id === currentSceneId);
+    if (startIdx < 0) return;
+    const fromWorld = SCENES[startIdx].world;
+    const n = SCENES.length;
+    let idx = startIdx;
+    for (let step = 0; step < n; step++) {
+      idx = (idx + direction + n) % n;
+      if (SCENES[idx].world !== fromWorld) break;
+    }
+    if (direction < 0) {
+      const targetWorld = SCENES[idx].world;
+      while (idx > 0 && SCENES[idx - 1].world === targetWorld) idx--;
+    }
+    loadScene(SCENES[idx]);
+  }
+
   function activate(payload) {
     document.getElementById("world-hud")?.removeAttribute("hidden");
     document.getElementById("home-hud")?.setAttribute("hidden", "");
@@ -167,8 +229,19 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
 
   window.camera = camera;
   window.logPose = () => {
-    const p = camera.position;
-    const q = camera.quaternion;
+    let p, q;
+    if (renderer.xr?.isPresenting) {
+      const xrCam = renderer.xr.getCamera();
+      xrCam.updateMatrixWorld(true);
+      p = new THREE.Vector3();
+      q = new THREE.Quaternion();
+      xrCam.getWorldPosition(p);
+      xrCam.getWorldQuaternion(q);
+      console.log(`[VR head world pose, world=${currentWorld}]`);
+    } else {
+      p = camera.position;
+      q = camera.quaternion;
+    }
     console.log(
       `position: [${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}],\n` +
         `quaternion: [${q.x.toFixed(3)}, ${q.y.toFixed(3)}, ${q.z.toFixed(3)}, ${q.w.toFixed(3)}],`,
@@ -186,5 +259,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     loadDefault,
     loadScene,
     cycleScene,
+    cycleWorld,
+    recenterToCurrentSpawn,
   };
 }
