@@ -352,6 +352,15 @@ html, body {
   font-size: 18px; opacity: 0.9; font-variant-numeric: tabular-nums;
 }
 
+.hover-sparkles {
+  position: absolute;
+  inset: -12px;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 20;
+}
+.group-pill, .hud-btn { position: relative; }
+
 .sparkle {
   position: absolute;
   left: var(--x); top: var(--y);

@@ -1,7 +1,7 @@
 import { createSceneManager } from "./sceneManager.js";
 import { createWorldMode } from "./modes/world.js";
 import { createHomeMode } from "./modes/home.js";
-import { buildSparkles } from "./ui/sparkles.js";
+import { buildSparkles, enableHoverSparkles } from "./ui/sparkles.js";
 import { createCharacterPicker } from "./ui/characterPicker.js";
 import { createWorldPicker } from "./ui/worldPicker.js";
 import { createVRController } from "./three/vrButton.js";
@@ -34,6 +34,7 @@ function saveConfig(config) {
 
 buildSparkles("sparkle-field");
 buildSparkles("transition-sparkle-field", 40);
+enableHoverSparkles([".group-pill", ".home-btn", ".hud-btn", ".companion-bubble"]);
 
 const manager = createSceneManager();
 const homeMode = createHomeMode({ renderer: manager.renderer });

@@ -50,6 +50,16 @@ export const SCENES = [
     },
   },
   {
+    id: "berry-dream-kitchen-1-1-pano",
+    world: "Berry Dream Kitchen",
+    title: "Berry Dream Kitchen 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Berry%20Dream%20Kitchen%201-1-pano.spz",
+    spawn: {
+      position: [-0.02, 1.36, 0.72],
+      quaternion: [-0.048, 0.014, 0.001, 0.999],
+    },
+  },
+  {
     id: "pink-cherry-plane-1-1",
     world: "Pink Cherry Plane",
     title: "Pink Cherry Plane 1.1",
@@ -70,16 +80,26 @@ export const SCENES = [
     },
   },
   {
-    id: "twinkle-butterfly-lounge-1-1",
-    world: "Twinkle Butterfly Lounge",
-    title: "Twinkle Butterfly Lounge 1.1",
-    url: import.meta.env.BASE_URL + "splats/Twinkle%20Butterfly%20Lounge%201-1.spz",
+    id: "twinkle-butterfly-patio-1-1",
+    world: "Twinkle Butterfly Patio",
+    title: "Twinkle Butterfly Patio 1.1",
+    url: import.meta.env.BASE_URL + "splats/Twinkle%20Butterfly%20Patio%201-1.spz",
     spawn: {
       position: [-0.35, 1.56, 1.23],
       quaternion: [-0.001, -0.035, 0.001, 0.999],
     },
   },
-    {
+  {
+    id: "twinkle-butterfly-patio-1-1-1004",
+    world: "Twinkle Butterfly Patio",
+    title: "Twinkle Butterfly Patio 1.1-1004",
+    url: import.meta.env.BASE_URL + "splats/Twinkle%20Butterfly%20Patio%201-1-1004.spz",
+    spawn: {
+      position: [-0.35, 1.56, 1.23],
+      quaternion: [-0.001, -0.035, 0.001, 0.999],
+    },
+  },
+  {
     id: "glitter-frutiger-lounge-1-1",
     world: "Glitter Frutiger Lounge",
     title: "Glitter Frutiger Lounge 1.1",
@@ -90,10 +110,30 @@ export const SCENES = [
     },
   },
   {
-    id: "sunkissed-glow-lounge-1-1",
+    id: "glitter-frutiger-lounge-1-1-pano",
+    world: "Glitter Frutiger Lounge",
+    title: "Glitter Frutiger Lounge 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Glitter%20Frutiger%20Lounge%201-1-pano.spz",
+    spawn: {
+      position: [-0.43, 1.51, -0.21],
+      quaternion: [-0.035, 0.001, 0.001, 0.999],
+    },
+  },
+  {
+    id: "sunkissed-sparkle-lounge-1-1",
     world: "Sunkissed Sparkle Lounge",
     title: "Sunkissed Sparkle Lounge 1.1",
-    url: import.meta.env.BASE_URL + "splats/Sunkissed%20Glow%20Lounge%201-1.spz",
+    url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1.spz",
+    spawn: {
+      position: [-0.43, 1.51, -0.21],
+      quaternion: [-0.038, -0.051, -0.001, 0.998],
+    },
+  },
+  {
+    id: "sunkissed-sparkle-lounge-1-1-pano",
+    world: "Sunkissed Sparkle Lounge",
+    title: "Sunkissed Sparkle Lounge 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1-pano.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
       quaternion: [-0.038, -0.051, -0.001, 0.998],
@@ -124,6 +164,16 @@ export const SCENES = [
     world: "Lavender Laundry",
     title: "Lavender Laundry 1.1",
     url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1.spz",
+    spawn: {
+      position: [-0.31, 1.32, -0.46],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
+    },
+  },
+  {
+    id: "lavender-laundry-1-1-pano",
+    world: "Lavender Laundry",
+    title: "Lavender Laundry 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1-pano.spz",
     spawn: {
       position: [-0.31, 1.32, -0.46],
       quaternion: [-0.063, 0.005, 0.001, 0.998],
