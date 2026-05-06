@@ -60,6 +60,16 @@ export const SCENES = [
     },
   },
   {
+    id: "pink-cherry-plane-1-1-pano",
+    world: "Pink Cherry Plane",
+    title: "Pink Cherry Plane 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Pink%20Cherry%20Plane%201-1-pano.spz",
+    spawn: {
+      position: [-0.21, 1.57, 0.82],
+      quaternion: [-0.007, -0.115, -0.000, 0.993],
+    },
+  },
+  {
     id: "pink-cherry-plane-1-1",
     world: "Pink Cherry Plane",
     title: "Pink Cherry Plane 1.1",
@@ -79,21 +89,13 @@ export const SCENES = [
       quaternion: [-0.007, -0.115, -0.000, 0.993],
     },
   },
+
+  
   {
     id: "twinkle-butterfly-patio-1-1",
     world: "Twinkle Butterfly Patio",
     title: "Twinkle Butterfly Patio 1.1",
     url: import.meta.env.BASE_URL + "splats/Twinkle%20Butterfly%20Patio%201-1.spz",
-    spawn: {
-      position: [-0.35, 1.56, 1.23],
-      quaternion: [-0.001, -0.035, 0.001, 0.999],
-    },
-  },
-  {
-    id: "twinkle-butterfly-patio-1-1-1004",
-    world: "Twinkle Butterfly Patio",
-    title: "Twinkle Butterfly Patio 1.1-1004",
-    url: import.meta.env.BASE_URL + "splats/Twinkle%20Butterfly%20Patio%201-1-1004.spz",
     spawn: {
       position: [-0.35, 1.56, 1.23],
       quaternion: [-0.001, -0.035, 0.001, 0.999],
@@ -177,6 +179,47 @@ export const SCENES = [
     spawn: {
       position: [-0.31, 1.32, -0.46],
       quaternion: [-0.063, 0.005, 0.001, 0.998],
+    },
+  },
+  {
+    id: "lavender-laundry-1-1-E2",
+    world: "Lavender Laundry",
+    title: "Lavender Laundry 1.1e2",
+    url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1-E2.spz",
+    spawn: {
+      position: [-0.31, 1.32, -0.46],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
+    },
+
+  },
+  {   
+    id: "ocean-breeze-office",
+    world: "Random",
+    title: "Ocean Breeze Office",
+    url: import.meta.env.BASE_URL + "splats/Random-OceanBreezeOffice.spz",
+    spawn: {
+      position: [-0.07, 1.71, 2.13],
+      quaternion: [-0.026, -0.063, -0.001, 0.998],    
+    },
+  },
+  {   
+    id: "fairy-kitchen",
+    world: "Random",
+    title: "Whimsical Fairy Kitchen",
+    url: import.meta.env.BASE_URL + "splats/Random-FairyKitchen.spz",
+    spawn: {
+      position: [0.03, 1.38, -1.56],
+      quaternion: [0.056, -0.007, 0.001, 0.998],
+    },
+  },
+  {   
+    id: "animal-crossing",
+    world: "Random",
+    title: "Animal Crossing",
+    url: import.meta.env.BASE_URL + "splats/Random-AnimalCrossing.spz",
+    spawn: {
+      position: [1.12, 3.95, 6.47],
+      quaternion: [0.000, 0.062, 0.001, 0.998],
     },
   },
 ];
