@@ -3,6 +3,7 @@ import { SparkRenderer, SplatMesh, SparkControls } from "@sparkjsdev/spark";
 import { SCENES } from "../data/scenes.js";
 import { showLoader, updateLoader, hideLoader } from "../ui/loader.js";
 import { createVRLocomotion } from "../three/vrLocomotion.js";
+import { createTouchControls } from "../three/touchControls.js";
 import {
   trackWorldEnter,
   sceneVersionFromTitle,
@@ -28,6 +29,8 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
 
   const controls = new SparkControls({ canvas: renderer.domElement });
   const vrLocomotion = createVRLocomotion(renderer);
+  const touchControls = createTouchControls(renderer);
+  const isCoarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
 
   let currentSplat = null;
   let currentSceneId = null;
@@ -172,6 +175,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       noteVRDistance(dolly.position.distanceTo(dollySpawnPos));
       return;
     }
+    touchControls.update(dt, camera);
     controls.update(camera);
   }
 
@@ -219,6 +223,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     document.getElementById("home-hud")?.setAttribute("hidden", "");
     document.getElementById("scenes")?.removeAttribute("hidden");
     renderer.domElement.style.pointerEvents = "auto";
+    if (isCoarsePointer) touchControls.enable();
     const targetScene = payload?.scene;
     if (targetScene) loadScene(targetScene);
     else if (!currentSceneId) loadDefault();
@@ -227,6 +232,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
   function deactivate() {
     document.getElementById("world-hud")?.setAttribute("hidden", "");
     document.exitPointerLock?.();
+    touchControls.disable();
   }
 
   window.camera = camera;

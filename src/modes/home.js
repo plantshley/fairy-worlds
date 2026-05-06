@@ -8,6 +8,14 @@ const RESTING_RADIUS = 3.4;
 const RESTING_HEIGHT = 1.4;
 const RESTING_FOV = 50;
 const PLATFORM_TARGET_Y = 0.6;
+const PHONE_PORTRAIT_TARGET_Y = 0.8;
+
+function isPhonePortrait() {
+  return window.matchMedia?.("(max-width: 480px) and (orientation: portrait)").matches ?? false;
+}
+function getRestingTargetY() {
+  return isPhonePortrait() ? PHONE_PORTRAIT_TARGET_Y : PLATFORM_TARGET_Y;
+}
 
 function makePlatform() {
   const group = new THREE.Group();
@@ -77,38 +85,64 @@ export function createHomeMode({ renderer }) {
   const cursorWorld = new THREE.Vector3();
   const camForward = new THREE.Vector3();
 
-  const drag = { active: false, lastX: 0, lastY: 0, pointerId: null, enabled: false };
+  const drag = { enabled: false };
+  const pointers = new Map();
+  let pinchStartDist = 0;
+  let pinchStartRadius = 0;
   const canvas = renderer.domElement;
   const HEIGHT_MIN = 0.4;
   const HEIGHT_MAX = 2.4;
   const RADIUS_MIN = 1.6;
   const RADIUS_MAX = 6.0;
 
+  function pointerArray() {
+    return Array.from(pointers.values());
+  }
+  function pinchDistance() {
+    const [a, b] = pointerArray();
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
   const onPointerDown = (e) => {
     if (!drag.enabled) return;
-    drag.active = true;
-    drag.lastX = e.clientX;
-    drag.lastY = e.clientY;
-    drag.pointerId = e.pointerId;
-    orbit.autoRotate = false;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     canvas.setPointerCapture?.(e.pointerId);
+    orbit.autoRotate = false;
+    if (pointers.size === 2) {
+      pinchStartDist = pinchDistance();
+      pinchStartRadius = orbit.radius;
+    }
     canvas.style.cursor = "grabbing";
   };
   const onPointerMove = (e) => {
-    if (!drag.active) return;
-    const dx = e.clientX - drag.lastX;
-    const dy = e.clientY - drag.lastY;
-    drag.lastX = e.clientX;
-    drag.lastY = e.clientY;
-    orbit.angle -= dx * 0.008;
-    orbit.height = Math.max(HEIGHT_MIN, Math.min(HEIGHT_MAX, orbit.height + dy * 0.005));
+    if (!pointers.has(e.pointerId)) return;
+    const prev = pointers.get(e.pointerId);
+    const dx = e.clientX - prev.x;
+    const dy = e.clientY - prev.y;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.size === 1) {
+      orbit.angle -= dx * 0.008;
+      orbit.height = Math.max(HEIGHT_MIN, Math.min(HEIGHT_MAX, orbit.height + dy * 0.005));
+    } else if (pointers.size === 2 && pinchStartDist > 0) {
+      const dist = pinchDistance();
+      const factor = pinchStartDist / Math.max(dist, 1);
+      orbit.radius = Math.max(
+        RADIUS_MIN,
+        Math.min(RADIUS_MAX, pinchStartRadius * factor),
+      );
+    }
   };
-  const onPointerUp = () => {
-    if (!drag.active) return;
-    drag.active = false;
-    canvas.releasePointerCapture?.(drag.pointerId);
-    drag.pointerId = null;
-    canvas.style.cursor = drag.enabled ? "grab" : "";
+  const onPointerUp = (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    canvas.releasePointerCapture?.(e.pointerId);
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) {
+      pinchStartDist = 0;
+    }
+    if (pointers.size === 0) {
+      canvas.style.cursor = drag.enabled ? "grab" : "";
+    }
   };
 
   const onWheel = (e) => {
@@ -173,6 +207,7 @@ export function createHomeMode({ renderer }) {
   function resize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    orbit.target.y = getRestingTargetY();
   }
 
   function activate() {
@@ -185,7 +220,7 @@ export function createHomeMode({ renderer }) {
     orbit.autoRotate = true;
     orbit.radius = RESTING_RADIUS;
     orbit.height = RESTING_HEIGHT;
-    orbit.target.set(0, PLATFORM_TARGET_Y, 0);
+    orbit.target.set(0, getRestingTargetY(), 0);
     camera.fov = RESTING_FOV;
     camera.updateProjectionMatrix();
   }
@@ -193,7 +228,8 @@ export function createHomeMode({ renderer }) {
   function deactivate() {
     document.getElementById("home-hud")?.setAttribute("hidden", "");
     drag.enabled = false;
-    drag.active = false;
+    pointers.clear();
+    pinchStartDist = 0;
     renderer.domElement.style.cursor = "";
   }
 

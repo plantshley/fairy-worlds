@@ -11,9 +11,59 @@ export function createCharacterPicker({
 }) {
   let activeCharacter = null;
 
+  const cardEl = modalEl.querySelector(".picker-card");
+  const handleEl = document.createElement("div");
+  handleEl.className = "picker-handle";
+  cardEl.prepend(handleEl);
+
+  const SNAP_VH = [28, 60, 92];
+  let currentSnapVh = 60;
+  let dragStartY = null;
+  let dragStartVh = 60;
+  let liveVh = 60;
+
+  function isPhonePortrait() {
+    return window.matchMedia("(max-width: 480px) and (orientation: portrait)").matches;
+  }
+  function setSheetHeight(vh) {
+    cardEl.style.setProperty("--sheet-height", `${vh}vh`);
+  }
+  function nearestSnap(vh) {
+    return SNAP_VH.reduce((a, b) => Math.abs(b - vh) < Math.abs(a - vh) ? b : a);
+  }
+
+  handleEl.addEventListener("pointerdown", (e) => {
+    if (!isPhonePortrait()) return;
+    dragStartY = e.clientY;
+    dragStartVh = currentSnapVh;
+    liveVh = currentSnapVh;
+    handleEl.setPointerCapture(e.pointerId);
+    modalEl.classList.add("is-dragging");
+  });
+  handleEl.addEventListener("pointermove", (e) => {
+    if (dragStartY === null) return;
+    const dy = dragStartY - e.clientY;
+    liveVh = Math.max(15, Math.min(95, dragStartVh + (dy / window.innerHeight) * 100));
+    setSheetHeight(liveVh);
+  });
+  function endDrag(e) {
+    if (dragStartY === null) return;
+    handleEl.releasePointerCapture?.(e.pointerId);
+    modalEl.classList.remove("is-dragging");
+    currentSnapVh = nearestSnap(liveVh);
+    setSheetHeight(currentSnapVh);
+    dragStartY = null;
+  }
+  handleEl.addEventListener("pointerup", endDrag);
+  handleEl.addEventListener("pointercancel", endDrag);
+
   function open() {
     modalEl.removeAttribute("hidden");
     document.getElementById("home-hud")?.setAttribute("hidden", "");
+    if (isPhonePortrait()) {
+      currentSnapVh = 60;
+      setSheetHeight(60);
+    }
   }
   function close() {
     modalEl.setAttribute("hidden", "");
