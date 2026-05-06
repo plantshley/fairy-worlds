@@ -118,7 +118,9 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     currentSplat = splat;
     currentSceneId = sceneDef.id;
 
-    const isNewWorld = sceneDef.world !== currentWorld;
+    // "Random" is a catchall group, not a real world — each scene there has its
+    // own unrelated spawn, so always recenter when cycling within it.
+    const isNewWorld = sceneDef.world !== currentWorld || sceneDef.world === "Random";
     currentWorld = sceneDef.world;
 
     const [px, py, pz] = sceneDef.spawn.position;

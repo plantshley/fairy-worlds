@@ -16,12 +16,12 @@ const ANCHORS = {
 
 const BODY = {
   torsoRadius: 0.15,
-  torsoHeight: ANCHORS.chest - ANCHORS.waist + 0.06,
+  torsoHeight: ANCHORS.chest - ANCHORS.waist + 0,
   hipHalfWidth: 0.09,
   shoulderHalfWidth: 0.22,
   legRadius: 0.065,
   armRadius: 0.055,
-  armLength: 0.42,
+  armLength: 0.45,
   headRadius: 0.22,
 };
 
@@ -33,6 +33,7 @@ const ACCESSORY_DEFS = [
   { id: "lashes", label: "lashes", defaultColor: "#591246" },
   { id: "mustache", label: "mustache", defaultColor: "#591246" },
   { id: "star", label: "star", defaultColor: "#fff6e8" },
+  { id: "socks", label: "socks", defaultColor: "#ffe1f2" },
 ];
 
 const DEFAULTS = {
@@ -50,6 +51,7 @@ const DEFAULTS = {
     hair: "long",
     bottom: "skirt",
     wings: "bat",
+    shirt: "tee",
   },
   accessories: {
     bow: true,
@@ -59,6 +61,7 @@ const DEFAULTS = {
     lashes: true,
     mustache: false,
     star: false,
+    socks: false,
   },
   accessoryColors: Object.fromEntries(
     ACCESSORY_DEFS.map((a) => [a.id, a.defaultColor]),
@@ -144,19 +147,19 @@ function makeArms(skinMat) {
       new THREE.CapsuleGeometry(BODY.armRadius, BODY.armLength - 2 * BODY.armRadius, 8, 16),
       skinMat,
     );
-    armMesh.position.y = -BODY.armLength / 2;
+    armMesh.position.y = 0.05 -BODY.armLength / 2;
     arm.add(armMesh);
 
     const hand = new THREE.Mesh(
       new THREE.SphereGeometry(0.06, 16, 12),
       skinMat,
     );
-    hand.position.y = -BODY.armLength;
+    hand.position.y = 0.05-BODY.armLength;
     hand.scale.set(1, 0.9, 0.9);
     arm.add(hand);
 
     arm.position.set(side * BODY.shoulderHalfWidth * 0.82, ANCHORS.shoulder, 0);
-    arm.rotation.z = side * 0.22; // slight outward flare
+    arm.rotation.z = side * 0.32; // slight outward flare
     group.add(arm);
   }
   return group;
@@ -285,7 +288,7 @@ function makeHairVariant(id, material) {
     const back = new THREE.Mesh(
       new THREE.CylinderGeometry(
         capEdgeRadius,
-        BODY.torsoRadius + 0.02,
+        BODY.torsoRadius + 0.04,
         backH,
         28,
         1,
@@ -299,12 +302,12 @@ function makeHairVariant(id, material) {
     back.position.set(0, (backTopY + backBottomY) / 2, 0);
     group.add(back);
     const tip = new THREE.Mesh(
-      new THREE.SphereGeometry(BODY.torsoRadius + 0.02, 20, 12, Math.PI * 0.5, Math.PI, 0, Math.PI * 0.5),
+      new THREE.SphereGeometry(BODY.torsoRadius + 0.02, 20, 12, Math.PI, Math.PI, 0, Math.PI * 0.5),
       material,
     );
     tip.material.side = THREE.DoubleSide;
     tip.position.set(0, backBottomY, 0);
-    group.add(tip);
+   // group.add(tip);
   } else if (id === "pigtails") {
     group.add(bobShell(Math.PI * 0.15, Math.PI * 0.2));
     for (const side of [-1, 1]) {
@@ -319,7 +322,7 @@ function makeHairVariant(id, material) {
   } else if (id === "bun") {
     group.add(bobShell(Math.PI * 0.17, Math.PI * 0.2));
     const bun = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 16), material);
-    bun.position.y = ANCHORS.headTop + 0.04;
+    bun.position.y = ANCHORS.headTop + 0.03;
     group.add(bun);
   } else if (id === "afro") {
     const puffR = 0.31;
@@ -458,26 +461,48 @@ function makeHairVariant(id, material) {
   return group;
 }
 
-function makeShirt(material) {
+function makeShirtVariant(id, material) {
   const group = new THREE.Group();
   const top = ANCHORS.shoulder + 0.02;
-  const bottom = ANCHORS.waist;
+  const bottom = id === "crop" ? (ANCHORS.shoulder + ANCHORS.waist) / 2 + 0.02 : ANCHORS.waist+0.025;
   const h = top - bottom;
   const tube = new THREE.Mesh(
-    new THREE.CylinderGeometry(BODY.torsoRadius + 0.001, BODY.torsoRadius + 0.03, h, 28),
+    new THREE.CylinderGeometry(BODY.torsoRadius + 0.001, BODY.torsoRadius + 0.02, h, 28),
     material,
   );
   tube.position.y = (top + bottom) / 2;
   group.add(tube);
-  for (const side of [-1, 1]) {
-    const sleeve = new THREE.Mesh(
-      new THREE.SphereGeometry(BODY.armRadius + 0.018, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6),
-      material,
-    );
-    sleeve.position.set(side * BODY.shoulderHalfWidth * 0.82, ANCHORS.shoulder, 0);
-    sleeve.rotation.z = side * 0.22;
-    group.add(sleeve);
+
+  if (id !== "tank") {
+    // tee / crop / long all share short cap sleeves; tank is strapless
+    for (const side of [-1, 1]) {
+      const sleeve = new THREE.Mesh(
+        new THREE.SphereGeometry(BODY.armRadius + 0.018, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6),
+        material,
+      );
+      sleeve.position.set(side * BODY.shoulderHalfWidth * 0.82, ANCHORS.shoulder, 0);
+      sleeve.rotation.z = side * 0.32;
+      group.add(sleeve);
+    }
   }
+
+  if (id === "long") {
+    // full sleeves down the arms — match arm position/rotation in makeArms
+    for (const side of [-1, 1]) {
+      const sleeveLen = BODY.armLength * 0.8;
+      const sleeve = new THREE.Mesh(
+        new THREE.CylinderGeometry(BODY.armRadius + 0.012, BODY.armRadius + 0.001, sleeveLen, 16),
+        material,
+      );
+      const arm = new THREE.Group();
+      arm.position.set(side * BODY.shoulderHalfWidth * 0.82, ANCHORS.shoulder, 0);
+      arm.rotation.z = side * 0.32;
+      sleeve.position.y = -sleeveLen / 2;
+      arm.add(sleeve);
+      group.add(arm);
+    }
+  }
+
   return group;
 }
 
@@ -487,10 +512,10 @@ function makeBottomVariant(id, material) {
   if (id === "skirt") {
     const h = 0.26;
     const skirt = new THREE.Mesh(
-      new THREE.CylinderGeometry(BODY.torsoRadius + 0.03, BODY.torsoRadius + 0.13, h, 28, 1, true),
+      new THREE.CylinderGeometry(BODY.torsoRadius + 0.01, BODY.torsoRadius + 0.13, h, 28, 1, true),
       material,
     );
-    skirt.position.y = waistY - h / 2;
+    skirt.position.y = 0.05 + waistY - h / 2;
     skirt.material.side = THREE.DoubleSide;
     group.add(skirt);
     const hem = new THREE.Mesh(
@@ -498,42 +523,42 @@ function makeBottomVariant(id, material) {
       material,
     );
     hem.rotation.x = Math.PI / 2;
-    hem.position.y = waistY - h;
+    hem.position.y = 0.05 + waistY - h;
     hem.material.side = THREE.DoubleSide;
     group.add(hem);
   } else if (id === "pants") {
     const yokeHeight = 0.1;
-    const seatY = waistY - yokeHeight +0.01;
+    const seatY = waistY - yokeHeight + 0.01;
     const yokeBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.0;
     const yoke = new THREE.Mesh(
       new THREE.CylinderGeometry(
-        BODY.torsoRadius + 0.022,
-        yokeBottomR,
+        BODY.torsoRadius + 0.02,
+        yokeBottomR + 0.005,
         yokeHeight,
         28,
       ),
       material,
     );
-    yoke.position.y = waistY - yokeHeight / 2;
+    yoke.position.y = 0.025 + waistY - yokeHeight / 2;
     group.add(yoke);
 
     // seat cap fills the crotch so no skin shows between the legs;
     // its widest point sits exactly at the yoke's bottom edge for a flush join
     const seat = new THREE.Mesh(
-      new THREE.SphereGeometry(yokeBottomR, 24, 16),
+      new THREE.SphereGeometry(yokeBottomR + 0.005, 24, 16),
       material,
     );
-    seat.position.y = seatY;
-    seat.scale.set(1, 0.55, 1);
+    seat.position.y = 0.025 + seatY;
+    seat.scale.set(1, 0.6, 1);
     group.add(seat);
 
     const legTop = seatY + 0.05;
     for (const side of [-1, 1]) {
       const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(BODY.legRadius + 0.012, BODY.legRadius + 0.008, legTop - ANCHORS.ankle-0.03, 20),
+        new THREE.CylinderGeometry(BODY.legRadius + 0.0075, BODY.legRadius + 0.0175, legTop - ANCHORS.ankle - 0.03, 20),
         material,
       );
-      leg.position.set(side * BODY.hipHalfWidth, 0.03+(legTop + ANCHORS.ankle) / 2, 0);
+      leg.position.set(side * BODY.hipHalfWidth, 0.03 + (legTop + ANCHORS.ankle) / 2, 0);
       group.add(leg);
     }
   } else if (id === "shorts") {
@@ -542,26 +567,26 @@ function makeBottomVariant(id, material) {
     const seatY = waistY - yokeHeight +0.01;
     const shortsBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.0;
     const shorts = new THREE.Mesh(
-      new THREE.CylinderGeometry(BODY.torsoRadius + 0.022, shortsBottomR, shortsHeight, 28),
+      new THREE.CylinderGeometry(BODY.torsoRadius + 0.02, shortsBottomR + 0.005, shortsHeight, 28),
       material,
     );
-    shorts.position.y = waistY - shortsHeight / 2;
+    shorts.position.y = 0.025 + waistY - shortsHeight / 2;
     group.add(shorts);
 
     const seat = new THREE.Mesh(
-      new THREE.SphereGeometry(shortsBottomR, 24, 16),
+      new THREE.SphereGeometry(shortsBottomR + 0.005, 24, 16),
       material,
     );
-    seat.position.y = seatY;
-    seat.scale.set(1, 0.55, 1);
+    seat.position.y = 0.025+seatY;
+    seat.scale.set(1, 0.6, 1);
     group.add(seat);
 
     for (const side of [-1, 1]) {
       const cuff = new THREE.Mesh(
-        new THREE.CylinderGeometry(BODY.legRadius + 0.015, BODY.legRadius + 0.0175, 0.2, 18),
+        new THREE.CylinderGeometry(BODY.legRadius + 0.0075, BODY.legRadius + 0.0175, 0.2, 18),
         material,
       );
-      cuff.position.set(side * BODY.hipHalfWidth, waistY - shortsHeight - 0.005, 0);
+      cuff.position.set(side * BODY.hipHalfWidth, 0.015 + waistY - shortsHeight - 0.005, 0);
       group.add(cuff);
     }
   }
@@ -665,11 +690,11 @@ function buildBow(material) {
 
 function buildHalo(material) {
   const halo = new THREE.Mesh(
-    new THREE.TorusGeometry(0.17, 0.02, 14, 40),
+    new THREE.TorusGeometry(0.125, 0.01, 12, 48),
     material,
   );
   halo.rotation.x = Math.PI / 2;
-  halo.position.y = ANCHORS.headTop + 0.1;
+  halo.position.y = ANCHORS.headTop + 0.08;
   return halo;
 }
 
@@ -836,6 +861,30 @@ function buildStar(material) {
   return star;
 }
 
+function buildSocks(material) {
+  const group = new THREE.Group();
+  const sockBottom = ANCHORS.ankle + 0.0;
+  const sockTop = ANCHORS.ankle + 0.22; // mid-shin
+  const sockH = sockTop - sockBottom;
+  for (const side of [-1, 1]) {
+    const sock = new THREE.Mesh(
+      new THREE.CylinderGeometry(BODY.legRadius + 0.005, BODY.legRadius + 0.001, sockH, 20),
+      material,
+    );
+    sock.position.set(side * BODY.hipHalfWidth, (sockBottom + sockTop) / 2, 0);
+    group.add(sock);
+    // rolled cuff at the top — slightly thicker torus to suggest a folded edge
+    const cuff = new THREE.Mesh(
+      new THREE.TorusGeometry(BODY.legRadius + 0.001, 0.001, 20, 20),
+      material,
+    );
+    cuff.rotation.x = Math.PI / 2;
+    cuff.position.set(side * BODY.hipHalfWidth, sockTop, 0);
+    group.add(cuff);
+  }
+  return group;
+}
+
 function makeAccessories() {
   const group = new THREE.Group();
   const materials = {};
@@ -872,6 +921,7 @@ function makeAccessories() {
     else if (def.id === "lashes") node = buildLashes(mat);
     else if (def.id === "mustache") node = buildMustache(mat);
     else if (def.id === "star") node = buildStar(mat);
+    else if (def.id === "socks") node = buildSocks(mat);
 
     node.name = def.id;
     node.visible = false;
@@ -918,7 +968,7 @@ export function createProceduralCharacter(initialState = {}) {
   let bottomGroup = makeBottomVariant(state.variants.bottom, bottomMat);
   let wingsGroup = makeWingsVariant(state.variants.wings, wingsMat);
   const { group: accessoriesGroup, materials: accessoryMaterials, nodes: accessoryNodes } = makeAccessories();
-  const shirtGroup = makeShirt(shirtMat);
+  let shirtGroup = makeShirtVariant(state.variants.shirt, shirtMat);
 
   root.add(shirtGroup);
   root.add(hairGroup);
@@ -982,6 +1032,10 @@ export function createProceduralCharacter(initialState = {}) {
       root.remove(wingsGroup);
       wingsGroup = makeWingsVariant(variantId, wingsMat);
       root.add(wingsGroup);
+    } else if (partId === "shirt") {
+      root.remove(shirtGroup);
+      shirtGroup = makeShirtVariant(variantId, shirtMat);
+      root.add(shirtGroup);
     }
   }
 
@@ -1023,6 +1077,7 @@ export const PROCEDURAL_CUSTOMIZATION_SCHEMA = {
   ],
   variants: [
     { id: "hair", label: "⋆.˚⟡ hair styles ⟡˚.⋆", options: ["bob", "long", "pigtails", "bun", "afro", "fade"] },
+    { id: "shirt", label: "⊹˚. ♡ shirts ♡ .˚⊹", options: ["tee", "tank", "crop", "long"] },
     { id: "bottom", label: "*ೃ.⋆❀ bottoms ❀⋆.ೃ࿔*", options: ["skirt", "pants", "shorts"] },
     { id: "wings", label: "꒰ა ⊹ wings ⊹ ࣪໒꒱", options: ["off", "butterfly", "angel", "bat"] },
   ],
