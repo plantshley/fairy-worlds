@@ -11,7 +11,8 @@ import { SCENES } from "./data/scenes.js";
 import { trackCharacterSelect } from "./utils/analytics.js";
 
 const CHARACTER_KEY = "fairy-worlds-character";
-const CONFIG_KEY = "fairy-worlds-character-config";
+const CONFIG_KEY = "fairy-worlds-character-config-v2";
+localStorage.removeItem("fairy-worlds-character-config");
 
 function loadSavedCharacterId() {
   const id = localStorage.getItem(CHARACTER_KEY);
@@ -50,6 +51,12 @@ const companion = createCompanion({
   canvasEl: document.getElementById("companion-canvas"),
   bubbleEl: document.getElementById("companion-bubble"),
   onBubbleClick: () => vr.toggle(),
+  onCharacterClick: () => {
+    if (manager.currentName() !== "home") {
+      manager.transitionTo("home");
+      companion.hide();
+    }
+  },
 });
 
 const worldPicker = createWorldPicker({

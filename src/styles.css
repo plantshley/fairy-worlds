@@ -68,6 +68,7 @@ html, body {
   -webkit-backdrop-filter: blur(6px);
   transition: transform 160ms, box-shadow 160ms, border-color 160ms;
   text-shadow: 0 1px 3px rgba(120, 60, 140, 0.25);
+  width:fit-content
 }
 .hud-btn:hover {
   transform: translateY(-1px);
@@ -673,21 +674,38 @@ canvas { touch-action: none; }
   transition: transform 80ms ease-out;
 }
 
-/* ---- pointer: coarse (touch devices, all sizes) ---- */
-@media (pointer: coarse) {
-  #world-hud .hud-line { display: none; }
-  .home-btn {
-    top: auto;
-    left: 12px;
+/* ---- touch devices (mobile + tablet) — multiple checks for reliability across browsers ---- */
+@media (pointer: coarse), (hover: none), (max-width: 1024px) and (orientation: portrait), (max-width: 1366px) and (orientation: landscape) and (max-height: 1024px) {
+  #world-hud .hud-line,
+  #world-hud .hud-heading,
+  #world-hud .hud-sub { display: none !important; }
+
+  /* companion → bottom-left */
+  #companion {
+    left: 14px;
     right: auto;
-    bottom: 12px;
-    width: 40px;
-    height: 40px;
-    font-size: 22px;
+    bottom: 14px;
   }
+  /* hide bubble on all touch devices (mobile + tablet) */
+  .companion-bubble { display: none !important; }
+
+  /* joystick → bottom-right */
   #touch-controls {
-    bottom: 64px;
+    left: auto;
+    right: 18px;
+    bottom: 18px;
   }
+
+  /* home button hidden on touch — tapping the companion creature returns home */
+  .home-btn { display: none !important; }
+
+  /* keep scenes nav clear of the bottom-left companion+home stack on side-rail layouts */
+  #scenes {
+    top: 56px;
+    transform: none;
+    max-height: calc(100vh - 380px);
+  }
+
   .hud-btn { min-height: 44px; }
   .scene-btn {
     padding: 10px 14px;
@@ -745,7 +763,7 @@ canvas { touch-action: none; }
     background: rgba(255,255,255,0.75);
   }
   .picker-modal.is-dragging .picker-handle { cursor: grabbing; }
-  .picker-row { justify-content: center; }
+  .picker-row:has(.picker-pill) { justify-content: center; }
   .picker-close {
     top: 8px;
     right: 10px;
@@ -758,7 +776,8 @@ canvas { touch-action: none; }
   .picker-section-label { font-size: 16px; margin-bottom: 4px; }
 
   #companion {
-    right: 6px;
+    left: 6px;
+    right: auto;
     bottom: 6px;
     width: 140px;
   }
@@ -766,8 +785,6 @@ canvas { touch-action: none; }
     width: 140px;
     height: 180px;
   }
-  .companion-bubble { display: none !important; }
-
   /* scenes header above the menu */
   #scenes-header {
     display: flex;
@@ -809,7 +826,7 @@ canvas { touch-action: none; }
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: flex-start;
-    gap: 6px;
+    gap: 4px;
     overflow-x: auto;
     overflow-y: visible;
     padding: 0;
@@ -817,37 +834,50 @@ canvas { touch-action: none; }
     -ms-overflow-style: none;
   }
   #scenes::-webkit-scrollbar { display: none; }
-  .scene-group { flex: 0 0 50%;}
+  .scene-group { flex: 0 0 auto; }
   .group-pill {
-    width: 80%;
+    width: fit-content;
     text-align: left;
     white-space: nowrap;
-    font-size: 13px;
-    padding: 2px 7px;
-    
+    font-size: 12px;
+    padding: 4px 12px;
+    gap: 6px;
   }
- 
-  .group-pill .group-label { 
-    white-space: wrap; 
-    width: 80%; }
-  /* dropdown stacks scenes vertically, one per row, no scroll */
-  .scene-group.open .group-scenes {
+  .group-pill .group-label {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    width: auto;
+  }
+  /* "selected"/open state: gentle gradient like .scene-btn.active — no harsh glow */
+  .scene-group.open .group-pill,
+  .scene-group.has-active .group-pill {
+    background: linear-gradient(135deg,
+      rgba(252, 203, 131, 0.55) 0%,
+      rgba(255, 172, 234, 0.55) 50%,
+      rgba(200, 179, 251, 0.55) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
+  }
+  /* always-column dropdown to avoid row->column flicker on open */
+  .group-scenes {
     flex-direction: column;
     flex-wrap: nowrap;
-    min-height: 800px;
-    width: 100%;
-    margin-left: 0px;
-    padding: 10px;
+    align-items: stretch;
+    margin-left: 0;
     gap: 8px;
   }
-
-  .scene-group.open .scene-btn {
+  .scene-group.open .group-scenes {
+    max-height: 600px;
+    width: 100%;
+    padding: 10px;
+  }
+  /* button styles applied always so closing transition doesn't change them */
+  .scene-btn {
     width: fit-content;
     text-align: center;
     white-space: nowrap;
     font-size: 9px;
     padding: 2px 7px;
-    
   }
 
   /* picker button moves to bottom-center via #home-hud override (universal) */
@@ -859,7 +889,8 @@ canvas { touch-action: none; }
   }
 
   #touch-controls {
-    left: 12px;
+    left: auto;
+    right: 12px;
     bottom: 12px;
   }
   .touch-stick { width: 100px; height: 100px; }
@@ -887,7 +918,8 @@ canvas { touch-action: none; }
   .picker-section-label { font-size: 14px; margin-bottom: 2px; }
 
   #companion {
-    right: 4px;
+    left: 4px;
+    right: auto;
     bottom: 4px;
     width: 120px;
   }
@@ -895,19 +927,20 @@ canvas { touch-action: none; }
     width: 120px;
     height: 150px;
   }
-  .companion-bubble { display: none !important; }
-
+  /* home button just above companion */
+  /* scenes nav: short strip on the left */
   #scenes {
-    width: 140px;
+    width: 120px;
     left: 6px;
-    top: 25px;
+    top: 10px;
     transform: none;
-    max-height: calc(100vh - 80px);
+    max-height: calc(100vh - 150px);
     overflow-y: auto;
     overflow-x: hidden;
+    gap: 1px;
   }
-  .group-pill { font-size: 13px; padding: 6px 12px; }
-  .scene-btn { font-size: 9px; padding: 6px 10px; }
+  .group-pill { font-size: 11px; padding: 2px 7px;}
+  .scene-btn { font-size: 7px; padding: 2px 7px; margin-top: 0px;}
 
   .loader-card {
     min-width: 0;
@@ -919,7 +952,11 @@ canvas { touch-action: none; }
 
   .hud-heading { display: none; }
 
-  #touch-controls { left: 12px; bottom: 12px; }
+  #touch-controls {
+    left: auto;
+    right: 12px;
+    bottom: 12px;
+  }
   .touch-stick { width: 90px; height: 90px; }
   .touch-stick-knob { width: 40px; height: 40px; margin-top: -20px; margin-left: -20px; }
 }
@@ -936,11 +973,12 @@ canvas { touch-action: none; }
     width: 200px;
   }
   #companion-canvas {
-    width: 200px;
-    height: 240px;
+    width: 250px;
+    height: 300px;
   }
   #scenes {
     width: 180px;
+    max-height: calc(100vh - 280px);
   }
   .group-pill { font-size: 16px; }
 }
@@ -959,6 +997,6 @@ canvas { touch-action: none; }
   }
   #scenes {
     width: 200px;
-    max-height: 80vh;
+    max-height: calc(100vh - 320px);
   }
 }

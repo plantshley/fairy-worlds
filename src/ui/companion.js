@@ -3,7 +3,7 @@ import { loadCharacter } from "../three/loadCharacter.js";
 import { CHARACTERS } from "../data/characters.js";
 import { addPastelLighting } from "../three/lighting.js";
 
-export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick }) {
+export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick, onCharacterClick }) {
   const renderer = new THREE.WebGLRenderer({
     canvas: canvasEl,
     antialias: true,
@@ -100,6 +100,11 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick
   }
 
   if (onBubbleClick) bubbleEl.addEventListener("click", onBubbleClick);
+  if (onCharacterClick) {
+    canvasEl.style.pointerEvents = "auto";
+    canvasEl.style.cursor = "pointer";
+    canvasEl.addEventListener("click", onCharacterClick);
+  }
 
   const headWorld = new THREE.Vector3();
   let last = performance.now();
