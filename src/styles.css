@@ -77,19 +77,72 @@ html, body {
               0 0 0 1px rgba(255,255,255,0.3) inset;
 }
 
-.home-btn {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 11;
-  width: 44px;
-  height: 44px;
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recenter-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
+  border-radius: 999px;
+  border: 0 solid rgba(255,255,255,0.45);
+  background: linear-gradient(270deg,
+    rgba(252, 204, 131, 0.45) 0%,
+    rgba(242, 0, 222, 0.45) 40%,
+    rgba(168, 131, 255, 0.45) 100%);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: transform 160ms, box-shadow 160ms, border-color 160ms;
+  text-shadow: 0 1px 3px rgba(120, 60, 140, 0.25);
+  flex: 0 0 auto;
+}
+.recenter-btn:hover {
+  transform: translate(-3px, -3px);
+  border-color: rgba(255, 216, 242, 0.95);
+  box-shadow: 0 8px 24px rgba(255, 172, 234, 0.55),
+              0 0 0 0px rgba(255,255,255,0.3) inset;
+}
+
+/* mobile-only companion-tracked recenter button. companion.js writes
+   translate(-50%, Ypx) each frame so it rides the character's head, same as
+   the speech bubble does on desktop. Hidden on desktop. */
+.recenter-btn-mobile {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 13;
+  pointer-events: auto;
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+}
+
+.home-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 11;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 22px;
   line-height: 1;
   padding: 0;
   border-radius: 999px;
@@ -165,8 +218,7 @@ html, body {
 }
 
 .home-btn:hover {
-  transform: translateY(-3px);
-  transform: translateX(3px);
+  transform: translate(3px, -3px);
   border-color: rgba(255, 216, 242, 0.95);
   box-shadow: 0 8px 24px rgba(255, 172, 234, 0.55),
               0 0 0 0px rgba(255,255,255,0.3) inset;
@@ -699,6 +751,11 @@ canvas { touch-action: none; }
   /* home button hidden on touch — tapping the companion creature returns home */
   .home-btn { display: none !important; }
 
+  /* on touch, the in-HUD recenter button is hidden; the companion-tracked
+     one inside #companion takes over (positioned by companion.js projection) */
+  #btn-recenter { display: none; }
+  .recenter-btn-mobile { display: flex; }
+
   /* keep scenes nav clear of the bottom-left companion+home stack on side-rail layouts */
   #scenes {
     top: 56px;
@@ -927,6 +984,7 @@ canvas { touch-action: none; }
     width: 120px;
     height: 150px;
   }
+  .recenter-btn-mobile { width: 26px; height: 26px; font-size: 16px; }
   /* home button just above companion */
   /* scenes nav: short strip on the left */
   #scenes {

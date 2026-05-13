@@ -19,7 +19,10 @@
   </head>
   <body>
     <div id="world-hud" class="hud-panel" hidden>
-      <div class="hud-line">click canvas to look · WASD or scroll to move · shift = fast · ctrl = slow</div>
+      <div class="hud-row">
+        <button id="btn-recenter" class="recenter-btn" aria-label="return to spawn" title="return to spawn">⊙</button>
+        <div class="hud-line">click canvas to look · WASD or scroll to move · shift = fast · ctrl = slow</div>
+      </div>
       <button id="btn-home" class="home-btn" aria-label="home">✿</button>
     </div>
 
@@ -30,6 +33,7 @@
 
     <div id="companion" hidden>
       <div id="companion-bubble" class="companion-bubble" hidden></div>
+      <button id="btn-recenter-mobile" class="recenter-btn recenter-btn-mobile" aria-label="return to spawn" title="return to spawn">⊙</button>
       <canvas id="companion-canvas"></canvas>
     </div>
 

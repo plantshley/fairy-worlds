@@ -120,6 +120,18 @@ export const SCENES = [
       quaternion: [-0.001, -0.035, 0.001, 0.999],
     },
   },
+
+  {
+    id: "glitter-frutiger-lounge-1-1-pano",
+    world: "Glitter Frutiger Lounge",
+    title: "Glitter Frutiger Lounge 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Glitter%20Frutiger%20Lounge%201-1-pano.spz",
+    spawn: {
+      position: [-0.43, 1.51, -0.21],
+      quaternion: [-0.035, 0.001, 0.001, 0.999],
+    },
+  },
+
   {
     id: "glitter-frutiger-lounge-1-1",
     world: "Glitter Frutiger Lounge",
@@ -140,16 +152,7 @@ export const SCENES = [
       quaternion: [-0.035, 0.001, 0.001, 0.999],
     },
   },
-  {
-    id: "glitter-frutiger-lounge-1-1-pano",
-    world: "Glitter Frutiger Lounge",
-    title: "Glitter Frutiger Lounge 1.1-pano",
-    url: import.meta.env.BASE_URL + "splats/Glitter%20Frutiger%20Lounge%201-1-pano.spz",
-    spawn: {
-      position: [-0.43, 1.51, -0.21],
-      quaternion: [-0.035, 0.001, 0.001, 0.999],
-    },
-  },
+  
   {
     id: "sunkissed-sparkle-lounge-1-1",
     world: "Sunkissed Sparkle Lounge",
@@ -195,6 +198,16 @@ export const SCENES = [
     world: "Angelic Quartz Chamber",
     title: "Angelic Quartz Chamber 1.1-pano",
     url: import.meta.env.BASE_URL + "splats/Angelic%20Quartz%20Chamber%201-1-pano.spz",
+    spawn: {
+      position: [-0.51, 0.93, 0.92],
+      quaternion: [-0.035, 0.045, 0.002, 0.998],
+    },
+  },
+  {
+    id: "angelic-quartz-chamber-1-1-pano-E2",
+    world: "Angelic Quartz Chamber",
+    title: "Angelic Quartz Chamber 1.1e2",
+    url: import.meta.env.BASE_URL + "splats/Angelic%20Quartz%20Chamber%201-1-pano-E2.spz",
     spawn: {
       position: [-0.51, 0.93, 0.92],
       quaternion: [-0.035, 0.045, 0.002, 0.998],

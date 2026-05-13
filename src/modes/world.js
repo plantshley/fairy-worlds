@@ -58,30 +58,53 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     return Math.atan2(-_forward.x, -_forward.z);
   }
 
-  // Apply the current scene's spawn to the dolly using VR-aware math, without
-  // touching the splat. Call this on VR session start, since loadScene only
-  // ran the VR branch if isPresenting was true at load time — entering VR
-  // after the scene was already loaded on desktop leaves the dolly at origin.
-  function recenterToCurrentSpawn() {
-    if (!currentSceneId || !renderer.xr?.isPresenting) return;
-    const sceneDef = SCENES.find((s) => s.id === currentSceneId);
-    if (!sceneDef) return;
+  // Apply a scene's spawn pose to either the dolly (VR) or the camera (desktop).
+  // VR branch does a yaw-only recenter so the user's actual head ends up at
+  // spawn.position facing spawn yaw — pitch/roll are discarded since a tilted
+  // dolly is nauseating. Desktop branch resets dolly to origin and writes
+  // spawn directly into the camera.
+  function applySpawn(sceneDef) {
     const [px, py, pz] = sceneDef.spawn.position;
     const [qx, qy, qz, qw] = sceneDef.spawn.quaternion;
-    const xrCam = renderer.xr.getCamera();
-    xrCam.updateMatrixWorld(true);
-    xrCam.getWorldPosition(_headPos);
-    xrCam.getWorldQuaternion(_headQuat);
-    _spawnQuat.set(qx, qy, qz, qw);
-    const deltaYaw = extractYaw(_spawnQuat) - extractYaw(_headQuat);
-    _yawQuat.setFromAxisAngle(Y_AXIS, deltaYaw);
-    dolly.position.sub(_headPos).applyQuaternion(_yawQuat).add(_headPos);
-    dolly.quaternion.premultiply(_yawQuat);
-    _spawnVec.set(px, py, pz);
-    dolly.position.add(_spawnVec.sub(_headPos));
-    camera.position.set(0, 0, 0);
-    camera.quaternion.identity();
+    if (renderer.xr?.isPresenting) {
+      const xrCam = renderer.xr.getCamera();
+      xrCam.updateMatrixWorld(true);
+      xrCam.getWorldPosition(_headPos);
+      xrCam.getWorldQuaternion(_headQuat);
+      _spawnQuat.set(qx, qy, qz, qw);
+      const deltaYaw = extractYaw(_spawnQuat) - extractYaw(_headQuat);
+      _yawQuat.setFromAxisAngle(Y_AXIS, deltaYaw);
+      dolly.position.sub(_headPos).applyQuaternion(_yawQuat).add(_headPos);
+      dolly.quaternion.premultiply(_yawQuat);
+      _spawnVec.set(px, py, pz);
+      dolly.position.add(_spawnVec.sub(_headPos));
+      camera.position.set(0, 0, 0);
+      camera.quaternion.identity();
+    } else {
+      dolly.position.set(0, 0, 0);
+      dolly.quaternion.identity();
+      camera.position.set(px, py, pz);
+      camera.quaternion.set(qx, qy, qz, qw);
+      // SparkControls applies inertia each frame from rotateVelocity/moveVelocity.
+      // If these have nonzero residual from recent input, the camera drifts off
+      // spawn immediately after our reset. Zero them.
+      controls.pointerControls?.rotateVelocity?.set(0, 0, 0);
+      controls.pointerControls?.moveVelocity?.set(0, 0, 0);
+    }
     dollySpawnPos.copy(dolly.position);
+  }
+
+  function returnToOrigin() {
+    if (!currentSceneId) return;
+    const sceneDef = SCENES.find((s) => s.id === currentSceneId);
+    if (sceneDef) applySpawn(sceneDef);
+  }
+
+  // Kept for callers that only want a no-op when not in VR (the VR session-
+  // start hook). Desktop reset is handled by the return-to-spawn UI button.
+  function recenterToCurrentSpawn() {
+    if (!renderer.xr?.isPresenting) return;
+    returnToOrigin();
   }
 
   function loadScene(sceneDef) {
@@ -126,52 +149,39 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     const isNewWorld = sceneDef.world !== currentWorld || sceneDef.world === "Random";
     currentWorld = sceneDef.world;
 
-    const [px, py, pz] = sceneDef.spawn.position;
-    const [qx, qy, qz, qw] = sceneDef.spawn.quaternion;
     if (!isNewWorld) {
       onSceneLoaded?.(sceneDef);
       return;
     }
-    if (renderer.xr?.isPresenting) {
-      // In VR, the user's actual head pose = dolly + headset_local_offset.
-      // Two corrections:
-      //   (1) Yaw recenter: rotate dolly around the head's world position so
-      //       the head ends up facing the spawn yaw direction. Pitch/roll on
-      //       the spawn are discarded — a tilted dolly is nauseating in VR.
-      //   (2) Position recenter: shift dolly so the head lands on spawn.pos.
-      const xrCam = renderer.xr.getCamera();
-      // selectstart fires between renders; xrCam pose can be one frame stale.
-      xrCam.updateMatrixWorld(true);
-      xrCam.getWorldPosition(_headPos);
-      xrCam.getWorldQuaternion(_headQuat);
-      _spawnQuat.set(qx, qy, qz, qw);
-
-      const deltaYaw = extractYaw(_spawnQuat) - extractYaw(_headQuat);
-      _yawQuat.setFromAxisAngle(Y_AXIS, deltaYaw);
-      // Pivot dolly around the head world position, then apply yaw to dolly.
-      dolly.position.sub(_headPos).applyQuaternion(_yawQuat).add(_headPos);
-      dolly.quaternion.premultiply(_yawQuat);
-
-      // After rotation the head is still at _headPos. Now translate dolly so
-      // the head lands at spawn.position.
-      _spawnVec.set(px, py, pz);
-      dolly.position.add(_spawnVec.sub(_headPos));
-      camera.position.set(0, 0, 0);
-      camera.quaternion.identity();
-    } else {
-      dolly.position.set(0, 0, 0);
-      dolly.quaternion.identity();
-      camera.position.set(px, py, pz);
-      camera.quaternion.set(qx, qy, qz, qw);
-    }
-    dollySpawnPos.copy(dolly.position);
+    applySpawn(sceneDef);
 
     onSceneLoaded?.(sceneDef);
+  }
+
+  // Edge-detect button[3] press on either controller. On HTC Vive wand this is
+  // the menu button (target headset per memory); on Quest Touch it's the
+  // thumbstick click. The WebXR Emulator's Vive profile doesn't expose this
+  // button — for emulator testing, press BOTH triggers simultaneously instead
+  // (handled in vrButton.js as the cross-hand select gesture).
+  let _recenterButtonPrev = false;
+  function pollRecenterButton() {
+    const session = renderer.xr.getSession();
+    if (!session) return;
+    let pressed = false;
+    for (const src of session.inputSources) {
+      if (src.gamepad?.buttons?.[3]?.pressed) {
+        pressed = true;
+        break;
+      }
+    }
+    if (pressed && !_recenterButtonPrev) returnToOrigin();
+    _recenterButtonPrev = pressed;
   }
 
   function update(dt) {
     if (renderer.xr?.isPresenting) {
       vrLocomotion.update(dt, dolly);
+      pollRecenterButton();
       noteVRDistance(dolly.position.distanceTo(dollySpawnPos));
       return;
     }
@@ -269,5 +279,6 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     cycleScene,
     cycleWorld,
     recenterToCurrentSpawn,
+    returnToOrigin,
   };
 }

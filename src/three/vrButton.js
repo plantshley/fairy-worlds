@@ -9,8 +9,8 @@ export function createVRController(renderer, onStatus, handlers = {}) {
 
   // Double-trigger detection: hold the single-trigger action for
   // DOUBLE_WINDOW_MS; if a second trigger on the same hand fires within that
-  // window, cancel and fire the world-skip action instead. Adds ~250ms
-  // latency to a single trigger but matches scene-load times anyway.
+  // window, cancel and fire the world-skip action instead. A second trigger
+  // on the OTHER hand within that window cancels too and fires recenter.
   const DOUBLE_WINDOW_MS = 250;
   const pendingSingle = { left: null, right: null };
 
@@ -18,6 +18,17 @@ export function createVRController(renderer, onStatus, handlers = {}) {
     noteVRControllerUsed();
     const hand = event.inputSource?.handedness;
     if (hand !== "left" && hand !== "right") return;
+    const otherHand = hand === "left" ? "right" : "left";
+
+    // Both triggers within DOUBLE_WINDOW_MS = recenter. Provided as an
+    // emulator-friendly alternative to the menu button (button[3]) since the
+    // WebXR Emulator's HTC Vive profile only exposes select + squeeze.
+    if (pendingSingle[otherHand]) {
+      clearTimeout(pendingSingle[otherHand]);
+      pendingSingle[otherHand] = null;
+      handlers.onRecenter?.();
+      return;
+    }
 
     if (pendingSingle[hand]) {
       clearTimeout(pendingSingle[hand]);

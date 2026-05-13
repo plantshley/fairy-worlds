@@ -35,7 +35,7 @@ function saveConfig(config) {
 
 buildSparkles("sparkle-field");
 buildSparkles("transition-sparkle-field", 40);
-enableHoverSparkles([".group-pill", ".home-btn", ".hud-btn", ".companion-bubble"]);
+enableHoverSparkles([".group-pill", ".home-btn", ".hud-btn", ".companion-bubble", ".recenter-btn"]);
 
 const manager = createSceneManager();
 const homeMode = createHomeMode({ renderer: manager.renderer });
@@ -50,7 +50,9 @@ const companion = createCompanion({
   containerEl: document.getElementById("companion"),
   canvasEl: document.getElementById("companion-canvas"),
   bubbleEl: document.getElementById("companion-bubble"),
+  recenterEl: document.getElementById("btn-recenter-mobile"),
   onBubbleClick: () => vr.toggle(),
+  onRecenterClick: () => worldMode.returnToOrigin(),
   onCharacterClick: () => {
     if (manager.currentName() !== "home") {
       manager.transitionTo("home");
@@ -125,6 +127,9 @@ document.getElementById("btn-home")?.addEventListener("click", () => {
   manager.transitionTo("home");
   companion.hide();
 });
+document.getElementById("btn-recenter")?.addEventListener("click", () => {
+  worldMode.returnToOrigin();
+});
 document.getElementById("btn-change-character")?.addEventListener("click", () => {
   const character = homeMode.getCharacter();
   picker.setActive(savedId, character, CHARACTERS.find((c) => c.id === savedId));
@@ -148,6 +153,9 @@ const vr = createVRController(
     },
     onWorldPrev: () => {
       if (manager.currentName() === "world") worldMode.cycleWorld(-1);
+    },
+    onRecenter: () => {
+      if (manager.currentName() === "world") worldMode.returnToOrigin();
     },
     onSessionStart: () => {
       if (manager.currentName() === "world") worldMode.recenterToCurrentSpawn();

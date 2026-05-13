@@ -3,7 +3,7 @@ import { loadCharacter } from "../three/loadCharacter.js";
 import { CHARACTERS } from "../data/characters.js";
 import { addPastelLighting } from "../three/lighting.js";
 
-export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick, onCharacterClick }) {
+export function createCompanion({ containerEl, canvasEl, bubbleEl, recenterEl, onBubbleClick, onCharacterClick, onRecenterClick }) {
   const renderer = new THREE.WebGLRenderer({
     canvas: canvasEl,
     antialias: true,
@@ -100,6 +100,12 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick
   }
 
   if (onBubbleClick) bubbleEl.addEventListener("click", onBubbleClick);
+  if (recenterEl && onRecenterClick) {
+    recenterEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onRecenterClick();
+    });
+  }
   if (onCharacterClick) {
     canvasEl.style.pointerEvents = "auto";
     canvasEl.style.cursor = "pointer";
@@ -142,6 +148,13 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, onBubbleClick
       // ~12px above its translateY position relative to canvas top, so subtract ~26
       const offset = Math.max(0, projectedY - 26);
       bubbleEl.style.transform = `translateY(${offset}px)`;
+      // mobile-only recenter button rides the same projection but sits ~28px
+      // higher than the bubble would, so it doesn't overlap the character's
+      // head and feels like it's "floating" rather than perched on top.
+      if (recenterEl) {
+        const recenterOffset = Math.max(0, offset - 28);
+        recenterEl.style.transform = `translate(-50%, ${recenterOffset}px)`;
+      }
     }
 
     renderer.render(scene, camera);
