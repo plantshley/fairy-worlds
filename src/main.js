@@ -12,6 +12,7 @@ import { trackCharacterSelect } from "./utils/analytics.js";
 
 const CHARACTER_KEY = "fairy-worlds-character";
 const CONFIG_KEY = "fairy-worlds-character-config-v2";
+const OBJECT_MODE_KEY = "fairy-worlds-object-mode";
 localStorage.removeItem("fairy-worlds-character-config");
 
 function loadSavedCharacterId() {
@@ -130,6 +131,33 @@ document.getElementById("btn-home")?.addEventListener("click", () => {
 document.getElementById("btn-recenter")?.addEventListener("click", () => {
   worldMode.returnToOrigin();
 });
+const objectModeToggle = document.getElementById("object-mode-toggle");
+const spawnBoxBtn = document.getElementById("btn-spawn-box");
+
+function applyObjectModeUI() {
+  const on = localStorage.getItem(OBJECT_MODE_KEY) === "1";
+  if (objectModeToggle) {
+    objectModeToggle.setAttribute("aria-pressed", on ? "true" : "false");
+    objectModeToggle.textContent = on ? "✦ object mode: on ✦" : "✦ object mode: off ✦";
+  }
+  if (spawnBoxBtn) {
+    if (on) spawnBoxBtn.removeAttribute("hidden");
+    else spawnBoxBtn.setAttribute("hidden", "");
+  }
+}
+applyObjectModeUI();
+
+objectModeToggle?.addEventListener("click", () => {
+  const next = localStorage.getItem(OBJECT_MODE_KEY) === "1" ? "0" : "1";
+  localStorage.setItem(OBJECT_MODE_KEY, next);
+  applyObjectModeUI();
+  window.dispatchEvent(new Event("objectmodechange"));
+});
+
+spawnBoxBtn?.addEventListener("click", () => {
+  if (manager.currentName() === "world") worldMode.spawnBox();
+});
+
 document.getElementById("btn-change-character")?.addEventListener("click", () => {
   const character = homeMode.getCharacter();
   picker.setActive(savedId, character, CHARACTERS.find((c) => c.id === savedId));
@@ -159,6 +187,15 @@ const vr = createVRController(
     },
     onSessionStart: () => {
       if (manager.currentName() === "world") worldMode.recenterToCurrentSpawn();
+    },
+    onTryGrab: (hand) => {
+      if (manager.currentName() !== "world") return false;
+      if (localStorage.getItem(OBJECT_MODE_KEY) !== "1") return false;
+      return worldMode.tryGrab(hand);
+    },
+    onGrabRelease: (hand) => {
+      if (manager.currentName() !== "world") return false;
+      return worldMode.releaseGrab(hand);
     },
   },
 );

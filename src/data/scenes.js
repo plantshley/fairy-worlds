@@ -155,8 +155,8 @@ export const SCENES = [
   
   {
     id: "sunkissed-sparkle-lounge-1-1",
-    world: "Sunkissed Sparkle Lounge",
-    title: "Sunkissed Sparkle Lounge 1.1",
+    world: "Sunkissed Sparkle Room",
+    title: "Sunkissed Sparkle Room 1.1",
     url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
@@ -165,8 +165,8 @@ export const SCENES = [
   },
   {
     id: "sunkissed-sparkle-lounge-1-1-E2",
-    world: "Sunkissed Sparkle Lounge",
-    title: "Sunkissed Sparkle Lounge 1.1e2",
+    world: "Sunkissed Sparkle Room",
+    title: "Sunkissed Sparkle Room 1.1e2",
     url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1-E2.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
@@ -175,8 +175,8 @@ export const SCENES = [
   },
   {
     id: "sunkissed-sparkle-lounge-1-1-pano",
-    world: "Sunkissed Sparkle Lounge",
-    title: "Sunkissed Sparkle Lounge 1.1-pano",
+    world: "Sunkissed Sparkle Room",
+    title: "Sunkissed Sparkle Room 1.1-pano",
     url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1-pano.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],

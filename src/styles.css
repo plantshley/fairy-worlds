@@ -53,6 +53,44 @@ html, body {
   
 }
 
+/* Home-only toggle. In world mode #world-hud already occupies the top-right
+   area; once a scene is open the in-world "drop a box" button is enough. */
+.object-mode-toggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 11;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: #fff;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 0 solid rgba(255,255,255,0.45);
+  background: linear-gradient(270deg,
+    rgba(252, 204, 131, 0.35) 0%,
+    rgba(242, 0, 222, 0.35) 40%,
+    rgba(168, 131, 255, 0.35) 100%);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: transform 160ms, box-shadow 160ms, border-color 160ms;
+  text-shadow: 0 1px 3px rgba(120, 60, 140, 0.25);
+}
+.object-mode-toggle:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 216, 242, 0.95);
+  box-shadow: 0 8px 24px rgba(255, 172, 234, 0.55),
+              0 0 0 1px rgba(255,255,255,0.3) inset;
+}
+.object-mode-toggle[aria-pressed="true"] {
+  background: linear-gradient(270deg,
+    rgba(252, 204, 131, 0.7) 0%,
+    rgba(242, 0, 222, 0.7) 40%,
+    rgba(168, 131, 255, 0.7) 100%);
+}
+body:not([data-mode="home"]) .object-mode-toggle { display: none; }
+
 .hud-btn {
   font-family: var(--font-display);
   font-size: 16px; color: #fff; letter-spacing: 0.04em;
@@ -68,7 +106,8 @@ html, body {
   -webkit-backdrop-filter: blur(6px);
   transition: transform 160ms, box-shadow 160ms, border-color 160ms;
   text-shadow: 0 1px 3px rgba(120, 60, 140, 0.25);
-  width:fit-content
+  width: fit-content;
+  white-space: nowrap;
 }
 .hud-btn:hover {
   transform: translateY(-1px);
@@ -726,8 +765,17 @@ canvas { touch-action: none; }
   transition: transform 80ms ease-out;
 }
 
-/* ---- touch devices (mobile + tablet) — multiple checks for reliability across browsers ---- */
-@media (pointer: coarse), (hover: none), (max-width: 1024px) and (orientation: portrait), (max-width: 1366px) and (orientation: landscape) and (max-height: 1024px) {
+/* ---- touch devices (mobile + tablet) — multiple OR'd checks for reliability across browsers.
+   phone-sized fallbacks are ungated (laptops don't fit those dimensions — MacBook 13.3 is
+   1280x800 so it can't match max-width:900 landscape). the tablet-sized landscape fallback
+   IS gated by (any-pointer: coarse) so trackpad-only laptops like MacBook 13.3 don't grab
+   the touch layout. ---- */
+@media (pointer: coarse),
+       (hover: none),
+       (max-width: 480px) and (orientation: portrait),
+       (max-width: 900px) and (orientation: landscape) and (max-height: 500px),
+       (max-width: 1024px) and (orientation: portrait) and (any-pointer: coarse),
+       (max-width: 1366px) and (orientation: landscape) and (max-height: 1024px) and (any-pointer: coarse) {
   #world-hud .hud-line,
   #world-hud .hud-heading,
   #world-hud .hud-sub { display: none !important; }
@@ -952,6 +1000,54 @@ canvas { touch-action: none; }
   }
   .touch-stick { width: 100px; height: 100px; }
   .touch-stick-knob { width: 44px; height: 44px; margin-top: -22px; margin-left: -22px; }
+
+  /* object-mode toggle + drop-a-box: centered just below the horizontal scenes nav,
+     styled and sized identically to .scene-btn.active. */
+  .object-mode-toggle,
+  #btn-spawn-box {
+    position: fixed;
+    top: 75px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    font: 9px/1.2 var(--font-ui);
+    padding: 2px 7px;
+    min-height: 0;
+    letter-spacing: 0.02em;
+    color: #fff;
+    text-shadow: none;
+    background: linear-gradient(135deg,
+      rgba(252, 203, 131, 0.55) 0%,
+      rgba(255, 172, 234, 0.55) 50%,
+      rgba(200, 179, 251, 0.55) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 999px;
+    box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: background 120ms, border-color 120ms, transform 120ms;
+  }
+  /* hover matches .scene-btn:hover */
+  .object-mode-toggle:hover,
+  #btn-spawn-box:hover {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 172, 234, 0.7);
+    box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
+    transform: translate(-50%, -1px);
+  }
+  /* preserve the centered transform when aria-pressed="true" on object-mode */
+  .object-mode-toggle[aria-pressed="true"] {
+    background: linear-gradient(135deg,
+      rgba(252, 203, 131, 0.75) 0%,
+      rgba(255, 172, 234, 0.75) 50%,
+      rgba(200, 179, 251, 0.75) 100%);
+  }
+
+  /* hide both buttons while a scenes dropdown is open so they don't overlap it */
+  body:has(#scenes .scene-group.open) .object-mode-toggle,
+  body:has(#scenes .scene-group.open) #btn-spawn-box {
+    display: none !important;
+  }
 }
 
 /* ---- phone landscape: picker becomes right side sheet ---- */
@@ -988,17 +1084,60 @@ canvas { touch-action: none; }
   /* home button just above companion */
   /* scenes nav: short strip on the left */
   #scenes {
-    width: 120px;
+    width: 160px;
     left: 6px;
     top: 10px;
     transform: none;
-    max-height: calc(100vh - 150px);
+    max-height: calc(100vh - 175px);
     overflow-y: auto;
     overflow-x: hidden;
     gap: 1px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
+  #scenes::-webkit-scrollbar { display: none; width: 0; }
   .group-pill { font-size: 11px; padding: 2px 7px;}
   .scene-btn { font-size: 7px; padding: 2px 7px; margin-top: 0px;}
+
+  /* shrink object-mode + drop-a-box to match the .scene-btn size, identical
+     dimensions for both. drop-a-box pinned to fixed top-right same as object-mode. */
+  .object-mode-toggle,
+  #btn-spawn-box {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    left: auto;
+    transform: none;
+    font: 7px/1.2 var(--font-ui);
+    padding: 2px 7px;
+    min-height: 0;
+    letter-spacing: 0.02em;
+    color: #fff;
+    text-shadow: none;
+    background: linear-gradient(135deg,
+      rgba(252, 203, 131, 0.55) 0%,
+      rgba(255, 172, 234, 0.55) 50%,
+      rgba(200, 179, 251, 0.55) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 999px;
+    box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: background 120ms, border-color 120ms, transform 120ms;
+  }
+  .object-mode-toggle:hover,
+  #btn-spawn-box:hover {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 172, 234, 0.7);
+    box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
+    transform: translateY(-1px);
+  }
+  .object-mode-toggle[aria-pressed="true"] {
+    background: linear-gradient(135deg,
+      rgba(252, 203, 131, 0.75) 0%,
+      rgba(255, 172, 234, 0.75) 50%,
+      rgba(200, 179, 251, 0.75) 100%);
+  }
 
   .loader-card {
     min-width: 0;

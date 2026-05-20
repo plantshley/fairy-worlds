@@ -24,6 +24,7 @@ export function createSceneManager() {
     current?.deactivate?.();
     current = next;
     current.activate?.(payload);
+    document.body.dataset.mode = name;
   }
 
   async function transitionTo(name, payload) {
@@ -42,6 +43,7 @@ export function createSceneManager() {
     current = next;
     current.activate?.(payload);
     current.prepareEnter?.(payload);
+    document.body.dataset.mode = name;
 
     await fadeElement(overlay, 1, 0, 400);
     transitioning = false;

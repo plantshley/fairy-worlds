@@ -18,6 +18,11 @@ export function createVRController(renderer, onStatus, handlers = {}) {
     noteVRControllerUsed();
     const hand = event.inputSource?.handedness;
     if (hand !== "left" && hand !== "right") return;
+
+    // Object mode: if the trigger pointed at a grabbable, swallow the event so
+    // the scene-cycle double-trigger logic below doesn't also fire.
+    if (handlers.onTryGrab?.(hand)) return;
+
     const otherHand = hand === "left" ? "right" : "left";
 
     // Both triggers within DOUBLE_WINDOW_MS = recenter. Provided as an
@@ -45,6 +50,12 @@ export function createVRController(renderer, onStatus, handlers = {}) {
     }, DOUBLE_WINDOW_MS);
   }
 
+  function onSelectEnd(event) {
+    const hand = event.inputSource?.handedness;
+    if (hand !== "left" && hand !== "right") return;
+    handlers.onGrabRelease?.(hand);
+  }
+
   function onSqueezeStart() {
     noteVRControllerUsed();
     currentSession?.end();
@@ -61,6 +72,7 @@ export function createVRController(renderer, onStatus, handlers = {}) {
   async function onSessionStarted(session) {
     session.addEventListener("end", onSessionEnded);
     session.addEventListener("selectstart", onSelectStart);
+    session.addEventListener("selectend", onSelectEnd);
     session.addEventListener("squeezestart", onSqueezeStart);
     currentSession = session;
     trackVRSessionStart();
@@ -78,6 +90,7 @@ export function createVRController(renderer, onStatus, handlers = {}) {
     if (!currentSession) return;
     currentSession.removeEventListener("end", onSessionEnded);
     currentSession.removeEventListener("selectstart", onSelectStart);
+    currentSession.removeEventListener("selectend", onSelectEnd);
     currentSession.removeEventListener("squeezestart", onSqueezeStart);
     if (pendingSingle.left) clearTimeout(pendingSingle.left);
     if (pendingSingle.right) clearTimeout(pendingSingle.right);

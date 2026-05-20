@@ -148,11 +148,8 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, recenterEl, o
       // ~12px above its translateY position relative to canvas top, so subtract ~26
       const offset = Math.max(0, projectedY - 26);
       bubbleEl.style.transform = `translateY(${offset}px)`;
-      // mobile-only recenter button rides the same projection but sits ~28px
-      // higher than the bubble would, so it doesn't overlap the character's
-      // head and feels like it's "floating" rather than perched on top.
       if (recenterEl) {
-        const recenterOffset = Math.max(0, offset - 28);
+        const recenterOffset = Math.max(0, offset - 12);
         recenterEl.style.transform = `translate(-50%, ${recenterOffset}px)`;
       }
     }

@@ -4,6 +4,13 @@ import { SCENES } from "../data/scenes.js";
 import { showLoader, updateLoader, hideLoader } from "../ui/loader.js";
 import { createVRLocomotion } from "../three/vrLocomotion.js";
 import { createTouchControls } from "../three/touchControls.js";
+import { ensureReady as ensureRapierReady, createPhysics } from "../three/physics.js";
+import { createGrab } from "../three/grab.js";
+
+const OBJECT_MODE_KEY = "fairy-worlds-object-mode";
+function isObjectMode() {
+  return localStorage.getItem(OBJECT_MODE_KEY) === "1";
+}
 import {
   trackWorldEnter,
   sceneVersionFromTitle,
@@ -36,6 +43,9 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
   let currentSceneId = null;
   let currentWorld = null;
   let loadToken = 0;
+  let physics = null;
+  let grab = null;
+  let physicsPromise = null;
   const dollySpawnPos = new THREE.Vector3();
   const _spawnVec = new THREE.Vector3();
   const _headPos = new THREE.Vector3();
@@ -94,6 +104,59 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     dollySpawnPos.copy(dolly.position);
   }
 
+  // Cache the in-flight promise so concurrent callers share one init instead of
+  // racing two (which would double-register grab's DOM listeners).
+  function ensurePhysics() {
+    if (physicsPromise) return physicsPromise;
+    physicsPromise = (async () => {
+      await ensureRapierReady();
+      physics = createPhysics({ scene });
+      grab = createGrab({ renderer, camera, dolly, physics });
+    })();
+    return physicsPromise;
+  }
+
+  function spawnBox() {
+    if (!physics) {
+      ensurePhysics().then(() => physics && spawnBox());
+      return;
+    }
+    const head = renderer.xr?.isPresenting ? renderer.xr.getCamera() : camera;
+    head.updateMatrixWorld(true);
+    const p = new THREE.Vector3();
+    const fwd = new THREE.Vector3();
+    head.getWorldPosition(p);
+    head.getWorldDirection(fwd);
+    fwd.y = 0;
+    if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+    else fwd.normalize();
+    const spawnDistance = 1.5;
+    const jitterX = (Math.random() - 0.5) * 0.3;
+    const jitterZ = (Math.random() - 0.5) * 0.3;
+    const palette = [0xff88cc, 0xc8b3fb, 0xfccb83, 0x88ddff, 0xb3fbc8];
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    physics.spawnBox({
+      position: {
+        x: p.x + fwd.x * spawnDistance + jitterX,
+        y: p.y + 0.4,
+        z: p.z + fwd.z * spawnDistance + jitterZ,
+      },
+      size: 0.3,
+      color,
+    });
+  }
+
+  function tryGrab(hand) {
+    return grab?.tryGrab(hand) ?? false;
+  }
+  function releaseGrab(hand) {
+    return grab?.releaseGrab(hand) ?? false;
+  }
+
+  window.addEventListener("objectmodechange", () => {
+    if (isObjectMode()) ensurePhysics();
+  });
+
   function returnToOrigin() {
     if (!currentSceneId) return;
     const sceneDef = SCENES.find((s) => s.id === currentSceneId);
@@ -122,6 +185,16 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       scene.remove(currentSplat);
       currentSplat.dispose?.();
       currentSplat = null;
+    }
+
+    if (isObjectMode() && !physics) ensurePhysics();
+    const isNewWorldForPhysics =
+      sceneDef.world !== currentWorld || sceneDef.world === "Random";
+    if (physics && isNewWorldForPhysics) {
+      // Drop any active grab BEFORE freeing bodies — otherwise grab.update()
+      // calls setKinematicPose on a freed Rapier handle next frame.
+      grab?.releaseAll();
+      physics.clearAll();
     }
 
     showLoader(sceneDef.title);
@@ -183,10 +256,14 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       vrLocomotion.update(dt, dolly);
       pollRecenterButton();
       noteVRDistance(dolly.position.distanceTo(dollySpawnPos));
-      return;
+    } else {
+      touchControls.update(dt, camera);
+      controls.update(camera);
     }
-    touchControls.update(dt, camera);
-    controls.update(camera);
+    if (physics) {
+      grab?.update();
+      physics.step(dt);
+    }
   }
 
   function resize() {
@@ -280,5 +357,8 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     cycleWorld,
     recenterToCurrentSpawn,
     returnToOrigin,
+    spawnBox,
+    tryGrab,
+    releaseGrab,
   };
 }
