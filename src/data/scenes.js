@@ -143,10 +143,12 @@ export const SCENES = [
     },
   },
 
+  
+
   {
     id: "glitter-frutiger-lounge-1-1-pano",
-    world: "Glitter Frutiger Lounge",
-    title: "Glitter Frutiger Lounge 1.1-pano",
+    world: "Glitter Hibiscus Lounge",
+    title: "Glitter Hibiscus Lounge 1.1-pano",
     url: import.meta.env.BASE_URL + "splats/Glitter%20Frutiger%20Lounge%201-1-pano.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
@@ -156,8 +158,8 @@ export const SCENES = [
 
   {
     id: "glitter-frutiger-lounge-1-1",
-    world: "Glitter Frutiger Lounge",
-    title: "Glitter Frutiger Lounge 1.1",
+    world: "Glitter Hibiscus Lounge",
+    title: "Glitter Hibiscus Lounge 1.1",
     url: import.meta.env.BASE_URL + "splats/Glitter%20Frutiger%20Lounge%201-1.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
@@ -166,8 +168,8 @@ export const SCENES = [
   },
   {
     id: "glitter-frutiger-lounge-1-1-E2",
-    world: "Glitter Frutiger Lounge",
-    title: "Glitter Frutiger Lounge 1.1e2",
+    world: "Glitter Hibiscus Lounge",
+    title: "Glitter Hibiscus Lounge 1.1e2",
     url: import.meta.env.BASE_URL + "splats/Glitter%20Frutiger%20Lounge%201-1-E2.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
@@ -266,6 +268,37 @@ export const SCENES = [
     },
   },
 
+  {
+    id: "frutiger-rainbow-cafe-1-1-API",
+    world: "Frutiger Rainbow Cafe",
+    title: "Frutiger Rainbow Cafe 1.1-API",
+    url: import.meta.env.BASE_URL + "splats/Frutiger%20Rainbow%20Cafe%201-1-API.spz",
+    spawn: {
+      position: [-0.48, 1.56, 0.12],
+      quaternion: [-0.028, -0.205, -0.005, 0.978],
+    },
+  },
+  {
+    id: "frutiger-rainbow-cafe-1-1",
+    world: "Frutiger Rainbow Cafe",
+    title: "Frutiger Rainbow Cafe 1.1",
+    url: import.meta.env.BASE_URL + "splats/Frutiger%20Rainbow%20Cafe%201-1.spz",
+    spawn: {
+      position: [-0.48, 1.56, 0.12],
+      quaternion: [-0.028, -0.205, -0.005, 0.978],
+    },
+  },
+  {
+    id: "frutiger-rainbow-cafe-1-1-pano",
+    world: "Frutiger Rainbow Cafe",
+    title: "Frutiger Rainbow Cafe 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Frutiger%20Rainbow%20Cafe%201-1-pano.spz",
+    spawn: {
+      position: [-0.48, 1.56, 0.12],
+      quaternion: [-0.028, -0.205, -0.005, 0.978],
+    },
+  },
+  
   {
     id: "lavender-patio-1-1",
     world: "Random",
