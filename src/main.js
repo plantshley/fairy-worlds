@@ -133,6 +133,16 @@ document.getElementById("btn-recenter")?.addEventListener("click", () => {
 });
 const objectModeToggle = document.getElementById("object-mode-toggle");
 const spawnBoxBtn = document.getElementById("btn-spawn-box");
+const boxHint = document.getElementById("box-hint");
+
+// Touch drags a box freely with one finger; desktop uses right-drag + Alt. Tailor
+// the hint text to the input type.
+const isCoarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+if (boxHint) {
+  boxHint.textContent = isCoarsePointer
+    ? "drag a box to move · flick to throw"
+    : "right-drag: slide · alt+right-drag: lift";
+}
 
 function applyObjectModeUI() {
   const on = localStorage.getItem(OBJECT_MODE_KEY) === "1";
@@ -140,9 +150,10 @@ function applyObjectModeUI() {
     objectModeToggle.setAttribute("aria-pressed", on ? "true" : "false");
     objectModeToggle.textContent = on ? "✦ object mode: on ✦" : "✦ object mode: off ✦";
   }
-  if (spawnBoxBtn) {
-    if (on) spawnBoxBtn.removeAttribute("hidden");
-    else spawnBoxBtn.setAttribute("hidden", "");
+  for (const el of [spawnBoxBtn, boxHint]) {
+    if (!el) continue;
+    if (on) el.removeAttribute("hidden");
+    else el.setAttribute("hidden", "");
   }
 }
 applyObjectModeUI();

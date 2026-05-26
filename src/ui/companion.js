@@ -149,7 +149,12 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, recenterEl, o
       const offset = Math.max(0, projectedY - 26);
       bubbleEl.style.transform = `translateY(${offset}px)`;
       if (recenterEl) {
-        const recenterOffset = Math.max(0, offset - 12);
+        // float the origin button just above the character's head and let it ride
+        // the idle bob. no Math.max clamp: on small mobile canvases the head
+        // projects near the canvas top, so a clamp to 0 pinned the button there
+        // and it looked fixed. #companion has no overflow clip, so a negative
+        // offset (button sitting above the canvas top) renders fine.
+        const recenterOffset = projectedY - 30;
         recenterEl.style.transform = `translate(-50%, ${recenterOffset}px)`;
       }
     }

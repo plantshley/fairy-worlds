@@ -27,7 +27,10 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     1000,
   );
 
-  const spark = new SparkRenderer({ renderer });
+  // maxStdDev trims how far each Gaussian is drawn from its center (default
+  // sqrt(8)≈2.83). sqrt(4)=2 is the documented fast end of the acceptable range —
+  // less per-splat overdraw, which is the main fill cost in a heavy scene.
+  const spark = new SparkRenderer({ renderer, maxStdDev: Math.sqrt(4) });
   scene.add(spark);
 
   const dolly = new THREE.Group();
@@ -130,7 +133,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     fwd.y = 0;
     if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
     else fwd.normalize();
-    const spawnDistance = 1.5;
+    const spawnDistance = 2.5;
     const jitterX = (Math.random() - 0.5) * 0.3;
     const jitterZ = (Math.random() - 0.5) * 0.3;
     const palette = [0xff88cc, 0xc8b3fb, 0xfccb83, 0x88ddff, 0xb3fbc8];
@@ -195,6 +198,12 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       // calls setKinematicPose on a freed Rapier handle next frame.
       grab?.releaseAll();
       physics.clearAll();
+      physics.clearSceneCollider();
+    }
+    // Async fire-and-forget — collider just appears once loaded. Splat doesn't
+    // wait on it, and loadSceneCollider has its own token to drop stale loads.
+    if (sceneDef.collider && isNewWorldForPhysics) {
+      ensurePhysics().then(() => physics?.loadSceneCollider(sceneDef.collider));
     }
 
     showLoader(sceneDef.title);

@@ -33,6 +33,66 @@ html, body {
   align-items: center;
 }
 
+/* world HUD: a single horizontal bar spanning the full top of the screen
+   (desktop + tablet). order in markup: click-canvas hint → home → origin →
+   drop object → box hint. spans edge-to-edge (left:0/right:0) so the centered
+   row has the full width to lay out on one line and never wraps a pill down.
+   phone portrait/landscape hide the instructional bits (see media blocks). */
+#world-hud {
+  top: 12px;
+  left: 0;
+  right: 0;
+  transform: none;
+  width: auto;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 0 12px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+/* home button rides inside the centered bar rather than pinned top-left */
+#world-hud .home-btn {
+  position: static;
+  top: auto;
+  left: auto;
+}
+/* drop-object: same look as .object-mode-toggle */
+#btn-spawn-box {
+  font: 11px/1 var(--font-ui);
+  letter-spacing: 0.04em;
+  color: #fff;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg,
+    rgba(252, 203, 131, 0.55) 0%,
+    rgba(255, 172, 234, 0.55) 50%,
+    rgba(200, 179, 251, 0.55) 100%);
+  box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  text-shadow: none;
+  width: auto;
+  min-height: 0;
+  transition: background 120ms, border-color 120ms, transform 120ms, box-shadow 120ms;
+}
+#btn-spawn-box:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 172, 234, 0.7);
+  box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
+  transform: translateY(-1px);
+}
+/* box hint mirrors the left "click canvas" pill's gradient (the "right-grad") */
+#box-hint {
+  background: linear-gradient(270deg,
+    rgba(252, 204, 131, 0.45) 0%,
+    rgba(242, 0, 222, 0.45) 50%,
+    rgba(168, 131, 255, 0.45) 100%);
+}
+
 .hud-line {
   color: #fff; font: 13px/1.4 var(--font-display);
   background: linear-gradient(90deg,
@@ -55,39 +115,38 @@ html, body {
 
 /* Home-only toggle. In world mode #world-hud already occupies the top-right
    area; once a scene is open the in-world "drop a box" button is enough. */
+/* styled to look like .scene-btn.active (same as the mobile object-mode/drop-a-box
+   buttons), but keeps the desktop top-right position and desktop sizing. */
 .object-mode-toggle {
   position: fixed;
   top: 12px;
   right: 12px;
   z-index: 11;
-  font-family: var(--font-display);
-  font-size: 14px;
+  font: 11px/1 var(--font-ui);
   letter-spacing: 0.04em;
   color: #fff;
   padding: 7px 14px;
   border-radius: 999px;
-  border: 0 solid rgba(255,255,255,0.45);
-  background: linear-gradient(270deg,
-    rgba(252, 204, 131, 0.35) 0%,
-    rgba(242, 0, 222, 0.35) 40%,
-    rgba(168, 131, 255, 0.35) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg,
+    rgba(252, 203, 131, 0.55) 0%,
+    rgba(255, 172, 234, 0.55) 50%,
+    rgba(200, 179, 251, 0.55) 100%);
+  box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
   cursor: pointer;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: transform 160ms, box-shadow 160ms, border-color 160ms;
-  text-shadow: 0 1px 3px rgba(120, 60, 140, 0.25);
+  transition: background 120ms, border-color 120ms, transform 120ms, box-shadow 120ms;
 }
 .object-mode-toggle:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 172, 234, 0.7);
+  box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
   transform: translateY(-1px);
-  border-color: rgba(255, 216, 242, 0.95);
-  box-shadow: 0 8px 24px rgba(255, 172, 234, 0.55),
-              0 0 0 1px rgba(255,255,255,0.3) inset;
 }
 .object-mode-toggle[aria-pressed="true"] {
-  background: linear-gradient(270deg,
-    rgba(252, 204, 131, 0.7) 0%,
-    rgba(242, 0, 222, 0.7) 40%,
-    rgba(168, 131, 255, 0.7) 100%);
+  background: linear-gradient(135deg,
+    rgba(252, 203, 131, 0.75) 0%,
+    rgba(255, 172, 234, 0.75) 50%,
+    rgba(200, 179, 251, 0.75) 100%);
 }
 body:not([data-mode="home"]) .object-mode-toggle { display: none; }
 
@@ -269,11 +328,14 @@ body:not([data-mode="home"]) .object-mode-toggle { display: none; }
   position: fixed; left: 14px; top: 50%; transform: translateY(-50%);
   display: flex; flex-direction: column; gap: 6px;
   z-index: 10;
-  max-height: 90vh; overflow-y: auto;
+  max-height: 90vh;
+  overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding-right: 4px;
   width: 200px;
-  overflow:visible;
 }
+#scenes::-webkit-scrollbar { display: none; width: 0; height: 0; }
 #scenes[hidden] { display: none; }
 .scene-group {
   display: flex; flex-direction: column; gap: 4px;
@@ -765,21 +827,13 @@ canvas { touch-action: none; }
   transition: transform 80ms ease-out;
 }
 
-/* ---- touch devices (mobile + tablet) — multiple OR'd checks for reliability across browsers.
-   phone-sized fallbacks are ungated (laptops don't fit those dimensions — MacBook 13.3 is
-   1280x800 so it can't match max-width:900 landscape). the tablet-sized landscape fallback
-   IS gated by (any-pointer: coarse) so trackpad-only laptops like MacBook 13.3 don't grab
-   the touch layout. ---- */
-@media (pointer: coarse),
-       (hover: none),
-       (max-width: 480px) and (orientation: portrait),
-       (max-width: 900px) and (orientation: landscape) and (max-height: 500px),
-       (max-width: 1024px) and (orientation: portrait) and (any-pointer: coarse),
-       (max-width: 1366px) and (orientation: landscape) and (max-height: 1024px) and (any-pointer: coarse) {
-  #world-hud .hud-line,
-  #world-hud .hud-heading,
-  #world-hud .hud-sub { display: none !important; }
-
+/* ---- touch devices (mobile + tablet). keyed on the PRIMARY pointer being coarse
+   (or no-hover). this is what distinguishes a real phone/tablet — and a DevTools
+   touch-device preset — from a desktop/laptop, including a touchscreen laptop whose
+   primary pointer is still the trackpad (pointer: fine). do NOT add (any-pointer:
+   coarse) size fallbacks: a touchscreen dev machine reports any-pointer: coarse at
+   every width, which would wrongly pull narrow desktop windows into the touch layout. ---- */
+@media (pointer: coarse), (hover: none) {
   /* companion → bottom-left */
   #companion {
     left: 14px;
@@ -796,15 +850,11 @@ canvas { touch-action: none; }
     bottom: 18px;
   }
 
-  /* home button hidden on touch — tapping the companion creature returns home */
-  .home-btn { display: none !important; }
+  /* tablets keep the centered top HUD (home + origin live there), so the
+     companion-tracked origin button stays hidden. phones hide the HUD and
+     surface the origin button on the companion instead (see phone blocks). */
 
-  /* on touch, the in-HUD recenter button is hidden; the companion-tracked
-     one inside #companion takes over (positioned by companion.js projection) */
-  #btn-recenter { display: none; }
-  .recenter-btn-mobile { display: flex; }
-
-  /* keep scenes nav clear of the bottom-left companion+home stack on side-rail layouts */
+  /* keep scenes nav clear of the bottom-left companion stack on side-rail layouts */
   #scenes {
     top: 56px;
     transform: none;
@@ -812,11 +862,8 @@ canvas { touch-action: none; }
   }
 
   .hud-btn { min-height: 44px; }
-  .scene-btn {
-    padding: 10px 14px;
-    font-size: 12px;
-    margin-top: 0;
-  }
+  /* scene-btn intentionally NOT enlarged here — keep desktop sizing so tablets and
+     DevTools laptop presets (which emulate a coarse pointer) match regular desktop. */
   .picker-pill {
     padding: 10px 16px;
     font-size: 13px;
@@ -832,6 +879,18 @@ canvas { touch-action: none; }
 
 /* ---- phone portrait: picker becomes bottom sheet, scenes as top menu ---- */
 @media (max-width: 480px) and (orientation: portrait) {
+  /* no instructional HUD on phones. hide the hint lines + home + in-HUD origin;
+     the companion carries the origin button and tapping it returns home.
+     (the "drop object" button stays — it's repositioned to top-center below.)
+     these are keyed on phone SIZE (not pointer) so they apply even when the
+     primary pointer reports "fine" (e.g. resizing a desktop window). */
+  #world-hud .hud-line,
+  #world-hud .home-btn,
+  #world-hud #btn-recenter { display: none !important; }
+  /* no speech bubble on phones — the origin button floats above the companion instead */
+  .companion-bubble { display: none !important; }
+  .recenter-btn-mobile { display: flex; }
+
   .picker-modal {
     top: auto;
     left: 0;
@@ -1052,6 +1111,13 @@ canvas { touch-action: none; }
 
 /* ---- phone landscape: picker becomes right side sheet ---- */
 @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  /* no instructional HUD on phones — see phone-portrait block for rationale */
+  #world-hud .hud-line,
+  #world-hud .home-btn,
+  #world-hud #btn-recenter { display: none !important; }
+  .companion-bubble { display: none !important; }
+  .recenter-btn-mobile { display: flex; }
+
   .picker-modal {
     top: 6px;
     bottom: 6px;
@@ -1197,3 +1263,4 @@ canvas { touch-action: none; }
     max-height: calc(100vh - 320px);
   }
 }
+

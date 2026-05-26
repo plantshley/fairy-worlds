@@ -105,6 +105,7 @@ export const SCENES = [
     world: "Twinkle Butterfly Patio",
     title: "Twinkle Butterfly Patio 1.1",
     url: import.meta.env.BASE_URL + "splats/Twinkle%20Butterfly%20Patio%201-1.spz",
+    collider: import.meta.env.BASE_URL + "colliders/twinkle-butterfly-patio-1-1_collider.glb",
     spawn: {
       position: [-0.35, 1.56, 1.23],
       quaternion: [-0.001, -0.035, 0.001, 0.999],
@@ -118,6 +119,27 @@ export const SCENES = [
     spawn: {
       position: [-0.35, 1.56, 1.23],
       quaternion: [-0.001, -0.035, 0.001, 0.999],
+    },
+  },
+
+  {
+    id: "jewel-princess-bathroom-1-1",
+    world: "Jewel Princess Bathroom",
+    title: "Jewel Princess Bathroom 1.1",
+    url: import.meta.env.BASE_URL + "splats/Jewel%20Princess%20Bathroom%201-1.spz",
+    spawn: {
+      position: [-0.27, 1.56, 0.08],
+      quaternion: [-0.001, -0.035, 0.001, 0.999],
+    },
+  },
+  {
+    id: "jewel-princess-bathroom-1-1-pano",
+    world: "Jewel Princess Bathroom",
+    title: "Jewel Princess Bathroom 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Jewel%20Princess%20Bathroom%201-1-pano.spz",
+    spawn: {
+      position: [-0.86, 1.61, 0.89],
+      quaternion: [-0.034, -0.338, -0.011, 0.940],
     },
   },
 

@@ -2,8 +2,16 @@ import * as THREE from "three";
 import { fadeElement } from "./three/transition.js";
 
 export function createSceneManager() {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  // antialias:false per Spark docs — WebGL MSAA does nothing for Gaussian splats
+  // and significantly reduces performance (it's a full-screen GPU cost we render
+  // splats over every frame). Splat edges are already soft; the character/UI take
+  // a small aliasing hit, mitigated by the pixel ratio below.
+  const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+  // Splat rendering is fill-rate-bound, so pixel count dominates the frame cost.
+  // Cap the device pixel ratio: on a 2x display this renders ~2.5x fewer pixels
+  // (1.25^2 vs 2^2) for a big fps win at a slight softness cost. Raise toward 1.5
+  // for crispness, drop to 1.0 for more speed.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x000000, 0);
   renderer.xr.enabled = true;
