@@ -77,6 +77,7 @@ html, body {
   text-shadow: none;
   width: auto;
   min-height: 0;
+  margin-top: 5px;
   transition: background 120ms, border-color 120ms, transform 120ms, box-shadow 120ms;
 }
 #btn-spawn-box:hover {
@@ -325,15 +326,20 @@ body:not([data-mode="home"]) .object-mode-toggle { display: none; }
 
 /* ---- left-side accordion gallery ---- */
 #scenes {
-  position: fixed; left: 14px; top: 50%; transform: translateY(-50%);
+  /* overflow-y: auto forces overflow-x to auto/hidden too (CSS quirk), so we can't
+     let the open-group's wide glow render outside the box. instead we pad horizontally
+     inside the clip rect to give the glow room, then shift left to compensate so the
+     pills visually sit where they used to (x≈14 → 14). */
+  position: fixed; left: -2px; top: 50%; transform: translateY(-50%);
   display: flex; flex-direction: column; gap: 6px;
   z-index: 10;
   max-height: 90vh;
   overflow-y: auto; overflow-x: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding-right: 4px;
-  width: 200px;
+  box-sizing: border-box;
+  padding: 16px;
+  width: 232px;
 }
 #scenes::-webkit-scrollbar { display: none; width: 0; height: 0; }
 #scenes[hidden] { display: none; }
@@ -1150,14 +1156,16 @@ canvas { touch-action: none; }
   /* home button just above companion */
   /* scenes nav: short strip on the left */
   #scenes {
-    width: 160px;
-    left: 6px;
+    width: 172px;
+    left: -2px;
     top: 10px;
     transform: none;
     max-height: calc(100vh - 175px);
     overflow-y: auto;
     overflow-x: hidden;
     gap: 1px;
+    padding: 6px 8px;
+    box-sizing: border-box;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }

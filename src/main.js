@@ -199,6 +199,10 @@ const vr = createVRController(
     onSessionStart: () => {
       if (manager.currentName() === "world") worldMode.recenterToCurrentSpawn();
     },
+    onTryPortal: (hand) => {
+      if (manager.currentName() !== "world") return false;
+      return worldMode.tryPortal(hand);
+    },
     onTryGrab: (hand) => {
       if (manager.currentName() !== "world") return false;
       if (localStorage.getItem(OBJECT_MODE_KEY) !== "1") return false;

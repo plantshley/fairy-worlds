@@ -4,7 +4,9 @@
       "Bash(ls \"C:\\\\Users\\\\ashle\\\\Downloads\\\\twinkle-butterfly-patio-1-1_collider.glb\" 2>&1; mkdir -p \"C:\\\\Users\\\\ashle\\\\Documents\\\\GitHub\\\\fairy-worlds\\\\public\\\\colliders\" 2>&1)",
       "Read(//c/Users/ashle/Downloads/**)",
       "Bash(cp \"C:\\\\Users\\\\ashle\\\\Downloads\\\\twinkle-butterfly-patio-1-1_collider.glb\" \"C:\\\\Users\\\\ashle\\\\Documents\\\\GitHub\\\\fairy-worlds\\\\public\\\\colliders\\\\twinkle-butterfly-patio-1-1_collider.glb\" && ls \"C:\\\\Users\\\\ashle\\\\Documents\\\\GitHub\\\\fairy-worlds\\\\public\\\\colliders\\\\\")",
-      "PowerShell(Copy-Item \"C:\\\\Users\\\\ashle\\\\Downloads\\\\twinkle-butterfly-patio-1-1_collider.glb\" \"C:\\\\Users\\\\ashle\\\\Documents\\\\GitHub\\\\fairy-worlds\\\\public\\\\colliders\\\\twinkle-butterfly-patio-1-1_collider.glb\")"
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\ashle\\\\Downloads\\\\twinkle-butterfly-patio-1-1_collider.glb\" \"C:\\\\Users\\\\ashle\\\\Documents\\\\GitHub\\\\fairy-worlds\\\\public\\\\colliders\\\\twinkle-butterfly-patio-1-1_collider.glb\")",
+      "Bash(git stash *)",
+      "mcp__chrome-devtools__select_page"
     ],
     "additionalDirectories": [
       "C:\\Users\\ashle\\Downloads"

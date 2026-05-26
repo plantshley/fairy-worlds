@@ -299,14 +299,32 @@ export const SCENES = [
     },
   },
 
-  {   
+  {
     id: "animal-crossing",
     world: "Random",
     title: "Animal Crossing",
     url: import.meta.env.BASE_URL + "splats/Random-AnimalCrossing.spz",
     spawn: {
-      position: [1.12, 3.95, 6.47],
-      quaternion: [0.000, 0.062, 0.001, 0.998],
+      position: [2.07, 4.13, -2.48],
+      quaternion: [-0.045, 0.258, 0.013, 0.965],
     },
+    portals: [
+      {
+        id: "ac-to-jewel-bathroom",
+        target: "jewel-princess-bathroom-1-1",
+        // TUNE: feet-on-ground. Logged camera pose was [-0.76, 3.98, -6.77]
+        // (eye height in AC's scaled space); subtract ~1.6 × 2.3 ≈ 3.6 for
+        // feet. Use window.logPortalSpot(3.6) in the console for live tuning.
+        position: [-1.54, 1.75, -10.82],
+        rotationY: 0.398,
+        animation: "bob",
+        loaderText: "Entering Celeste's bathroom ✦",
+        render: {
+          kind: "glb",
+          url: import.meta.env.BASE_URL + "characters/celeste_-_animal_crossing_new_horizons.glb",
+          scale: 0.075, // TUNE
+        },
+      },
+    ],
   },
 ];

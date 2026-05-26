@@ -19,6 +19,10 @@ export function createVRController(renderer, onStatus, handlers = {}) {
     const hand = event.inputSource?.handedness;
     if (hand !== "left" && hand !== "right") return;
 
+    // Portal hit takes priority over everything else: it's a deliberate
+    // teleport target. Consume the gesture (skip grab and cycle logic).
+    if (handlers.onTryPortal?.(hand)) return;
+
     // Object mode: if the trigger pointed at a grabbable, swallow the event so
     // the scene-cycle double-trigger logic below doesn't also fire.
     if (handlers.onTryGrab?.(hand)) return;
