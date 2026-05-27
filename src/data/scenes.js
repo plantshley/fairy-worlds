@@ -132,6 +132,16 @@ export const SCENES = [
     },
   },
   {
+    id: "jewel-princess-bathroom-1-1-E",
+    world: "Jewel Princess Bathroom",
+    title: "Jewel Princess Bathroom 1.1e2",
+    url: import.meta.env.BASE_URL + "splats/Jewel%20Princess%20Bathroom%201-1-E.spz",
+    spawn: {
+      position: [-0.27, 1.56, 0.08],
+      quaternion: [-0.001, -0.035, 0.001, 0.999],
+    },
+  },
+  {
     id: "jewel-princess-bathroom-1-1-pano",
     world: "Jewel Princess Bathroom",
     title: "Jewel Princess Bathroom 1.1-pano",
@@ -342,6 +352,49 @@ export const SCENES = [
       position: [0.10, 2.06, 0.16],
       quaternion: [-0.095, 0.169, 0.017, 0.981],
     },
+    // Doorway portals stand in the two hallway openings. Positions are from
+    // logPose() walking up to each door (camera-eye height ≈ 1.5), so each
+    // portal sits roughly where the user was looking — tune with HMR. The
+    // rotationY value was derived as logged-yaw + π so the portal faces back
+    // toward the player. Sizes are conservative; bump width/height if doors
+    // are larger in the splat.
+    portals: [
+      {
+        id: "melody-to-pink",
+        target: "lovely-pink-interior",
+        // Logged: position [0.02, 1.53, -4.11], quaternion ≈ identity → yaw ≈ 0
+        // → portal yaw ≈ π. Y dropped 0.3m below logged eye since the door
+        // center sits below standing eye height; tune as needed.
+        position: [0.15, 1.23, -4.75],
+        rotationY: Math.PI,
+        loaderText: "entering pink interior ✦",
+        render: {
+          kind: "doorway",
+          width: 1.9,
+          height: 2.1,
+          radius: 0.18,
+          colorA: "#ff9bce",
+          colorB: "#ffd5ec",
+        },
+      },
+      {
+        id: "melody-to-mint",
+        target: "lovely-mint-interior",
+        // Logged: position [3.27, 1.45, -3.08], quaternion ≈ [-0.015, -0.765,
+        // -0.017, 0.643] → yaw ≈ -1.74 → portal yaw ≈ 1.40.
+        position: [4.4, 1.15, -2.6],
+        rotationY: 1.5,
+        loaderText: "entering mint interior ✦",
+        render: {
+          kind: "doorway",
+          width: 1.9,
+          height: 2.1,
+          radius: 0.18,
+          colorA: "#9beed1",
+          colorB: "#d5f5e8",
+        },
+      },
+    ],
   },
   {
     id: "lovely-pink-interior",
@@ -352,6 +405,30 @@ export const SCENES = [
       position: [0.50, 1.40, 0.81],
       quaternion: [-0.044, 0.104, 0.005, 0.994],
     },
+    // Return portal ~1m behind the spawn spot. Derived: spawn fwd ≈
+    // (-0.21, -0.09, -0.97) → back ≈ (+0.21, +0.09, +0.97); position =
+    // spawn + back*1.0 with y dropped 0.3m to door center; rotationY =
+    // spawn yaw (0.21), which makes the plane face the player after they
+    // turn around. Tune position[2] tighter/looser if 1m clips a wall.
+    portals: [
+      {
+        id: "pink-to-melody",
+        target: "lovely-melody-interior",
+        position: [0.71, 1.10, 1.78],
+        rotationY: 0.21,
+        loaderText: "returning to melody hallway ✦",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          // Lavender — distinct from the pink/mint front-side doors so the
+          // return portal reads as a different destination.
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
   },
   {
     id: "lovely-mint-interior",
@@ -362,6 +439,24 @@ export const SCENES = [
       position: [0.50, 1.40, 0.81],
       quaternion: [-0.044, 0.104, 0.005, 0.994],
     },
+    // Same return-portal geometry as the pink interior — both share a spawn.
+    portals: [
+      {
+        id: "mint-to-melody",
+        target: "lovely-melody-interior",
+        position: [0.71, 1.10, 1.78],
+        rotationY: 0.21,
+        loaderText: "returning to melody room ✦",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
   },
 
   {

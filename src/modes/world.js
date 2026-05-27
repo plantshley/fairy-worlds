@@ -346,12 +346,20 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
 
   function disposePortals() {
     if (currentPortals.length === 0) return;
+    // Drop the hovered portal reference in portals.js BEFORE wiping the array
+    // — otherwise a subsequent pointermove can fire onHover(false) against a
+    // now-orphaned entry. Closure's find() guards against the write, but
+    // letting a stale ref linger is fragile.
+    portalInteraction?.clearHover();
     for (const p of currentPortals) {
       scene.remove(p.root);
       p.root.traverse((obj) => {
         // Cover Meshes (GLB geometry) and Sprites (♡ bubble) — both have
         // .material that needs disposal, and Mesh has its own geometry.
         // Sprite geometry is shared internally by three.js; don't dispose it.
+        // NOTE: only material.map is disposed here. If a future shader adds
+        // other texture slots (emissiveMap, alphaMap, custom uniform
+        // samplers), add them to this loop or they'll leak GL textures.
         if (obj.isMesh) obj.geometry?.dispose?.();
         if (obj.isMesh || obj.isSprite) {
           const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -365,83 +373,273 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     currentPortals.length = 0;
   }
 
-  // Fire-and-forget per portal. The loadToken gate guarantees a stale GLB
+  // Fire-and-forget per portal. The loadToken gate guarantees a stale asset
   // (user switched scenes mid-fetch) doesn't get added to the wrong scene.
+  // Dispatches on render.kind: "glb" (character) or "doorway" (translucent
+  // rounded-rect plane with animated swirl + hover sparkle/halo).
   function spawnPortals(sceneDef, myToken) {
     const defs = sceneDef.portals;
     if (!defs || defs.length === 0) return;
     for (const portalDef of defs) {
-      loadCharacter({ kind: "glb", ...portalDef.render })
-        .then(({ root: inner }) => {
-          if (myToken !== loadToken) return;
-          // Wrap in an outer group so the portal's world pose lives here,
-          // leaving any offsetX/Y/Z + rotationY that wrapWithScale baked into
-          // `inner` intact (same fitup vocabulary as characters.js).
-          const root = new THREE.Group();
-          root.position.fromArray(portalDef.position);
-          root.rotation.y = portalDef.rotationY ?? 0;
-          root.add(inner);
-
-          // Compute a LOCAL-to-root bbox from bind-pose geometry boxes. We do
-          // this manually instead of Box3.setFromObject because SkinnedMesh
-          // overrides computeBoundingBox to use post-skinning vertices via
-          // getVertexPosition() — and with no AnimationMixer running, the
-          // skeleton hasn't been driven, so getVertexPosition collapses every
-          // vertex to ~origin. The bind-pose geometry.boundingBox is what we
-          // actually want for sizing a click proxy + bubble anchor.
-          // bbox expressed in root's LOCAL frame (so proxy + bubble positions
-          // copy directly without further transforms). stopAt=root includes
-          // inner's wrapper scale in the chain.
-          const localBox = computeLocalBindBox(inner, root);
-
-          // Invisible click proxy. SkinnedMesh raycast pre-culls on the same
-          // collapsed skinning bbox, so the ray never reaches per-triangle
-          // tests on the actual character. A simple Box mesh raycasts reliably
-          // regardless of skinning, and findHitPortal walks the parent chain
-          // back to `root`, so a proxy hit registers as a portal hit.
-          let proxy = null;
-          if (!localBox.isEmpty()) {
-            const size = new THREE.Vector3();
-            localBox.getSize(size);
-            const center = new THREE.Vector3();
-            localBox.getCenter(center);
-            const geom = new THREE.BoxGeometry(size.x, size.y, size.z);
-            const mat = new THREE.MeshBasicMaterial({ visible: false });
-            proxy = new THREE.Mesh(geom, mat);
-            proxy.position.copy(center);
-            root.add(proxy);
-          }
-
-          // ♡ speech bubble above her head — anchored on the bind-pose top.
-          // Size is proportional to character height with a sensible floor so
-          // small-scale characters still show a visible bubble.
-          if (portalDef.bubble !== false && !localBox.isEmpty()) {
-            const height = localBox.max.y - localBox.min.y;
-            const width = Math.max(localBox.max.x - localBox.min.x, localBox.max.z - localBox.min.z);
-            const bubble = createHeartBubble();
-            const bubbleSize = Math.max(height * 0.14, width * 0.2);
-            bubble.scale.set(bubbleSize, bubbleSize, 1);
-            bubble.position.set(0, localBox.max.y + bubbleSize * 0.65, 0);
-            root.add(bubble);
-          }
-
-          scene.add(root);
-          currentPortals.push({
-            root,
-            proxy,
-            target: portalDef.target,
-            baseY: portalDef.position[1],
-            animation: portalDef.animation ?? "bob",
-            scale: portalDef.render?.scale ?? 1,
-            loaderText: portalDef.loaderText,
-            // Random phase so multiple portals in one scene don't bob in lockstep.
-            phase: Math.random() * Math.PI * 2,
-          });
-        })
-        .catch((err) => {
-          console.warn(`[portals] failed to load ${portalDef.id ?? portalDef.target}:`, err);
-        });
+      const kind = portalDef.render?.kind ?? "glb";
+      if (kind === "doorway") {
+        buildDoorwayPortal(portalDef, myToken);
+      } else {
+        buildGLBPortal(portalDef, myToken);
+      }
     }
+  }
+
+  // Existing GLB path (Celeste-style character). Async because loadCharacter
+  // fetches a GLB; the loadToken gate is checked once that resolves.
+  function buildGLBPortal(portalDef, myToken) {
+    loadCharacter({ kind: "glb", ...portalDef.render })
+      .then(({ root: inner }) => {
+        if (myToken !== loadToken) return;
+        // Wrap in an outer group so the portal's world pose lives here,
+        // leaving any offsetX/Y/Z + rotationY that wrapWithScale baked into
+        // `inner` intact (same fitup vocabulary as characters.js).
+        const root = new THREE.Group();
+        root.position.fromArray(portalDef.position);
+        root.rotation.y = portalDef.rotationY ?? 0;
+        root.add(inner);
+
+        // Compute a LOCAL-to-root bbox from bind-pose geometry boxes. We do
+        // this manually instead of Box3.setFromObject because SkinnedMesh
+        // overrides computeBoundingBox to use post-skinning vertices via
+        // getVertexPosition() — and with no AnimationMixer running, the
+        // skeleton hasn't been driven, so getVertexPosition collapses every
+        // vertex to ~origin. The bind-pose geometry.boundingBox is what we
+        // actually want for sizing a click proxy + bubble anchor.
+        const localBox = computeLocalBindBox(inner, root);
+
+        // Invisible click proxy. SkinnedMesh raycast pre-culls on the same
+        // collapsed skinning bbox, so the ray never reaches per-triangle
+        // tests on the actual character. A simple Box mesh raycasts reliably
+        // regardless of skinning, and findHitPortal walks the parent chain
+        // back to `root`, so a proxy hit registers as a portal hit.
+        let proxy = null;
+        if (!localBox.isEmpty()) {
+          const size = new THREE.Vector3();
+          localBox.getSize(size);
+          const center = new THREE.Vector3();
+          localBox.getCenter(center);
+          const geom = new THREE.BoxGeometry(size.x, size.y, size.z);
+          const mat = new THREE.MeshBasicMaterial({ visible: false });
+          proxy = new THREE.Mesh(geom, mat);
+          proxy.position.copy(center);
+          root.add(proxy);
+        }
+
+        // ♡ speech bubble above her head — anchored on the bind-pose top.
+        if (portalDef.bubble !== false && !localBox.isEmpty()) {
+          const height = localBox.max.y - localBox.min.y;
+          const width = Math.max(localBox.max.x - localBox.min.x, localBox.max.z - localBox.min.z);
+          const bubble = createHeartBubble();
+          const bubbleSize = Math.max(height * 0.14, width * 0.2);
+          bubble.scale.set(bubbleSize, bubbleSize, 1);
+          bubble.position.set(0, localBox.max.y + bubbleSize * 0.65, 0);
+          root.add(bubble);
+        }
+
+        scene.add(root);
+        currentPortals.push({
+          root,
+          proxy,
+          target: portalDef.target,
+          baseY: portalDef.position[1],
+          animation: portalDef.animation ?? "bob",
+          scale: portalDef.render?.scale ?? 1,
+          loaderText: portalDef.loaderText,
+          // Random phase so multiple portals in one scene don't bob in lockstep.
+          phase: Math.random() * Math.PI * 2,
+        });
+      })
+      .catch((err) => {
+        console.warn(`[portals] failed to load ${portalDef.id ?? portalDef.target}:`, err);
+      });
+  }
+
+  // Doorway portal: a flat translucent rounded-rect plane with an animated
+  // swirly two-color gradient + in-shader twinkling sparkle stars + outer halo
+  // ring that brightens on hover. Synchronous (no asset fetch).
+  //
+  // Geometry is slightly larger than the rect so the halo has uv space to
+  // render in the surrounding ring. Click target is a SEPARATE invisible plane
+  // sized exactly to the rect — clicks in the halo ring don't count.
+  function buildDoorwayPortal(portalDef, myToken) {
+    // Token check is symmetrical with the GLB path even though we're sync —
+    // future-proofs against any added await without changing the contract.
+    if (myToken !== loadToken) return;
+    const r = portalDef.render;
+    const width = r.width ?? 0.9;
+    const height = r.height ?? 1.8;
+    const radius = r.radius ?? 0.15;
+    // Halo extends ~25% beyond rect on each side, capped so very tall doors
+    // don't get absurd halos. The shader's SDF still uses the inner rect for
+    // its mask; the extra geometry is purely halo space.
+    const haloMargin = Math.min(0.3, Math.max(width, height) * 0.25);
+    const planeW = width + haloMargin * 2;
+    const planeH = height + haloMargin * 2;
+
+    const colorA = new THREE.Color(r.colorA ?? "#ff9bce");
+    const colorB = new THREE.Color(r.colorB ?? "#ffd5ec");
+
+    const material = createDoorwayMaterial({
+      colorA,
+      colorB,
+      size: new THREE.Vector2(width, height),
+      planeSize: new THREE.Vector2(planeW, planeH),
+      radius,
+    });
+
+    const root = new THREE.Group();
+    root.position.fromArray(portalDef.position);
+    root.rotation.y = portalDef.rotationY ?? 0;
+
+    const planeGeom = new THREE.PlaneGeometry(planeW, planeH);
+    const planeMesh = new THREE.Mesh(planeGeom, material);
+    planeMesh.renderOrder = 20; // draw over splats
+    root.add(planeMesh);
+
+    // Invisible click proxy sized to the inner rect — the halo ring isn't
+    // clickable. Only the proxy is in portalTargets(), so the decorative
+    // plane never raycasts and z-ordering between the two is irrelevant.
+    // DoubleSide so back-face clicks work for portals you walk past.
+    const proxyGeom = new THREE.PlaneGeometry(width, height);
+    const proxyMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
+    const proxy = new THREE.Mesh(proxyGeom, proxyMat);
+    root.add(proxy);
+
+    scene.add(root);
+    currentPortals.push({
+      root,
+      proxy,
+      target: portalDef.target,
+      baseY: portalDef.position[1],
+      animation: portalDef.animation ?? "none", // doorways don't bob
+      scale: 1,
+      loaderText: portalDef.loaderText,
+      phase: 0,
+      // Doorway-specific: hover state + smoothed uniform updater. uHover is
+      // smoothed in update(dt); setHover just nudges the target.
+      material,
+      hoverTarget: 0,
+      hoverValue: 0,
+      onHover: (hover) => {
+        const entry = currentPortals.find((cp) => cp.root === root);
+        if (entry) entry.hoverTarget = hover ? 1 : 0;
+      },
+    });
+  }
+
+  // Standalone material factory so the shader is one self-contained block.
+  // Uniforms drive every visual aspect — geometry only carries plane size.
+  function createDoorwayMaterial({ colorA, colorB, size, planeSize, radius }) {
+    return new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      // NormalBlending is the ShaderMaterial default, but Spark's renderer
+      // touches global GL state — set explicitly so a future stomp doesn't
+      // silently break the swirl gradient.
+      blending: THREE.NormalBlending,
+      uniforms: {
+        uTime: { value: 0 },
+        uHover: { value: 0 },
+        uColorA: { value: colorA },
+        uColorB: { value: colorB },
+        // Inner rect size + corner radius in WORLD units (not normalized) —
+        // the shader reconstructs world-space p from vUv using uPlaneSize.
+        uRectSize: { value: size },
+        uRadius: { value: radius },
+        uPlaneSize: { value: planeSize },
+      },
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uTime;
+        uniform float uHover;
+        uniform vec3 uColorA;
+        uniform vec3 uColorB;
+        uniform vec2 uRectSize;
+        uniform vec2 uPlaneSize;
+        uniform float uRadius;
+        varying vec2 vUv;
+
+        // SDF of axis-aligned rounded rect, centered at origin, half-extents b,
+        // corner radius r. Negative inside, positive outside.
+        float sdRoundRect(vec2 p, vec2 b, float r) {
+          vec2 d = abs(p) - b + vec2(r);
+          return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
+        }
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        void main() {
+          // Reconstruct local position on the plane from vUv (vUv ∈ [0,1]).
+          vec2 p = (vUv - 0.5) * uPlaneSize;
+          float d = sdRoundRect(p, uRectSize * 0.5, uRadius);
+
+          // Inner rect alpha — soft edge in world units (~5mm).
+          float edge = 0.005;
+          float mask = 1.0 - smoothstep(-edge, edge, d);
+
+          // Swirly two-color gradient. Polar coords on rect-normalized uv so
+          // the swirl looks consistent across portal sizes.
+          vec2 rn = p / max(uRectSize.x, uRectSize.y);
+          float ang = atan(rn.y, rn.x);
+          float rad = length(rn);
+          float swirl = sin(ang * 3.0 + uTime * 0.6 + rad * 9.0);
+          float t = 0.5 + 0.5 * swirl;
+          vec3 base = mix(uColorA, uColorB, t);
+          // Soft inner pulse — center is a touch brighter.
+          float pulse = 0.9 + 0.1 * sin(uTime * 1.4);
+          base *= 0.85 + 0.45 * pulse * (1.0 - clamp(rad * 1.4, 0.0, 1.0));
+
+          // Sparkle field — grid cells, each cell holds one star with random
+          // sub-position + twinkle phase. Cross shape (✦-ish) instead of a
+          // round dot for visual continuity with the DOM glyph sparkles. Always
+          // present at low intensity; hover scales them up.
+          vec2 grid = vUv * vec2(8.0 * uPlaneSize.x / uPlaneSize.y, 8.0);
+          vec2 cell = floor(grid);
+          vec2 cellUv = fract(grid) - 0.5;
+          float rnd = hash(cell);
+          vec2 starPos = (vec2(hash(cell + 1.7), hash(cell + 5.3)) - 0.5) * 0.6;
+          float twinkle = 0.5 + 0.5 * sin(uTime * (2.0 + 4.0 * rnd) + rnd * 6.28);
+          // Cross = bright horizontal + vertical streaks centered on starPos.
+          vec2 sp = cellUv - starPos;
+          float cross = exp(-90.0 * sp.x * sp.x) + exp(-90.0 * sp.y * sp.y);
+          float radial = exp(-12.0 * dot(sp, sp));
+          float star = (cross * 0.5 + radial) * twinkle;
+          float starGain = mix(0.18, 0.85, uHover);
+          base += vec3(1.0, 0.96, 0.99) * star * starGain;
+
+          // Outer halo: ring in the ~haloMargin region where d > 0. The ring
+          // fades out within ~radius world units past the rect edge.
+          float haloWidth = 0.2;
+          float halo = (1.0 - smoothstep(0.0, haloWidth, d)) * (1.0 - mask);
+          float haloIntensity = mix(0.25, 1.0, uHover);
+          vec3 haloColor = mix(uColorA, uColorB, 0.5);
+          base += haloColor * halo * haloIntensity;
+
+          float alpha = mask * 0.72 + halo * (0.35 + 0.4 * uHover);
+          alpha = clamp(alpha, 0.0, 1.0);
+          // Clamp color — additive sparkles + halo can spike well above 1.0
+          // (8-bit framebuffer clips to white), making bright sparkles look
+          // like flat white holes rather than highlights.
+          base = clamp(base, 0.0, 1.0);
+          gl_FragColor = vec4(base, alpha);
+        }
+      `,
+    });
   }
 
   // Manual bbox from bind-pose geometry boxes, expressed in `stopAt`'s local
@@ -581,9 +779,20 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       // 0.15 base amplitude with 1.8 rad/s reads as a relaxed AC-style hop
       // (~3.5 s per cycle). Amplitude scales with render scale so larger
       // characters get a proportionally larger bob.
+      // Hover-smooth coefficient: ~6/sec → reaches ~95% of target in ~0.5s.
+      // Feels responsive without snapping (snap looks twitchy on cursor pass).
+      const hoverK = Math.min(1, dt * 6);
       for (const p of currentPortals) {
-        if (p.animation !== "bob") continue;
-        p.root.position.y = p.baseY + Math.sin(portalClock * 1.8 + p.phase) * 0.15 * p.scale;
+        if (p.animation === "bob") {
+          p.root.position.y = p.baseY + Math.sin(portalClock * 1.8 + p.phase) * 0.15 * p.scale;
+        }
+        if (p.material?.uniforms) {
+          p.material.uniforms.uTime.value = portalClock;
+          if (typeof p.hoverTarget === "number") {
+            p.hoverValue += (p.hoverTarget - p.hoverValue) * hoverK;
+            p.material.uniforms.uHover.value = p.hoverValue;
+          }
+        }
       }
     }
   }

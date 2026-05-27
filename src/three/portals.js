@@ -134,9 +134,55 @@ export function createPortalInteraction({ renderer, camera, dolly, getPortals, o
     if (pending && e.pointerId === pending.pointerId) pending = null;
   }
 
+  // --- Hover (desktop only) ---
+  //
+  // Tracks the last-hovered portal across pointermove events and fires
+  // portal.onHover(true|false) on enter/leave. Touch devices have no hover,
+  // and a "touch" pointermove with no buttons pressed never fires, so we just
+  // gate on pointerType === "mouse". Skip during a press so a drag doesn't
+  // toggle hover state while the user is swinging the camera. Skip in VR
+  // (controller raycast has no equivalent event — could be added later by
+  // polling controller pose).
+  let hovered = null;
+  function clearHover() {
+    if (hovered) {
+      hovered.onHover?.(false);
+      hovered = null;
+    }
+  }
+  function onPointerMove(e) {
+    if (renderer.xr?.isPresenting) return;
+    if (e.pointerType !== "mouse") return;
+    if (pending) return;
+    if (e.target !== dom) {
+      clearHover();
+      return;
+    }
+    const roots = portalTargets();
+    if (roots.length === 0) {
+      clearHover();
+      return;
+    }
+    const rect = dom.getBoundingClientRect();
+    _ndc.set(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    camera.updateMatrixWorld(true);
+    raycaster.setFromCamera(_ndc, camera);
+    raycaster.far = DESKTOP_RAY_REACH;
+    const hits = raycaster.intersectObjects(roots, true);
+    const portal = hits.length > 0 ? findHitPortal(hits[0]) : null;
+    if (portal === hovered) return;
+    hovered?.onHover?.(false);
+    hovered = portal;
+    hovered?.onHover?.(true);
+  }
+
   window.addEventListener("pointerdown", onPointerDown, true);
   window.addEventListener("pointerup", onPointerUp, true);
   window.addEventListener("pointercancel", onPointerCancel, true);
+  window.addEventListener("pointermove", onPointerMove, true);
 
   // --- VR ---
 
@@ -165,8 +211,10 @@ export function createPortalInteraction({ renderer, camera, dolly, getPortals, o
     window.removeEventListener("pointerdown", onPointerDown, true);
     window.removeEventListener("pointerup", onPointerUp, true);
     window.removeEventListener("pointercancel", onPointerCancel, true);
+    window.removeEventListener("pointermove", onPointerMove, true);
     pending = null;
+    hovered = null;
   }
 
-  return { tryPortal, dispose };
+  return { tryPortal, dispose, clearHover };
 }
