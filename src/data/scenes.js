@@ -105,7 +105,6 @@ export const SCENES = [
     world: "Twinkle Butterfly Patio",
     title: "Twinkle Butterfly Patio 1.1",
     url: import.meta.env.BASE_URL + "splats/Twinkle%20Butterfly%20Patio%201-1.spz",
-    collider: import.meta.env.BASE_URL + "colliders/twinkle-butterfly-patio-1-1_collider.glb",
     spawn: {
       position: [-0.35, 1.56, 1.23],
       quaternion: [-0.001, -0.035, 0.001, 0.999],
@@ -287,6 +286,8 @@ export const SCENES = [
       position: [-0.48, 1.56, 0.12],
       quaternion: [-0.028, -0.205, -0.005, 0.978],
     },
+    // autoAlignFloor: true,        // snap collider's lowest vertex to (spawn.y − 1.6),
+    // colliderOffset: [x, y, z], // optional fine-tune on top, if needed
   },
   {
     id: "frutiger-rainbow-cafe-1-1-pano",
@@ -298,7 +299,7 @@ export const SCENES = [
       quaternion: [-0.028, -0.205, -0.005, 0.978],
     },
   },
-  
+
   {
     id: "lavender-patio-1-1",
     world: "Random",
@@ -333,6 +334,37 @@ export const SCENES = [
   },
 
   {
+    id: "lovely-melody-interior",
+    world: "Random",
+    title: "Lovely Melody Interior",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-melody-interior.spz",
+    spawn: {
+      position: [0.10, 2.06, 0.16],
+      quaternion: [-0.095, 0.169, 0.017, 0.981],
+    },
+  },
+  {
+    id: "lovely-pink-interior",
+    world: "Random",
+    title: "Lovely Pink Interior",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-pink-interior.spz",
+    spawn: {
+      position: [0.50, 1.40, 0.81],
+      quaternion: [-0.044, 0.104, 0.005, 0.994],
+    },
+  },
+  {
+    id: "lovely-mint-interior",
+    world: "Random",
+    title: "Lovely Mint Interior",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-mint-interior.spz",
+    spawn: {
+      position: [0.50, 1.40, 0.81],
+      quaternion: [-0.044, 0.104, 0.005, 0.994],
+    },
+  },
+
+  {
     id: "animal-crossing",
     world: "Random",
     title: "Animal Crossing",
@@ -343,15 +375,15 @@ export const SCENES = [
     },
     portals: [
       {
-        id: "ac-to-jewel-bathroom",
-        target: "jewel-princess-bathroom-1-1",
+        id: "ac-to-melody",
+        target: "lovely-melody-interior",
         // TUNE: feet-on-ground. Logged camera pose was [-0.76, 3.98, -6.77]
         // (eye height in AC's scaled space); subtract ~1.6 × 2.3 ≈ 3.6 for
         // feet. Use window.logPortalSpot(3.6) in the console for live tuning.
         position: [-1.54, 1.75, -10.82],
         rotationY: 0.398,
         animation: "bob",
-        loaderText: "Entering Celeste's bathroom ✦",
+        loaderText: "entering Celeste's home ✦",
         render: {
           kind: "glb",
           url: import.meta.env.BASE_URL + "characters/celeste_-_animal_crossing_new_horizons.glb",

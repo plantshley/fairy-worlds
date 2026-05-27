@@ -119,10 +119,14 @@ export function createPortalInteraction({ renderer, camera, dolly, getPortals, o
     const portal = findHitPortal(hits[0]);
     if (!portal) return;
 
-    // Confirmed portal hit — block downstream handlers (e.g. SparkControls
-    // momentum kick from the tap, or world-picker close-on-canvas listeners).
+    // Confirmed portal hit. We do NOT stopImmediatePropagation here:
+    // SparkControls listens for pointerup on `document` and touchControls
+    // listens on the canvas. Swallowing this event leaves them stuck thinking
+    // the pointer is still down — next pointermove drags the camera with no
+    // click. The pointerdown was already let through, so they need to see the
+    // matching up to clear their drag state. preventDefault still suppresses
+    // browser-default behaviors (text selection on touch, etc.).
     e.preventDefault();
-    e.stopImmediatePropagation();
     onEnter(portal);
   }
 

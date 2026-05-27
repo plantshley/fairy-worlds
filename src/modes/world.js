@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { SparkRenderer, SplatMesh, SparkControls } from "@sparkjsdev/spark";
 import { SCENES } from "../data/scenes.js";
+import { getColliderForScene, getObjectsForWorld } from "../data/sceneAssets.js";
 import { showLoader, updateLoader, hideLoader } from "../ui/loader.js";
 import { createVRLocomotion } from "../three/vrLocomotion.js";
 import { createTouchControls } from "../three/touchControls.js";
@@ -15,6 +16,19 @@ const OBJECT_MODE_KEY = "fairy-worlds-object-mode";
 function isObjectMode() {
   return localStorage.getItem(OBJECT_MODE_KEY) === "1";
 }
+
+// Single in-world target size (meters, longest bbox dimension) applied to
+// every GLB dropped via spawnBox. Source GLBs come from different tools at
+// different authoring scales — this constant pins them all to a consistent
+// hand-sized object. Tweak here.
+const OBJECT_TARGET_SIZE = 0.4;
+
+// Average standing eye height (meters). Used as the offset between a scene's
+// spawn.y (which is the camera/eye position in splat coords) and the floor's
+// Y when `autoAlignFloor: true` is set on a scene — the collider's lowest
+// vertex gets snapped to (spawn.y − this), which is approximately where the
+// splat's floor sits.
+const ASSUMED_EYE_HEIGHT = 1.6;
 import {
   trackWorldEnter,
   sceneVersionFromTitle,
@@ -31,10 +45,13 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     1000,
   );
 
-  // maxStdDev trims how far each Gaussian is drawn from its center (default
-  // sqrt(8)≈2.83). sqrt(4)=2 is the documented fast end of the acceptable range —
-  // less per-splat overdraw, which is the main fill cost in a heavy scene.
-  const spark = new SparkRenderer({ renderer, maxStdDev: Math.sqrt(4) });
+  // maxStdDev defaults to sqrt(8)≈2.83 — splats extend out far enough to
+  // overlap neighbors and close inter-splat gaps. Earlier this was clamped to
+  // sqrt(4)=2 for perf, but that made sparse scenes (AC-style interiors) show
+  // visible "loose dots" because adjacent splats no longer touched.
+  // focalAdjustment 2.0 matches PlayCanvas-style splat sharpening, which is
+  // the likely renderer behind Marble's viewer.
+  const spark = new SparkRenderer({ renderer, focalAdjustment: 2.0 });
   scene.add(spark);
 
   // Splats are self-colored (Spark) and physics boxes are MeshBasicMaterial,
@@ -59,6 +76,9 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
   let physics = null;
   let grab = null;
   let physicsPromise = null;
+  // Round-robin index into the current world's mapped object GLBs. Resets on
+  // world change so each new world starts at object 0.
+  let objectCycleIdx = 0;
   const currentPortals = []; // { root, target, baseY, animation, scale, loaderText, phase }
   let portalClock = 0;
   // Held by loadScene so a follow-up loadScene can unblock the previous load's
@@ -141,6 +161,11 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     return physicsPromise;
   }
 
+  // Drops something in front of the player. If the current world has mapped
+  // object GLBs (see src/data/sceneAssets.js), cycles through them
+  // deterministically; otherwise falls back to a randomly-colored primitive
+  // box. Spawn position is ~2.5m in front of the camera, 0.4m above eye level,
+  // with light XZ jitter so repeated drops don't stack on the same point.
   function spawnBox() {
     if (!physics) {
       ensurePhysics().then(() => physics && spawnBox());
@@ -158,17 +183,26 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     const spawnDistance = 2.5;
     const jitterX = (Math.random() - 0.5) * 0.3;
     const jitterZ = (Math.random() - 0.5) * 0.3;
+    const position = {
+      x: p.x + fwd.x * spawnDistance + jitterX,
+      y: p.y + 0.4,
+      z: p.z + fwd.z * spawnDistance + jitterZ,
+    };
+
+    const mapped = currentWorld ? getObjectsForWorld(currentWorld) : [];
+    if (mapped.length > 0) {
+      const url = mapped[objectCycleIdx % mapped.length];
+      objectCycleIdx++;
+      physics.spawnObject({ url, position, targetSize: OBJECT_TARGET_SIZE }).catch((err) => {
+        console.warn(`[world] spawnObject failed for ${url}, falling back to box:`, err);
+        physics.spawnBox({ position, size: 0.3, color: 0xff88cc });
+      });
+      return;
+    }
+
     const palette = [0xff88cc, 0xc8b3fb, 0xfccb83, 0x88ddff, 0xb3fbc8];
     const color = palette[Math.floor(Math.random() * palette.length)];
-    physics.spawnBox({
-      position: {
-        x: p.x + fwd.x * spawnDistance + jitterX,
-        y: p.y + 0.4,
-        z: p.z + fwd.z * spawnDistance + jitterZ,
-      },
-      size: 0.3,
-      color,
-    });
+    physics.spawnBox({ position, size: 0.3, color });
   }
 
   function tryGrab(hand) {
@@ -217,19 +251,48 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     disposePortals();
 
     if (isObjectMode() && !physics) ensurePhysics();
-    const isNewWorldForPhysics =
-      sceneDef.world !== currentWorld || sceneDef.world === "Random";
-    if (physics && isNewWorldForPhysics) {
+    const sceneChanged = sceneDef.id !== currentSceneId;
+    // Boxes/objects clear on every scene change (the dropped state was
+    // positioned against the old collider — keeping it after a swap would
+    // leave items floating or stuck in new geometry).
+    if (physics && sceneChanged) {
       // Drop any active grab BEFORE freeing bodies — otherwise grab.update()
       // calls setKinematicPose on a freed Rapier handle next frame.
       grab?.releaseAll();
       physics.clearAll();
-      physics.clearSceneCollider();
+      objectCycleIdx = 0;
     }
-    // Async fire-and-forget — collider just appears once loaded. Splat doesn't
-    // wait on it, and loadSceneCollider has its own token to drop stale loads.
-    if (sceneDef.collider && isNewWorldForPhysics) {
-      ensurePhysics().then(() => physics?.loadSceneCollider(sceneDef.collider));
+    // Collider URL is auto-derived from scene id via the asset-manifest plugin
+    // (see src/data/sceneAssets.js). Explicit sceneDef.collider still wins if
+    // present, so a scene can override the convention. We only load the
+    // collider if object mode is on OR physics is already initialized — no
+    // point spinning up Rapier just to install a collider nobody can interact
+    // with yet.
+    const colliderUrl = sceneDef.collider ?? getColliderForScene(sceneDef.id);
+    if (sceneChanged && (isObjectMode() || physics)) {
+      // Pack collider load options. autoAlignFloor: true on a scene snaps the
+      // collider's lowest vertex to the splat's estimated floor Y, so Marble
+      // exports with random baked offsets self-correct.
+      const colliderOpts = {
+        offset: sceneDef.colliderOffset,
+        autoAlignFloorY: sceneDef.autoAlignFloor
+          ? sceneDef.spawn.position[1] - ASSUMED_EYE_HEIGHT
+          : undefined,
+      };
+      ensurePhysics().then(() => {
+        if (!physics) return;
+        if (colliderUrl) physics.loadSceneCollider(colliderUrl, colliderOpts);
+        else physics.clearSceneCollider();
+      });
+    }
+
+    // Per-scene DPR override — default 2 matches the cap set in sceneManager;
+    // drop a scene to 1.5 (or lower) if its splats are dense enough that the
+    // perf cost outweighs the crispness gain.
+    const targetPR = Math.min(window.devicePixelRatio, sceneDef.pixelRatio ?? 2);
+    if (renderer.getPixelRatio() !== targetPR) {
+      renderer.setPixelRatio(targetPR);
+      renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     showLoader(opts.loaderText ?? sceneDef.title);
@@ -510,7 +573,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       controls.update(camera);
     }
     if (physics) {
-      grab?.update();
+      grab?.update(dt);
       physics.step(dt);
     }
     if (currentPortals.length > 0) {

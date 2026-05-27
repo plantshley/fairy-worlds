@@ -135,13 +135,13 @@ const objectModeToggle = document.getElementById("object-mode-toggle");
 const spawnBoxBtn = document.getElementById("btn-spawn-box");
 const boxHint = document.getElementById("box-hint");
 
-// Touch drags a box freely with one finger; desktop uses right-drag + Alt. Tailor
-// the hint text to the input type.
+// Touch drags an object with one finger; desktop uses right-drag, with F held
+// down for vertical-lift mode (F not Alt — Alt steals browser-menu focus).
 const isCoarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
 if (boxHint) {
   boxHint.textContent = isCoarsePointer
-    ? "drag a box to move · flick to throw"
-    : "right-drag: slide · alt+right-drag: lift";
+    ? "drag to move · flick to throw"
+    : "right-drag: slide · hold F + right-drag: lift";
 }
 
 function applyObjectModeUI() {

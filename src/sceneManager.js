@@ -8,10 +8,10 @@ export function createSceneManager() {
   // a small aliasing hit, mitigated by the pixel ratio below.
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
   // Splat rendering is fill-rate-bound, so pixel count dominates the frame cost.
-  // Cap the device pixel ratio: on a 2x display this renders ~2.5x fewer pixels
-  // (1.25^2 vs 2^2) for a big fps win at a slight softness cost. Raise toward 1.5
-  // for crispness, drop to 1.0 for more speed.
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  // 2.0 matches Marble's viewer crispness on hi-DPI displays; individual scenes
+  // can override via sceneDef.pixelRatio (e.g. drop to 1.5 for very dense splats
+  // that need more fps headroom).
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x000000, 0);
   renderer.xr.enabled = true;
