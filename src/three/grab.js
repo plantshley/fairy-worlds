@@ -230,14 +230,16 @@ export function createGrab({ renderer, camera, dolly, physics }) {
     const half = entry.size * 0.5;
     const isTouch = pointerGrab.pointerType === "touch";
     const liftMode = !isTouch && liftHeld;
+    // Touch uses pure camera-facing plane (screen-Y maps naturally to a Y/Z
+    // mix based on camera pitch — look down to lower, look up to lift). No
+    // world-axis decomposition, no collision clamp — free screen-plane drag
+    // matching the "drag to move · flick to throw" HUD hint.
+    const freePlaneMode = isTouch || liftMode;
 
     // 1) Build the drag plane through the current grab-point-in-world.
-    //    Both modes start with the camera-facing plane (always well-defined).
-    //    In Alt-lift the normal is flattened to horizontal so vertical cursor
-    //    motion maps to world Y. In default mode we use the full camera-facing
-    //    plane and then redirect the resulting screen-Y motion to world Z
-    //    (forward-horizontal) below, so the object slides along the floor
-    //    instead of floating up with the cursor.
+    //    Default desktop: camera-facing plane (full forward, includes pitch).
+    //    Desktop F-lift: same plane but normal.y zeroed → vertical cursor maps
+    //    directly to world Y. Touch: camera-facing plane (no flatten).
     camera.getWorldDirection(_camFwd);
     _planeNormal.copy(_camFwd);
     if (liftMode) {
@@ -250,14 +252,14 @@ export function createGrab({ renderer, camera, dolly, physics }) {
     // 2) Cursor → plane: where the grab point wants to be (in camera-plane space).
     if (!raycaster.ray.intersectPlane(_dragPlane, _hitPoint)) return;
 
-    if (liftMode) {
-      // Alt: pure plane intersection — vertical cursor lifts directly.
+    if (freePlaneMode) {
+      // Pure plane intersection — grab point follows cursor in 3D.
       _grabPointWorld.copy(_hitPoint);
     } else {
-      // Default: project the cursor delta onto camera-right (screen X) and
-      // camera-up (screen Y), then rebuild it in WORLD horizontal axes —
+      // Desktop default: project the cursor delta onto camera-right (screen X)
+      // and camera-up (screen Y), then rebuild it in WORLD horizontal axes —
       // screen X → world right-horizontal, screen Y → world forward-horizontal.
-      // World Y of the grab point stays fixed unless Alt is held.
+      // World Y of the grab point stays fixed unless F is held.
       _cursorDelta.copy(_hitPoint).sub(_grabPointWorld);
       _camRight.crossVectors(_camFwd, _UP);
       if (_camRight.lengthSq() < 1e-6) _camRight.set(1, 0, 0); // camera looking straight up/down
@@ -297,7 +299,13 @@ export function createGrab({ renderer, camera, dolly, physics }) {
 
     // 6) Collision-clamp the translation: sweep a ray from body center toward
     //    target; stop just before any wall/floor/other-box along the way.
-    clampMoveByRay(entry, entry.mesh.position, _targetPos, _clampedPos);
+    //    Touch skips this — free screen-plane drag, walls only stop the body
+    //    on release when physics takes over again.
+    if (isTouch) {
+      _clampedPos.copy(_targetPos);
+    } else {
+      clampMoveByRay(entry, entry.mesh.position, _targetPos, _clampedPos);
+    }
 
     physics.setKinematicPose(entry, _clampedPos, entry.mesh.quaternion);
     _carry.copy(_clampedPos);

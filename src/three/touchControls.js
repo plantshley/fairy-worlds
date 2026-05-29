@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 const DEAD_ZONE = 0.15;
 const MOVE_SPEED = 2.4;
-const LOOK_SENSITIVITY = 0.0035;
+const LOOK_SENSITIVITY = 0.006;
 const PITCH_LIMIT = Math.PI / 2 - 0.05;
 const JOYSTICK_RADIUS = 55;
 
