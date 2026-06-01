@@ -34,11 +34,22 @@ export function getColliderForScene(sceneId) {
   return BASE + "colliders/" + encodeURIComponent(filename);
 }
 
-// Returns the list of object URLs mapped to a world, sorted alphabetically by
+// Returns the list of object URLs mapped to a scene, sorted alphabetically by
 // filename so the spawn cycle is deterministic. Empty array if none.
-export function getObjectsForWorld(worldName) {
-  const prefix = worldSlug(worldName) + "_";
+//
+// Resolution order:
+//   - If sceneDef.objectTags is set (array of slugs), match files whose name
+//     starts with any "<tag>_". Use this when several scenes from different
+//     worlds (or several scenes under the catch-all "Random" world) should
+//     share an object set — e.g. all AC interiors tag ["ac"] to share ac_*.glb.
+//   - Otherwise fall back to the world-slug convention.
+export function getObjectsForScene(sceneDef) {
+  const tags =
+    Array.isArray(sceneDef?.objectTags) && sceneDef.objectTags.length > 0
+      ? sceneDef.objectTags
+      : [worldSlug(sceneDef.world)];
+  const prefixes = tags.map((t) => t.toLowerCase() + "_");
   return objects
-    .filter((f) => f.toLowerCase().startsWith(prefix))
+    .filter((f) => prefixes.some((p) => f.toLowerCase().startsWith(p)))
     .map((f) => BASE + "objects/" + encodeURIComponent(f));
 }

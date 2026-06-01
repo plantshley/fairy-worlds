@@ -13,7 +13,15 @@ export const CHARACTERS = [
     url: import.meta.env.BASE_URL + "characters/cute_alien_character.glb",
     scale: 1.25,
     offsetY: 1.2,
+    tintable: [
+      { name: "Material.001", label: "Body" },
+      { name: "Material.002", label: "Jacket" },
+      { name: "Material.004", label: "Pants" },
+      { name: "Material.003", label: "Eyes" },
+      { name: "Material.005", label: "Mouth" },
+    ],
   },
+
   {
     id: "kitty",
     kind: "glb",
@@ -25,6 +33,15 @@ export const CHARACTERS = [
     offsetX: 0.05,
     offsetZ: 0.2,
     rotationY: Math.PI / 2,
+    tintable: [
+      { name: "kitty.001", label: "Body" },
+      { name: "t-shirt", label: "Overalls" },
+      { name: "sleeve", label: "Shirt" },
+      { name: ".002", label: "Shirt trim" },
+      { name: "bow.001", label: "Bow" },
+      { name: "eyes.001", label: "Eyes" },
+      { name: "nose.001", label: "Nose" },
+    ],
   },
   {
     id: "kuromi",
@@ -34,6 +51,11 @@ export const CHARACTERS = [
     url: import.meta.env.BASE_URL + "characters/kuromi_from_sanrio2.glb",
     scale: 0.4,
     offsetY: 0.75,
+    tintable: [
+      { name: "torso_low_768__0", label: "Body" },
+      { name: "ropa", label: "Hat" },
+      { name: "nariz", label: "Accents" },
+    ],
   },
   {
     id: "molly",
@@ -50,7 +72,7 @@ export const CHARACTERS = [
     title: "bob",
     description: "animal crossing pocket camp — tint Shirt",
     url: import.meta.env.BASE_URL + "characters/mobile_-_animal_crossing_pocket_camp_-_bob.glb",
-    scale: 12.0,
+    scale: 12,
     tintable: [{ name: "cloth", label: "Shirt" }],
   },
   {

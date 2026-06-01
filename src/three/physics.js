@@ -181,6 +181,23 @@ export function createPhysics({ scene }) {
     bbox.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z);
 
+    // Recenter the collider on the body origin. Many GLBs (Sketchfab exports
+    // in particular) authoring-pivot well outside the visible geometry — the
+    // AC cake, for example, has its pivot 0.35m above the cake's top after
+    // node transforms. Without recentering, _localGrabOffset in grab.js
+    // measures from that pivot instead of from the visible centroid, and
+    // grab's "rotate so the offset points up" math interprets any click on
+    // the cake's broad top as a sideways grab → wild tilt that traps motion
+    // against the floor/collision clamp. Shifting the hull verts by -center
+    // (so the hull is symmetric around body origin) and adding a compensating
+    // -center offset to the visual root puts the body origin at the visible
+    // centroid — clicks now produce intuitive offsets and gentle tilts.
+    for (let i = 0; i < verts.length; i += 3) {
+      verts[i] -= center.x;
+      verts[i + 1] -= center.y;
+      verts[i + 2] -= center.z;
+    }
+
     const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(position.x, position.y, position.z)
       .setLinearDamping(0.6)
@@ -189,20 +206,28 @@ export function createPhysics({ scene }) {
     const body = world.createRigidBody(bodyDesc);
 
     // Try convex hull first; fall back to a cuboid the size of the bounding box.
+    // Both are now centered on body origin (hull verts are pre-shifted;
+    // cuboid translation = 0).
     let colliderDesc = RAPIER.ColliderDesc.convexHull(new Float32Array(verts));
     if (!colliderDesc) {
       console.warn(`[physics] convex hull failed for ${url}, using bbox cuboid`);
-      colliderDesc = RAPIER.ColliderDesc.cuboid(size.x * 0.5, size.y * 0.5, size.z * 0.5)
-        .setTranslation(center.x, center.y, center.z);
+      colliderDesc = RAPIER.ColliderDesc.cuboid(size.x * 0.5, size.y * 0.5, size.z * 0.5);
     }
     // Zero restitution + high friction + high angular damping → tilted landings
     // thud onto the surface and settle instead of bouncing + rolling off.
     world.createCollider(colliderDesc.setRestitution(0.0).setFriction(0.6), body);
 
-    scene.add(root);
-    root.position.copy(position);
+    // Compensate the visual: place the GLB scene at -center inside a wrapper
+    // Group, so when step() sets wrapper.position = body.translation each
+    // frame, the visible mesh ends up centered on the body origin (matching
+    // the recentered collider).
+    const wrapper = new THREE.Group();
+    root.position.set(-center.x, -center.y, -center.z);
+    wrapper.add(root);
+    scene.add(wrapper);
+    wrapper.position.copy(position);
 
-    const entry = { mesh: root, body, size: maxDim };
+    const entry = { mesh: wrapper, body, size: maxDim };
     bodies.add(entry);
     return entry;
   }

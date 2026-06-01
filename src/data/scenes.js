@@ -152,12 +152,10 @@ export const SCENES = [
     },
   },
 
-  
-
   {
     id: "glitter-frutiger-lounge-1-1-pano",
-    world: "Glitter Hibiscus Lounge",
-    title: "Glitter Hibiscus Lounge 1.1-pano",
+    world: "Glitter Hibiscus Lodge",
+    title: "Glitter Hibiscus Lodge 1.1-pano",
     url: import.meta.env.BASE_URL + "splats/Glitter%20Frutiger%20Lounge%201-1-pano.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
@@ -167,8 +165,8 @@ export const SCENES = [
 
   {
     id: "glitter-frutiger-lounge-1-1",
-    world: "Glitter Hibiscus Lounge",
-    title: "Glitter Hibiscus Lounge 1.1",
+    world: "Glitter Hibiscus Lodge",
+    title: "Glitter Hibiscus Lodge 1.1",
     url: import.meta.env.BASE_URL + "splats/Glitter%20Frutiger%20Lounge%201-1.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
@@ -177,8 +175,8 @@ export const SCENES = [
   },
   {
     id: "glitter-frutiger-lounge-1-1-E2",
-    world: "Glitter Hibiscus Lounge",
-    title: "Glitter Hibiscus Lounge 1.1e2",
+    world: "Glitter Hibiscus Lodge",
+    title: "Glitter Hibiscus Lodge 1.1e2",
     url: import.meta.env.BASE_URL + "splats/Glitter%20Frutiger%20Lounge%201-1-E2.spz",
     spawn: {
       position: [-0.43, 1.51, -0.21],
@@ -216,6 +214,69 @@ export const SCENES = [
       quaternion: [-0.038, -0.051, -0.001, 0.998],
     },
   },
+  
+  {
+    id: "lavender-laundry-1-1",
+    world: "Lavender Laundry",
+    title: "Lavender Laundry 1.1",
+    url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1.spz",
+    spawn: {
+      position: [-0.31, 1.32, -0.46],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
+    },
+  },
+  {
+    id: "lavender-laundry-1-1-pano",
+    world: "Lavender Laundry",
+    title: "Lavender Laundry 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1-pano.spz",
+    spawn: {
+      position: [-0.30, 1.45, 0.54],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
+    },
+  },
+  {
+    id: "lavender-laundry-1-1-E2",
+    world: "Lavender Laundry",
+    title: "Lavender Laundry 1.1e2",
+    url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1-E2.spz",
+    spawn: {
+      position: [-0.30, 1.45, 0.54],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
+    },
+  },
+
+  {
+    id: "blooming-frutiger-1-1-pano",
+    world: "Flowers of our Future Club",
+    title: "Flowers of our Future Club 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Blooming%20Frutiger%201-1-pano.spz",
+    spawn: {
+      position: [-1.00, 1.64, 1.87],
+      quaternion: [-0.064, -0.142, -0.009, 0.988],
+    },
+  },
+  {
+    id: "blooming-frutiger-1-1",
+    world: "Flowers of our Future Club",
+    title: "Flowers of our Future Club 1.1",
+    url: import.meta.env.BASE_URL + "splats/Blooming%20Frutiger%201-1.spz",
+    spawn: {
+      position: [-0.31, 1.32, -0.46],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
+    },
+  },
+  {
+    id: "blooming-frutiger-1-1-E2",
+    world: "Flowers of our Future Club",
+    title: "Flowers of our Future Club 1.1e2",
+    url: import.meta.env.BASE_URL + "splats/Blooming%20Frutiger%201-1-E2.spz",
+    spawn: {
+      position: [-0.31, 1.32, -0.46],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
+    },
+  },
+
   {
     id: "angelic-quartz-chamber-1-1",
     world: "Angelic Quartz Chamber",
@@ -244,36 +305,6 @@ export const SCENES = [
     spawn: {
       position: [-0.51, 0.93, 0.92],
       quaternion: [-0.035, 0.045, 0.002, 0.998],
-    },
-  },
-  {
-    id: "lavender-laundry-1-1",
-    world: "Lavender Laundry",
-    title: "Lavender Laundry 1.1",
-    url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1.spz",
-    spawn: {
-      position: [-0.31, 1.32, -0.46],
-      quaternion: [-0.063, 0.005, 0.001, 0.998],
-    },
-  },
-  {
-    id: "lavender-laundry-1-1-pano",
-    world: "Lavender Laundry",
-    title: "Lavender Laundry 1.1-pano",
-    url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1-pano.spz",
-    spawn: {
-      position: [-0.31, 1.32, -0.46],
-      quaternion: [-0.063, 0.005, 0.001, 0.998],
-    },
-  },
-  {
-    id: "lavender-laundry-1-1-E2",
-    world: "Lavender Laundry",
-    title: "Lavender Laundry 1.1e2",
-    url: import.meta.env.BASE_URL + "splats/Lavender%20Laundry%201-1-E2.spz",
-    spawn: {
-      position: [-0.31, 1.32, -0.46],
-      quaternion: [-0.063, 0.005, 0.001, 0.998],
     },
   },
 
@@ -310,6 +341,18 @@ export const SCENES = [
     },
   },
 
+ 
+  {
+    id: "lovecore-patio-1-1",
+    world: "Random",
+    title: "Lovecore Patio",
+    url: import.meta.env.BASE_URL + "splats/Lovecore%20Patio%201-1.spz",
+    spawn: {
+      position: [-0.88, 1.63, 0.89],
+      quaternion: [-0.013, 0.016, 0.001, 1.000],
+    },
+  },
+  
   {
     id: "lavender-patio-1-1",
     world: "Random",
@@ -348,6 +391,7 @@ export const SCENES = [
     world: "Random",
     title: "Lovely Melody Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-melody-interior.spz",
+    objectTags: ["ac"],
     spawn: {
       position: [0.10, 2.06, 0.16],
       quaternion: [-0.095, 0.169, 0.017, 0.981],
@@ -367,11 +411,11 @@ export const SCENES = [
         // center sits below standing eye height; tune as needed.
         position: [0.15, 1.23, -4.75],
         rotationY: Math.PI,
-        loaderText: "entering pink interior ✦",
+        loaderText: "‧₊˚.entering pink interior₊˚⊹♡",
         render: {
           kind: "doorway",
           width: 1.9,
-          height: 2.1,
+          height: 2.5,
           radius: 0.18,
           colorA: "#ff9bce",
           colorB: "#ffd5ec",
@@ -384,11 +428,11 @@ export const SCENES = [
         // -0.017, 0.643] → yaw ≈ -1.74 → portal yaw ≈ 1.40.
         position: [4.4, 1.15, -2.6],
         rotationY: 1.5,
-        loaderText: "entering mint interior ✦",
+        loaderText: "‧₊˚.entering mint interior ⋆˚꩜｡",
         render: {
           kind: "doorway",
           width: 1.9,
-          height: 2.1,
+          height: 2.5,
           radius: 0.18,
           colorA: "#9beed1",
           colorB: "#d5f5e8",
@@ -401,6 +445,7 @@ export const SCENES = [
     world: "Random",
     title: "Lovely Pink Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-pink-interior.spz",
+    objectTags: ["ac"],
     spawn: {
       position: [0.50, 1.40, 0.81],
       quaternion: [-0.044, 0.104, 0.005, 0.994],
@@ -416,7 +461,7 @@ export const SCENES = [
         target: "lovely-melody-interior",
         position: [0.71, 1.10, 1.78],
         rotationY: 0.21,
-        loaderText: "returning to melody hallway ✦",
+        loaderText: "⋆.˚returning to melody room ⋆˖࿔ ",
         render: {
           kind: "doorway",
           width: 1,
@@ -435,6 +480,7 @@ export const SCENES = [
     world: "Random",
     title: "Lovely Mint Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-mint-interior.spz",
+    objectTags: ["ac"],
     spawn: {
       position: [0.50, 1.40, 0.81],
       quaternion: [-0.044, 0.104, 0.005, 0.994],
@@ -446,7 +492,7 @@ export const SCENES = [
         target: "lovely-melody-interior",
         position: [0.71, 1.10, 1.78],
         rotationY: 0.21,
-        loaderText: "returning to melody room ✦",
+        loaderText: "⋆.˚returning to melody room ⋆˖࿔ ࣪",
         render: {
           kind: "doorway",
           width: 1,
@@ -464,9 +510,10 @@ export const SCENES = [
     world: "Random",
     title: "Animal Crossing",
     url: import.meta.env.BASE_URL + "splats/Random-AnimalCrossing.spz",
+    objectTags: ["ac"],
     spawn: {
-      position: [2.07, 4.13, -2.48],
-      quaternion: [-0.045, 0.258, 0.013, 0.965],
+      position: [1.51, 3.58, -3.84],
+      quaternion: [-0.055, 0.198, 0.012, 0.979],
     },
     portals: [
       {
@@ -478,7 +525,7 @@ export const SCENES = [
         position: [-1.54, 1.75, -10.82],
         rotationY: 0.398,
         animation: "bob",
-        loaderText: "entering Celeste's home ✦",
+        loaderText: "·˚*୨୧ entering Celeste's home ୨୧*˚·",
         render: {
           kind: "glb",
           url: import.meta.env.BASE_URL + "characters/celeste_-_animal_crossing_new_horizons.glb",

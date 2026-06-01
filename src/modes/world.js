@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { SparkRenderer, SplatMesh, SparkControls } from "@sparkjsdev/spark";
 import { SCENES } from "../data/scenes.js";
-import { getColliderForScene, getObjectsForWorld } from "../data/sceneAssets.js";
+import { getColliderForScene, getObjectsForScene } from "../data/sceneAssets.js";
 import { showLoader, updateLoader, hideLoader } from "../ui/loader.js";
 import { createVRLocomotion } from "../three/vrLocomotion.js";
 import { createTouchControls } from "../three/touchControls.js";
@@ -189,7 +189,8 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       z: p.z + fwd.z * spawnDistance + jitterZ,
     };
 
-    const mapped = currentWorld ? getObjectsForWorld(currentWorld) : [];
+    const sceneDef = currentSceneId ? SCENES.find((s) => s.id === currentSceneId) : null;
+    const mapped = sceneDef ? getObjectsForScene(sceneDef) : [];
     if (mapped.length > 0) {
       const url = mapped[objectCycleIdx % mapped.length];
       objectCycleIdx++;
