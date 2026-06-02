@@ -28,6 +28,7 @@ export function createGrab({ renderer, camera, dolly, physics }) {
   const _grabPointWorld = new THREE.Vector3();
   const _localDir = new THREE.Vector3();
   const _targetRot = new THREE.Quaternion();
+  const _identityQuat = new THREE.Quaternion(); // canonical "upright" target for F-lift mode
   const _rotatedOffset = new THREE.Vector3();
   const _targetPos = new THREE.Vector3();
   const _motion = new THREE.Vector3();
@@ -104,7 +105,8 @@ export function createGrab({ renderer, camera, dolly, physics }) {
   // stays glued to the cursor/finger as you drag — grab a daisy by its petal
   // and the petal tracks your finger, while the rest of the daisy hangs below
   // (the held body's rotation eases toward an orientation where the grab point
-  // is on top and the body hangs straight down from it).
+  // is on top and the body hangs straight down from it). F-lift mode overrides
+  // this and eases toward identity instead, so a lifted object stays upright.
   //
   // Drag plane:
   //   - Default: camera-facing plane (full forward, includes pitch) through the
@@ -186,9 +188,9 @@ export function createGrab({ renderer, camera, dolly, physics }) {
     _velocityHistory.length = 0;
     pushCarryVelocitySample();
 
-    // Remember the body's pre-grab orientation so a no-throw release can snap
-    // it back (the hang-from-grab tilt during drag would otherwise leave it
-    // landing on a corner, causing the tipover-bounce the user reported).
+    // Remember the body's pre-grab orientation so a no-throw release of a
+    // hang-from-grab (non-lift) drag can snap it back — the tilt during drag
+    // would otherwise leave it perched on a corner and tip → delayed bounce.
     const initialRotation = entry.mesh.quaternion.clone();
     physics.setKinematic(entry, true);
     pointerGrab = {
@@ -280,12 +282,19 @@ export function createGrab({ renderer, camera, dolly, physics }) {
       _grabPointWorld.y += dUp * DRAG_Y_BIAS;
     }
 
-    // 3) Target rotation: orient the body so localGrabOffset points world-up
-    //    (grab point on top, body hangs below). Skip if grabbed near center.
-    if (_localGrabOffset.lengthSq() >= 1e-4) {
+    // 3) Target rotation:
+    //    - F-lift mode: slerp toward identity → object stays upright while
+    //      being lifted (so you can place it level on shelves/surfaces).
+    //    - Default: orient the body so localGrabOffset points world-up
+    //      (grab point on top, body hangs below). Skip if grabbed near center.
+    //    Smooth easing alpha = 1 - exp(-k*dt) is frame-rate-independent.
+    if (liftMode) {
+      _targetRot.copy(_identityQuat);
+      const alpha = 1 - Math.exp(-ROT_SLERP_K * Math.max(dt, 0));
+      entry.mesh.quaternion.slerp(_targetRot, alpha);
+    } else if (_localGrabOffset.lengthSq() >= 1e-4) {
       _localDir.copy(_localGrabOffset).normalize();
       _targetRot.setFromUnitVectors(_localDir, _UP);
-      // Smooth easing: alpha = 1 - exp(-k*dt) is frame-rate-independent.
       const alpha = 1 - Math.exp(-ROT_SLERP_K * Math.max(dt, 0));
       entry.mesh.quaternion.slerp(_targetRot, alpha);
     }
@@ -381,11 +390,15 @@ export function createGrab({ renderer, camera, dolly, physics }) {
       }
     }
 
-    // No-throw release: snap rotation back to the body's pre-grab orientation
-    // so it lands flat-side-down. Hang-from-grab during drag would otherwise
-    // leave it perched on a corner, which tips → "delayed bounce".
+    // No-throw release: snap rotation to a safe landing pose.
+    //   - F-lift mode (held at release): snap to identity, so a lifted object
+    //     ends exactly upright on the surface you placed it on.
+    //   - Hang-from-grab: snap back to the body's pre-grab orientation, so
+    //     it lands flat-side-down (the drag tilt would otherwise leave it
+    //     perched on a corner and tip → delayed bounce).
     if (!throwVel) {
-      physics.snapRotation(pointerGrab.entry, pointerGrab.initialRotation);
+      const target = liftHeld ? _identityQuat : pointerGrab.initialRotation;
+      physics.snapRotation(pointerGrab.entry, target);
     }
     physics.setKinematic(pointerGrab.entry, false, throwVel, throwAngvel);
     pointerGrab = null;
