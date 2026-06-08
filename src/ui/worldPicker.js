@@ -13,6 +13,7 @@ export function createWorldPicker({ container, scenes, onSelectScene }) {
     container.innerHTML = "";
     const groups = new Map();
     for (const s of scenes) {
+      if (s.hideInPicker) continue;
       const world = s.world ?? "Other";
       if (!groups.has(world)) groups.set(world, []);
       groups.get(world).push(s);

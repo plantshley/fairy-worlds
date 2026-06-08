@@ -4,11 +4,25 @@ import { createHomeMode } from "./modes/home.js";
 import { buildSparkles, enableHoverSparkles } from "./ui/sparkles.js";
 import { createCharacterPicker } from "./ui/characterPicker.js";
 import { createWorldPicker } from "./ui/worldPicker.js";
+import { createVariantPills } from "./ui/variantPills.js";
+import { createPortalNavBar } from "./ui/portalNavBar.js";
 import { createVRController } from "./three/vrButton.js";
 import { createCompanion } from "./ui/companion.js";
 import { CHARACTERS, DEFAULT_CHARACTER_ID } from "./data/characters.js";
 import { SCENES } from "./data/scenes.js";
 import { trackCharacterSelect } from "./utils/analytics.js";
+
+const HUB_ID = "hub-heart-pool";
+
+// Two ways of navigating between scenes: the dropdown picker (`"picker"`) and
+// the in-world portals + edge arrows + variant pills (`"portal"`). Stored on
+// body as a data attribute so CSS gates the entire HUD swap at once.
+let navMode = "picker";
+function setNavMode(mode) {
+  navMode = mode;
+  document.body.dataset.navMode = mode;
+}
+setNavMode("picker");
 
 const CHARACTER_KEY = "fairy-worlds-character";
 const CONFIG_KEY = "fairy-worlds-character-config-v2";
@@ -36,13 +50,30 @@ function saveConfig(config) {
 
 buildSparkles("sparkle-field");
 buildSparkles("transition-sparkle-field", 40);
-enableHoverSparkles([".group-pill", ".home-btn", ".hud-btn", ".companion-bubble", ".recenter-btn"]);
+enableHoverSparkles([
+  ".group-pill",
+  ".home-btn",
+  ".hud-btn",
+  ".companion-bubble",
+  ".recenter-btn",
+  ".circle-btn",
+  ".variant-pills .scene-btn",
+]);
 
 const manager = createSceneManager();
 const homeMode = createHomeMode({ renderer: manager.renderer });
 const worldMode = createWorldMode({
   renderer: manager.renderer,
-  onSceneLoaded: (sceneDef) => worldPicker.setActiveScene(sceneDef.id),
+  onSceneLoaded: (sceneDef) => {
+    worldPicker.setActiveScene(sceneDef.id);
+    refreshPortalNavUI(sceneDef);
+    // Re-evaluate the drop-object button visibility — it depends on whether
+    // we just landed on the hub (hidden) vs any other scene (per-toggle).
+    applyObjectModeUI();
+  },
+  // Entering a scene via a clickable portal flips us into portal-nav. The
+  // refreshPortalNavUI call from onSceneLoaded picks up the new mode.
+  onPortalEnter: () => setNavMode("portal"),
 });
 manager.register(homeMode);
 manager.register(worldMode);
@@ -54,11 +85,13 @@ const companion = createCompanion({
   recenterEl: document.getElementById("btn-recenter-mobile"),
   onBubbleClick: () => vr.toggle(),
   onRecenterClick: () => worldMode.returnToOrigin(),
+  // Character click always exits to the actual home page. The hub-return
+  // behavior is reserved for the #btn-home flower button at the top of the HUD
+  // (goHomeOrHub) — clicking the character should be a single, predictable
+  // "I'm done, take me home" gesture. exitToHome resets navMode so the home
+  // page's dropdown reappears.
   onCharacterClick: () => {
-    if (manager.currentName() !== "home") {
-      manager.transitionTo("home");
-      companion.hide();
-    }
+    if (manager.currentName() !== "home") exitToHome();
   },
 });
 
@@ -66,6 +99,8 @@ const worldPicker = createWorldPicker({
   container: document.getElementById("scenes"),
   scenes: SCENES,
   onSelectScene: async (sceneDef) => {
+    // Dropdown picks are always picker-nav (they're the picker entry point).
+    setNavMode("picker");
     if (manager.currentName() === "world") {
       worldMode.loadScene(sceneDef);
     } else {
@@ -76,6 +111,74 @@ const worldPicker = createWorldPicker({
     worldPicker.setActiveScene(sceneDef.id);
   },
 });
+
+// Two pill instances — desktop in the HUD, mobile in the top bar. CSS hides
+// whichever isn't appropriate for the current breakpoint; we always update
+// both so a window resize doesn't show stale data.
+const variantPillsDesktop = createVariantPills({
+  container: document.getElementById("variant-pills-desktop"),
+  onSelectScene: (s) => {
+    setNavMode("portal"); // intra-world variant switch stays in portal-nav
+    worldMode.loadScene(s);
+  },
+});
+const variantPillsMobile = createVariantPills({
+  container: document.getElementById("variant-pills-mobile"),
+  onSelectScene: (s) => {
+    setNavMode("portal");
+    worldMode.loadScene(s);
+  },
+});
+
+const portalNavBar = createPortalNavBar({
+  onPrev: () => {
+    setNavMode("portal");
+    worldMode.cycleWorld(-1);
+  },
+  onNext: () => {
+    setNavMode("portal");
+    worldMode.cycleWorld(1);
+  },
+});
+
+function refreshPortalNavUI(sceneDef) {
+  const showPortalNav = navMode === "portal";
+  variantPillsDesktop.setVisible(showPortalNav);
+  variantPillsMobile.setVisible(showPortalNav);
+  portalNavBar.setVisible(showPortalNav);
+  variantPillsDesktop.update(sceneDef, SCENES);
+  variantPillsMobile.update(sceneDef, SCENES);
+}
+
+// Always reset to picker-nav when leaving world mode so the home page (and
+// next world entry) sees a fresh dropdown. Without this, navMode stuck at
+// "portal" leaves the CSS rule hiding #scenes — dropdown invisible at home.
+function exitToHome() {
+  setNavMode("picker");
+  manager.transitionTo("home");
+  companion.hide();
+}
+
+// Home / flower-button action. At hub → always exit to home page. In
+// portal-nav at a non-hub scene → return to hub. Otherwise → exit to home.
+// Used by #btn-home. The companion character click uses exitToHome directly
+// (no hub-return) — per user spec, character tap is a "take me all the way
+// home" gesture, only the flower button stops at the hub.
+function goHomeOrHub() {
+  const atHub = worldMode.getCurrentSceneId?.() === HUB_ID;
+  if (navMode === "portal" && !atHub) {
+    const hub = SCENES.find((s) => s.id === HUB_ID);
+    if (hub) {
+      // Returning to hub is a picker-style action — at hub the dropdown +
+      // pills should reappear so user can launch into another portal or pick
+      // any scene normally.
+      setNavMode("picker");
+      worldMode.loadScene(hub);
+      return;
+    }
+  }
+  exitToHome();
+}
 
 manager.setMode("home");
 manager.start();
@@ -120,14 +223,13 @@ if (isFirstRun) {
 }
 
 document.getElementById("btn-enter-world")?.addEventListener("click", async () => {
+  // Entering world via the dropdown / home page is picker-nav.
+  setNavMode("picker");
   picker.close();
   await manager.transitionTo("world");
   companion.show();
 });
-document.getElementById("btn-home")?.addEventListener("click", () => {
-  manager.transitionTo("home");
-  companion.hide();
-});
+document.getElementById("btn-home")?.addEventListener("click", goHomeOrHub);
 document.getElementById("btn-recenter")?.addEventListener("click", () => {
   worldMode.returnToOrigin();
 });
@@ -146,13 +248,18 @@ if (boxHint) {
 
 function applyObjectModeUI() {
   const on = localStorage.getItem(OBJECT_MODE_KEY) === "1";
+  // Hub has no useful objects to drop and the spawn-box button competes with
+  // the variant pills for HUD space — hide it at hub even when object mode is
+  // on. Re-evaluated on every scene load so swapping in/out of hub updates it.
+  const atHub = worldMode.getCurrentSceneId?.() === HUB_ID;
+  const showSpawnUI = on && !atHub;
   if (objectModeToggle) {
     objectModeToggle.setAttribute("aria-pressed", on ? "true" : "false");
     objectModeToggle.textContent = on ? "✦ object mode: on ✦" : "✦ object mode: off ✦";
   }
   for (const el of [spawnBoxBtn, boxHint]) {
     if (!el) continue;
-    if (on) el.removeAttribute("hidden");
+    if (showSpawnUI) el.removeAttribute("hidden");
     else el.setAttribute("hidden", "");
   }
 }

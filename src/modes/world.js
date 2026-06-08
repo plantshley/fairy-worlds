@@ -36,7 +36,7 @@ import {
   noteVRDistance,
 } from "../utils/analytics.js";
 
-export function createWorldMode({ renderer, onSceneLoaded }) {
+export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
     60,
@@ -512,6 +512,19 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     const proxy = new THREE.Mesh(proxyGeom, proxyMat);
     root.add(proxy);
 
+    // Optional emoji label above the portal, faded by hoverValue. Sprite
+    // auto-billboards toward camera (works in VR too once VR hover lands).
+    // Disposed via the standard disposePortals traverse (covers Sprite +
+    // material.map).
+    let emojiSprite = null;
+    if (portalDef.emoji) {
+      emojiSprite = createEmojiLabel(portalDef.emoji);
+      const spriteScale = Math.max(width, height) * 0.28;
+      emojiSprite.scale.set(spriteScale, spriteScale, 1);
+      emojiSprite.position.set(0, height / 2 + spriteScale * 0.7, 0);
+      root.add(emojiSprite);
+    }
+
     scene.add(root);
     currentPortals.push({
       root,
@@ -525,6 +538,7 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       // Doorway-specific: hover state + smoothed uniform updater. uHover is
       // smoothed in update(dt); setHover just nudges the target.
       material,
+      emojiSprite,
       hoverTarget: 0,
       hoverValue: 0,
       onHover: (hover) => {
@@ -676,6 +690,37 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     return box;
   }
 
+  // Single emoji glyph drawn into a CanvasTexture, no background. opacity:0
+  // by default — driven from portal.hoverValue in update(dt) for a fade-in
+  // on hover. System emoji font stack handles cross-platform rendering.
+  function createEmojiLabel(emoji) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+    ctx.font =
+      '96px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Twemoji", serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(emoji, 64, 70);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0,
+    });
+    const sprite = new THREE.Sprite(mat);
+    // 21 = above the doorway plane (renderOrder 20). Both are transparent +
+    // depthWrite:false, so three.js draws strictly by renderOrder; without
+    // this, the doorway halo would overdraw the emoji at high uHover values.
+    sprite.renderOrder = 21;
+    return sprite;
+  }
+
   // Pink circular ♡ bubble drawn into a CanvasTexture. Sprite auto-billboards
   // toward the camera (works in VR too). Texture + material are disposed when
   // the portal is torn down via the standard traverse in disposePortals.
@@ -727,6 +772,9 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
       return;
     }
     portalTransitioning = true;
+    // Fire BEFORE the fade so the HUD can flip to portal-nav while the overlay
+    // is already animating up. main.js uses this to set navMode = "portal".
+    onPortalEnter?.({ targetId: target.id });
     try {
       const overlay = document.getElementById("transition-overlay");
       await fadeElement(overlay, 0, 1, 250);
@@ -792,6 +840,9 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
           if (typeof p.hoverTarget === "number") {
             p.hoverValue += (p.hoverTarget - p.hoverValue) * hoverK;
             p.material.uniforms.uHover.value = p.hoverValue;
+            // Emoji label fades in with hover. Same smoothed value as uHover
+            // so the label and halo brightening stay synchronized.
+            if (p.emojiSprite) p.emojiSprite.material.opacity = p.hoverValue;
           }
         }
       }
@@ -811,8 +862,17 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     if (!currentSceneId) return;
     const idx = SCENES.findIndex((s) => s.id === currentSceneId);
     if (idx < 0) return;
-    const nextIdx = (idx + direction + SCENES.length) % SCENES.length;
-    loadScene(SCENES[nextIdx]);
+    const n = SCENES.length;
+    // Skip hideInPicker entries (hub, lovely interiors) so the visible cycle
+    // matches the picker pills. Bounded so an all-hidden array can't loop.
+    let nextIdx = idx;
+    for (let step = 0; step < n; step++) {
+      nextIdx = (nextIdx + direction + n) % n;
+      if (!SCENES[nextIdx].hideInPicker) {
+        loadScene(SCENES[nextIdx]);
+        return;
+      }
+    }
   }
 
   // Step until we land on a scene whose `world` differs from the current
@@ -931,6 +991,10 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     );
   };
 
+  function getCurrentSceneId() {
+    return currentSceneId;
+  }
+
   return {
     name: "world",
     scene,
@@ -950,5 +1014,6 @@ export function createWorldMode({ renderer, onSceneLoaded }) {
     releaseGrab,
     tryPortal,
     enterPortal,
+    getCurrentSceneId,
   };
 }

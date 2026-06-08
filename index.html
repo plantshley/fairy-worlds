@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>⋆.˚✿🌷fairy worlds🌷✿˚.⋆</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
@@ -26,8 +27,18 @@
       <div class="hud-line">click canvas to look · WASD or scroll to move · shift = fast · ctrl = slow</div>
       <button id="btn-home" class="home-btn" aria-label="home">✿</button>
       <button id="btn-recenter" class="recenter-btn" aria-label="return to spawn" title="return to spawn">⊙</button>
+      <div id="variant-pills-desktop" class="variant-pills" hidden></div>
       <button id="btn-spawn-box" class="hud-btn" hidden>✦ drop object ✦</button>
       <div id="box-hint" class="hud-line" hidden>right-drag: slide · alt+right-drag: lift</div>
+    </div>
+
+    <button id="prev-world-edge" class="circle-btn edge-arrow edge-arrow-left" aria-label="previous world" title="previous world" hidden>‹</button>
+    <button id="next-world-edge" class="circle-btn edge-arrow edge-arrow-right" aria-label="next world" title="next world" hidden>›</button>
+
+    <div id="portal-nav-bar" hidden>
+      <button id="prev-world-bar" class="circle-btn" aria-label="previous world" title="previous world">‹</button>
+      <div id="variant-pills-mobile" class="variant-pills"></div>
+      <button id="next-world-bar" class="circle-btn" aria-label="next world" title="next world">›</button>
     </div>
 
     <div id="home-hud" class="hud-panel" hidden>

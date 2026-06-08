@@ -1,3 +1,5 @@
+import { buildHubPortals } from "./hubPortals.js";
+
 export const SCENES = [
   {
     id: "heart-pool-1-1-1004",
@@ -341,7 +343,7 @@ export const SCENES = [
     },
   },
 
- 
+
   {
     id: "lovecore-patio-1-1",
     world: "Random",
@@ -386,12 +388,24 @@ export const SCENES = [
     },
   },
 
+  {   
+    id: "pearl-wings-kitchen",
+    world: "Random",
+    title: "Pearlescent Flutter Kitchen",
+    url: import.meta.env.BASE_URL + "splats/Random-Pearlescent Wings Kitchen.spz",
+    spawn: {
+      position: [0.00, 1.17, 0.30],
+      quaternion: [0.014, -0.027, 0.001, 1.000],
+    },
+  },
+
   {
     id: "lovely-melody-interior",
     world: "Random",
     title: "Lovely Melody Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-melody-interior.spz",
     objectTags: ["ac"],
+    hideInPicker: true,
     spawn: {
       position: [0.10, 2.06, 0.16],
       quaternion: [-0.095, 0.169, 0.017, 0.981],
@@ -446,6 +460,7 @@ export const SCENES = [
     title: "Lovely Pink Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-pink-interior.spz",
     objectTags: ["ac"],
+    hideInPicker: true,
     spawn: {
       position: [0.50, 1.40, 0.81],
       quaternion: [-0.044, 0.104, 0.005, 0.994],
@@ -481,6 +496,7 @@ export const SCENES = [
     title: "Lovely Mint Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-mint-interior.spz",
     objectTags: ["ac"],
+    hideInPicker: true,
     spawn: {
       position: [0.50, 1.40, 0.81],
       quaternion: [-0.044, 0.104, 0.005, 0.994],
@@ -533,5 +549,51 @@ export const SCENES = [
         },
       },
     ],
+  },
+
+  {
+    // Portal hub. Reuses the Heart Pool Pavilion splat but is its own entry so
+    // it can carry its own spawn + ring of portals without affecting the
+    // standalone heart-pool-1-1-1004 scene. Placed LAST in the Random group
+    // so cycleWorld's "walk back to first scene of group" never lands here.
+    //
+    // Tuning: edit center/radius/height/portalSize/startAngle/hueStart in the
+    // buildHubPortals call below — HMR re-renders the ring. To relocate the
+    // ring after changing splat, walk to the new center, run window.logPose(),
+    // and paste its position into both spawn.position and center (XZ).
+    id: "hub-heart-pool",
+    world: "Random",
+    title: "Portals Hub",
+    url: import.meta.env.BASE_URL + "splats/Heart%20Pool%20Pavilion.spz",
+    spawn: {
+      position: [-0.02, 1.92, -3.69],
+      quaternion: [-0.004, 0.993, 0.039, 0.109],
+    },
+    portals: buildHubPortals({
+      center: [-0.02, -3.69],      // [cx, cz] — XZ of spawn; portals' Y comes from `height`
+      radius: 3.0,                 // TUNE
+      height: 1.92,                // portal center Y (matches spawn eye height)
+      portalSize: 1.0,             // diameter; circle since render uses width=height=size, radius=size/2
+      startAngle: 0,               // radians — rotate the whole ring
+      hueStart: 0,                 // degrees — first portal's hue (0 = red)
+      hueDirection: 1,             // +1 clockwise around the wheel
+      // Each label uses a distinct kaomoji-style text decoration on both sides
+      // (https://emojicombos.com/deco-kaomoji). Per-target colorA/colorB can
+      // override the rainbow if a specific portal needs a brand color.
+      targets: [
+        { id: "heart-pool-1-1-1004",              label: "˗ˏˋ♡ Heart Pool Pavilion ♡ˎˊ˗",        emoji: "💖" },
+        { id: "pink-cherry-plane-1-1-pano",       label: "⋆˚꒰ Pink Cherry Plane ꒱˚⋆",         emoji: "🍒" },
+        { id: "berry-dream-kitchen-1-1",          label: "୨୧ Berry Dream Kitchen ୧୨",           emoji: "🍓" },
+        { id: "sunkissed-sparkle-lounge-1-1",     label: "✧˖° Sunkissed Sparkle Room °˖✧",      emoji: "☀️" },
+        { id: "twinkle-butterfly-patio-1-1004",   label: "｡ﾟ Twinkle Butterfly Patio ﾟ｡",       emoji: "🦋" },
+        { id: "blooming-frutiger-1-1-pano",       label: ".ೃ࿐ Flowers of our Future ࿐ೃ.",      emoji: "🌷" },
+        { id: "glitter-frutiger-lounge-1-1-pano", label: "✿.｡.: Glitter Hibiscus Lodge :.｡.✿", emoji: "🌺" },
+        { id: "frutiger-rainbow-cafe-1-1-API",    label: "⋆｡‧˚ʚ Frutiger Rainbow Cafe ɞ˚‧｡⋆", emoji: "🌈" },
+        { id: "jewel-princess-bathroom-1-1",      label: "⊹˚.♡ Jewel Princess Bathroom ♡.˚⊹",  emoji: "💎" },
+        { id: "angelic-quartz-chamber-1-1",       label: "ೃ⁀➷ Angelic Quartz Chamber ೃ⁀➷",     emoji: "🪽" },
+        { id: "lavender-laundry-1-1",             label: "⸜♡⸝ Lavender Laundry ⸜♡⸝",           emoji: "🪻" },
+        { id: "lovecore-patio-1-1",               label: "˚₊‧ ꒰ა  Random ໒꒱ ‧₊˚",                    emoji: "🦄" },
+      ],
+    }),
   },
 ];

@@ -8,7 +8,20 @@
       "Bash(git stash *)",
       "mcp__chrome-devtools__select_page",
       "Bash(node --check src/modes/world.js)",
-      "Bash(node --check src/three/portals.js)"
+      "Bash(node --check src/three/portals.js)",
+      "Bash(node --check src/data/hubPortals.js)",
+      "Bash(node --check src/data/scenes.js)",
+      "Bash(node --check src/ui/worldPicker.js)",
+      "Bash(node --check src/ui/variantPills.js)",
+      "Bash(node --check src/ui/portalNavBar.js)",
+      "Bash(ls -la \"C:\\\\Users\\\\ashle\\\\Pictures\\\\Sketchbook Art\\\\png-jpg\\\\sparkle bun1.png\")",
+      "Read(//c/Users/ashle/Pictures/Sketchbook Art/png-jpg/**)",
+      "Bash(certutil -hashfile \"public/sparkle bun1.png\" MD5)",
+      "Bash(sed -n 2p)",
+      "Bash(certutil -hashfile \"C:\\\\Users\\\\ashle\\\\Pictures\\\\Sketchbook Art\\\\png-jpg\\\\sparkle bun1.png\" MD5)",
+      "Bash(node --test tests/hubPortals.test.mjs)",
+      "Bash(node -e \"console.log\\(require.resolve\\('sharp'\\)\\)\")",
+      "Bash(node --test --test-name-pattern=\"startAngle=0 and startAngle=2\" tests/hubPortals.test.mjs)"
     ],
     "additionalDirectories": [
       "C:\\Users\\ashle\\Downloads"

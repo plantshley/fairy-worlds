@@ -53,18 +53,23 @@ html, body {
   flex-wrap: nowrap;
   gap: 8px;
 }
-/* home button rides inside the centered bar rather than pinned top-left */
+/* home button rides inside the centered bar rather than pinned top-left.
+   flex: 0 0 auto prevents the circle from shrinking when the variant pills
+   push the row toward overflow. */
 #world-hud .home-btn {
   position: static;
   top: auto;
   left: auto;
+  flex: 0 0 auto;
 }
-/* drop-object: same look as .object-mode-toggle */
+/* drop-object: same look as .object-mode-toggle, sized to match the height of
+   the surrounding .hud-line elements ("click canvas...", "right-drag...") so
+   the centered top bar stays a single visual row. */
 #btn-spawn-box {
-  font: 11px/1 var(--font-ui);
+  font: 11px/1.4 var(--font-ui);
   letter-spacing: 0.04em;
   color: #fff;
-  padding: 7px 14px;
+  padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.5);
   background: linear-gradient(135deg,
@@ -77,7 +82,6 @@ html, body {
   text-shadow: none;
   width: auto;
   min-height: 0;
-  margin-top: 5px;
   transition: background 120ms, border-color 120ms, transform 120ms, box-shadow 120ms;
 }
 #btn-spawn-box:hover {
@@ -1269,6 +1273,176 @@ canvas { touch-action: none; }
   #scenes {
     width: 200px;
     max-height: calc(100vh - 320px);
+  }
+}
+
+/* ============================================================
+   portal-nav HUD
+   ----
+   Activated by JS setting `body[data-nav-mode="portal"]`. Hides the dropdown
+   picker and reveals the variant pills + prev/next world arrows. Two layouts:
+   desktop uses fixed edge arrows + pills inside #world-hud; mobile uses a
+   single horizontal top bar that replaces #scenes in the same screen real
+   estate.
+   ============================================================ */
+
+/* Circle arrow button — shape and size from .home-btn / .recenter-btn, fill
+   and hover/active states from .object-mode-toggle (per user spec). */
+.circle-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg,
+    rgba(252, 203, 131, 0.55) 0%,
+    rgba(255, 172, 234, 0.55) 50%,
+    rgba(200, 179, 251, 0.55) 100%);
+  box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, transform 120ms, box-shadow 120ms;
+  flex: 0 0 auto;
+}
+.circle-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 172, 234, 0.7);
+  box-shadow: 0 0 12px rgba(255, 172, 234, 0.55);
+  transform: translateY(-1px);
+}
+.circle-btn:active {
+  background: linear-gradient(135deg,
+    rgba(252, 203, 131, 0.75) 0%,
+    rgba(255, 172, 234, 0.75) 50%,
+    rgba(200, 179, 251, 0.75) 100%);
+}
+.circle-btn[hidden] { display: none; }
+
+.edge-arrow {
+  position: fixed;
+  top: 50%;
+  z-index: 11;
+  transform: translateY(-50%);
+}
+/* Override .circle-btn:hover transform so edge arrows keep their vertical
+   centering instead of jumping. */
+.edge-arrow:hover { transform: translateY(calc(-50% - 1px)); }
+.edge-arrow-left { left: 1rem; }
+.edge-arrow-right { right: 1rem; }
+
+/* Mobile/tablet pill bar — flush with the top of the screen, inline with the
+   pinned flower home button (which sits at left: 8px, width: 36px), so the
+   bar starts at left: 52px and runs to right: 8px. Edge arrows live on the
+   screen edges (separate fixed-position buttons) — the in-bar arrows
+   (#prev-world-bar, #next-world-bar) are hidden because they'd duplicate. */
+#portal-nav-bar {
+  position: fixed;
+  top: 8px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+#portal-nav-bar[hidden] { display: none; }
+#portal-nav-bar .variant-pills { pointer-events: auto; }
+/* In-bar arrow buttons are redundant now that .edge-arrow shows on both
+   desktop and mobile in portal-nav. */
+#prev-world-bar, #next-world-bar { display: none !important; }
+
+.variant-pills {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+.variant-pills[hidden] { display: none; }
+/* Desktop variant pills cap at half-viewport width so they don't push the
+   home/recenter buttons off-screen on long-titled worlds. Inherits flex-wrap
+   from .variant-pills so pills wrap to additional rows when needed. */
+#variant-pills-desktop {
+  margin-left: 0px;
+  max-width: 570px;
+}
+/* In the mobile bar, the pills strip grows to fill space between the arrows.
+   2-row grid that horizontally scrolls when content exceeds available width;
+   `min-width: 0` is required on flex items for overflow-x to actually clip
+   (without it, the flex item refuses to shrink below its content size). The
+   `body[data-nav-mode="portal"]` selector wins specificity over the default
+   `.variant-pills` flex layout, so this applies wherever it shows (mobile —
+   on desktop the parent #portal-nav-bar is display:none). */
+/* Mobile pills: flex-wrap row, left-aligned, packs naturally. No row cap —
+   the bar is at the top of the screen with no other content, so pills can
+   wrap to as many rows as needed without overlapping anything important. */
+#portal-nav-bar > #variant-pills-mobile {
+  display: flex !important;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 8px;
+}
+
+/* Portal-nav hides the dropdown picker everywhere. */
+body[data-nav-mode="portal"] #scenes,
+body[data-nav-mode="portal"] #scenes-header {
+  display: none !important;
+}
+
+/* Portal-nav UI is world-mode only. Without this, the edge arrows + nav bar
+   linger on the home page after a portal-mode exit (their [hidden] state is
+   updated only on the next scene load, never on the home transition). */
+body:not([data-mode="world"]) #portal-nav-bar,
+body:not([data-mode="world"]) #prev-world-edge,
+body:not([data-mode="world"]) #next-world-edge,
+body:not([data-mode="world"]) #variant-pills-desktop,
+body:not([data-mode="world"]) #variant-pills-mobile {
+  display: none !important;
+}
+
+/* Layout split — width-based, not pointer-based, so DevTools responsive
+   mode and narrow desktop windows behave the same as actual mobile. The
+   cutoff (900px) covers phones and tablet-portrait; anything wider is
+   "desktop". Edge arrows live on screen edges in BOTH layouts so they
+   don't get hidden in either branch. */
+@media (min-width: 901px) and (pointer: fine) {
+  #portal-nav-bar { display: none !important; }
+}
+@media (max-width: 900px), (pointer: coarse), (hover: none) {
+  #variant-pills-desktop { display: none !important; }
+}
+
+/* Mobile portal-nav home button: pinned top-left, force-shown even where the
+   phone media queries hide #world-hud .home-btn. !important on every layout
+   property because we're fighting both the .home-btn defaults (top:12, left:12,
+   position:fixed) and the #world-hud .home-btn override (position:static).
+   Width-gated to match the layout-split above. */
+@media (max-width: 900px), (pointer: coarse), (hover: none) {
+  body[data-nav-mode="portal"] #world-hud .home-btn,
+  body[data-nav-mode="portal"] .home-btn {
+    display: flex !important;
+    position: fixed !important;
+    top: 8px !important;
+    left: 8px !important;
+    z-index: 12 !important;
+    margin: 0 !important;
   }
 }
 
