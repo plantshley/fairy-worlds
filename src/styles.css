@@ -155,6 +155,31 @@ html, body {
 }
 body:not([data-mode="home"]) .object-mode-toggle { display: none; }
 
+/* #home-toolbar wraps portals-hub + object-mode so mobile can lay them out
+   as a centered (or right-anchored) flex pair. On desktop it's display:contents,
+   which removes its own box from layout — the buttons inside still position
+   themselves fixed-individually, just like before the wrapper existed. */
+#home-toolbar { display: contents; }
+/* Keep the labels on a single line at every viewport. The mobile font-size
+   shrink (9px in portrait, 7px in landscape) makes the labels narrow, so
+   nowrap doesn't force overflow — it just prevents two-line wrap. */
+#home-toolbar > .object-mode-toggle { white-space: nowrap; }
+
+/* Portals hub shortcut on the home page. Same base styling as
+   .object-mode-toggle (shares the class). Desktop centers the button
+   horizontally on the world picker's midline: #scenes has left:-2 + width:230,
+   so its center is at x=113. translateX(-50%) anchors the button's own center
+   to that line; hover combines that with the lift so the centering survives. */
+.portals-hub-btn {
+  left: 113px;
+  right: auto;
+  transform: translateX(-50%);
+}
+.portals-hub-btn:hover {
+  transform: translate(-50%, -1px);
+}
+body:not([data-mode="home"]) #btn-portals-hub { display: none; }
+
 .hud-btn {
   font-family: var(--font-display);
   font-size: 16px; color: #fff; letter-spacing: 0.04em;
@@ -1117,6 +1142,38 @@ canvas { touch-action: none; }
   body:has(#scenes .scene-group.open) #btn-spawn-box {
     display: none !important;
   }
+
+  /* Portals hub + object-mode share a centered flex row via #home-toolbar.
+     A wrapper-based layout is required (not individual offsets) because the
+     two buttons have different label widths — calc(50% ± n) anchoring shifts
+     the visual center toward the wider button. The flex wrapper centers the
+     pair as a single unit so left/right whitespace stays equal. */
+  body[data-mode="home"] #home-toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    position: fixed;
+    top: 75px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    z-index: 11;
+  }
+  /* Inside the flex wrapper, children drop their fixed positioning and flow
+     normally. !important is needed because the shared
+     `.object-mode-toggle, #btn-spawn-box` rule above sets position:fixed with
+     its own offsets at the same specificity. */
+  #home-toolbar > .object-mode-toggle {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+  }
+  #home-toolbar > .object-mode-toggle:hover {
+    transform: translateY(-1px) !important;
+  }
 }
 
 /* ---- phone landscape: picker becomes right side sheet ---- */
@@ -1215,6 +1272,34 @@ canvas { touch-action: none; }
       rgba(252, 203, 131, 0.75) 0%,
       rgba(255, 172, 234, 0.75) 50%,
       rgba(200, 179, 251, 0.75) 100%);
+  }
+
+  /* Phone landscape: portals-hub + object-mode form a RIGHT-anchored row on
+     home page (not centered — too little vertical real estate to spare for
+     center alignment, and the top-right corner already houses object-mode
+     in world mode so users expect controls there). Wrapper anchored to the
+     right edge; portals-hub sits to the left of object-mode inside the flex. */
+  body[data-mode="home"] #home-toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    left: auto;
+    transform: none;
+    z-index: 11;
+  }
+  #home-toolbar > .object-mode-toggle {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+  }
+  #home-toolbar > .object-mode-toggle:hover {
+    transform: translateY(-1px) !important;
   }
 
   .loader-card {
@@ -1400,11 +1485,22 @@ canvas { touch-action: none; }
   font-size: 8px;
 }
 
-/* Portal-nav hides the dropdown picker everywhere. */
+/* Portal-nav AND hub-nav both hide the dropdown picker. In hub-nav the only
+   way out is via a portal click or the flower home button. */
 body[data-nav-mode="portal"] #scenes,
-body[data-nav-mode="portal"] #scenes-header {
+body[data-nav-mode="portal"] #scenes-header,
+body[data-nav-mode="hub"] #scenes,
+body[data-nav-mode="hub"] #scenes-header {
   display: none !important;
 }
+
+/* Hub-hint: shown only when in the hub scene (hub-nav). Sits inline in the
+   #world-hud bar to the right of the origin button. !important is needed to
+   defeat the phone media queries' `#world-hud .hud-line { display: none
+   !important }` rule — generic instructional hints are hidden on phones, but
+   the hub workflow text is core navigation info and stays visible. */
+body[data-nav-mode="hub"] #hub-hint { display: block !important; }
+body:not([data-nav-mode="hub"]) #hub-hint { display: none !important; }
 
 /* Portal-nav UI is world-mode only. Without this, the edge arrows + nav bar
    linger on the home page after a portal-mode exit (their [hidden] state is

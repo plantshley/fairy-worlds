@@ -66,13 +66,17 @@ const worldMode = createWorldMode({
   renderer: manager.renderer,
   onSceneLoaded: (sceneDef) => {
     worldPicker.setActiveScene(sceneDef.id);
+    // Hub gets its own nav mode regardless of how it was entered (dropdown,
+    // portals-hub button, return-from-portal). Hub-nav hides the dropdown +
+    // pills + edge arrows and surfaces the hub-hint instead.
+    if (sceneDef.id === HUB_ID) setNavMode("hub");
     refreshPortalNavUI(sceneDef);
     // Re-evaluate the drop-object button visibility — it depends on whether
     // we just landed on the hub (hidden) vs any other scene (per-toggle).
     applyObjectModeUI();
   },
-  // Entering a scene via a clickable portal flips us into portal-nav. The
-  // refreshPortalNavUI call from onSceneLoaded picks up the new mode.
+  // Entering a scene via a clickable portal flips us into portal-nav. If the
+  // target is the hub itself, onSceneLoaded overrides this to "hub" after load.
   onPortalEnter: () => setNavMode("portal"),
 });
 manager.register(homeMode);
@@ -169,10 +173,7 @@ function goHomeOrHub() {
   if (navMode === "portal" && !atHub) {
     const hub = SCENES.find((s) => s.id === HUB_ID);
     if (hub) {
-      // Returning to hub is a picker-style action — at hub the dropdown +
-      // pills should reappear so user can launch into another portal or pick
-      // any scene normally.
-      setNavMode("picker");
+      // onSceneLoaded flips navMode to "hub" once the splat is in.
       worldMode.loadScene(hub);
       return;
     }
@@ -230,6 +231,14 @@ document.getElementById("btn-enter-world")?.addEventListener("click", async () =
   companion.show();
 });
 document.getElementById("btn-home")?.addEventListener("click", goHomeOrHub);
+document.getElementById("btn-portals-hub")?.addEventListener("click", async () => {
+  const hub = SCENES.find((s) => s.id === HUB_ID);
+  if (!hub) return;
+  picker.close();
+  await manager.transitionTo("world", { scene: hub });
+  companion.show();
+  // onSceneLoaded fires after the splat finishes loading and sets navMode to "hub".
+});
 document.getElementById("btn-recenter")?.addEventListener("click", () => {
   worldMode.returnToOrigin();
 });
