@@ -50,8 +50,9 @@ export function createWorldPicker({ container, scenes, onSelectScene }) {
         btn.textContent = label;
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
+          // Don't collapse here — applyActive (via setActiveScene) keeps the
+          // active world's dropdown open so the user can hop between its scenes.
           onSelectScene(s);
-          closeOpenGroup();
         });
         panel.appendChild(btn);
       }
@@ -63,12 +64,21 @@ export function createWorldPicker({ container, scenes, onSelectScene }) {
   }
 
   function applyActive() {
+    let activeGroup = null;
     for (const btn of container.querySelectorAll(".scene-btn")) {
-      btn.classList.toggle("active", btn.dataset.sceneId === activeSceneId);
+      const isActive = btn.dataset.sceneId === activeSceneId;
+      btn.classList.toggle("active", isActive);
+      if (isActive) activeGroup = btn.closest(".scene-group");
     }
     for (const g of container.querySelectorAll(".scene-group")) {
-      const hasActive = !!g.querySelector(".scene-btn.active");
-      g.classList.toggle("has-active", hasActive);
+      g.classList.toggle("has-active", g === activeGroup);
+    }
+    // Keep the current world's dropdown expanded while any of its scenes is
+    // active, so switching scenes within a world doesn't collapse the picker.
+    if (activeGroup && activeGroup !== openGroupEl) {
+      closeOpenGroup();
+      activeGroup.classList.add("open");
+      openGroupEl = activeGroup;
     }
   }
 

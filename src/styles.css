@@ -205,6 +205,27 @@ body:not([data-mode="home"]) #btn-portals-hub { display: none; }
               0 0 0 1px rgba(255,255,255,0.3) inset;
 }
 
+/* First-run nudge toward the character picker. JS adds .hint-pulse, then
+   removes it on first click or after the animation settles. */
+.hud-btn.hint-pulse {
+  animation: hud-hint-pulse 1.6s ease-in-out infinite;
+}
+@keyframes hud-hint-pulse {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: 0 4px 14px rgba(255, 172, 234, 0.35);
+  }
+  50% {
+    transform: translateY(-2px);
+    border-color: rgba(255, 216, 242, 0.95);
+    box-shadow: 0 10px 28px rgba(255, 172, 234, 0.75),
+                0 0 0 2px rgba(255, 255, 255, 0.45) inset;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-btn.hint-pulse { animation: none; }
+}
+
 .hud-row {
   display: flex;
   align-items: center;

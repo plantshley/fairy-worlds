@@ -219,8 +219,18 @@ picker.setActive(savedId, initialCharacter, CHARACTERS.find((c) => c.id === save
 saveCharacterId(savedId);
 companion.setCharacter(savedId, initialCharacter?.getState?.());
 
+// First-run nudge: leave the picker closed (per design) but gently pulse the
+// "pick a character" button so new visitors notice it. Clears on first click.
 if (isFirstRun) {
-  picker.open();
+  const changeBtn = document.getElementById("btn-change-character");
+  if (changeBtn) {
+    changeBtn.classList.add("hint-pulse");
+    changeBtn.addEventListener(
+      "click",
+      () => changeBtn.classList.remove("hint-pulse"),
+      { once: true },
+    );
+  }
 }
 
 document.getElementById("btn-enter-world")?.addEventListener("click", async () => {
