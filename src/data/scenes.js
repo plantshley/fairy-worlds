@@ -564,6 +564,11 @@ export const SCENES = [
     id: "hub-heart-pool",
     world: "Random",
     title: "Portals Hub",
+    // Reached via its own flower / hub button (#btn-portals-hub), so keep it out
+    // of the world-picker dropdown AND out of single/double-trigger cycling
+    // (cycleScene skips hideInPicker). cycleWorld never lands here anyway since
+    // it's last in the Random group.
+    hideInPicker: true,
     url: import.meta.env.BASE_URL + "splats/Heart%20Pool%20Pavilion.spz",
     spawn: {
       position: [-0.02, 1.92, -3.69],

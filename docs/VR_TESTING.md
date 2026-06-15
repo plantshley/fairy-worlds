@@ -3,28 +3,90 @@
 Fairy worlds has WebXR wired into [src/sceneManager.js](../src/sceneManager.js) +
 [src/three/vrButton.js](../src/three/vrButton.js) +
 [src/three/vrLocomotion.js](../src/three/vrLocomotion.js) +
+[src/three/portals.js](../src/three/portals.js) +
 [src/modes/world.js](../src/modes/world.js). The "✦ open in VR ✦" label is
 attached to the companion speech bubble in world mode — clicking the bubble
 starts/exits the session. To exercise it without owning a headset, use a
 browser emulator.
 
-## In-VR controls (HTC VIVE wand mapping, target headset)
+## VR Controls Guide (for players)
 
-Single-trigger vs. double-trigger is edge-detected in
-[src/three/vrButton.js](../src/three/vrButton.js) with a 250ms window — a second
-trigger on the same hand within that window upgrades the action.
+Pick a character, step into a world, and put the headset on.
+
+**First, the natural stuff:** just **look around and walk** like you normally
+would — turn your head, lean in, take real steps. The headset tracks your body,
+so your view moves with you inside your room's play space. The wand controls
+below are for when you want to travel *farther than your room allows* or turn
+without physically spinning (handy on the VIVE so you don't wind up the cable).
+
+| You want to… | Do this |
+| --- | --- |
+| **Look / move a little** | Just move — turn your head and walk around physically. Tracked automatically within your play area. |
+| **Walk farther than your room** | Push the **left** thumbstick / trackpad. You move whichever way you're looking — push forward to go forward, pull back to back up, push sideways to strafe. |
+| **Turn without spinning yourself** | Flick the **right** thumbstick / trackpad left or right. You snap-turn 30° each flick (comfier than smooth spinning). Flick again to keep turning. |
+| **Hop to the next room** | Pull the **right** trigger. Pull the **left** trigger to go back a room. |
+| **Jump to a whole new world** | Double-pull the **right** trigger (quickly, twice) to jump to the next world; double-pull the **left** trigger for the previous one. |
+| **Step through a magic doorway** | Point a wand at a glowing portal or a floating character and pull that wand's trigger — you'll be whisked to where it leads. Visit the **Portals Hub** (the flower button / hub button) for a ring of doorways to every world. |
+| **Pick up an object** *(object mode on)* | Point a wand at a droppable object and pull the trigger to grab it. **Let go of the trigger** to drop it. |
+| **Get un-lost** | If you've wandered off, press the **menu button** on either wand to snap back to where you started. |
+| **Take the headset off** | Squeeze the **grip** on either wand to leave VR. |
+
+> 💡 Triggers are context-sensitive. If your wand is aimed at a doorway or a
+> grabbable object, the trigger uses *that* first; aimed at empty space, it
+> changes rooms. So a portal you're pointing at always wins over "next room."
+
+## In-VR controls (HTC VIVE wand mapping, target headset) — technical
+
+The trigger is **overloaded** and resolved as a priority chain in
+[src/three/vrButton.js](../src/three/vrButton.js) `onSelectStart`. On each
+trigger pull, in order: (1) if the controller ray hits a **portal**, teleport
+through it; else (2) if **object mode** is on and the ray hits a **grabbable**,
+grab it; else (3) the cross-hand / double / single **cycle** logic below. The
+first match consumes the trigger, so the cycle actions only fire when you're
+pointing at empty space.
+
+Single-trigger vs. double-trigger is edge-detected with a 250ms window — a
+second trigger on the **same** hand within that window upgrades scene→world; a
+trigger on the **other** hand within that window fires recenter instead.
 
 | Input | Action | Wired in |
 | --- | --- | --- |
-| Left trackpad axes | Walk (forward/back/strafe relative to head direction) | [src/three/vrLocomotion.js](../src/three/vrLocomotion.js) |
-| Right trackpad X-axis flick (past 0.8) | 30° snap-turn (left or right) | [src/three/vrLocomotion.js](../src/three/vrLocomotion.js) |
-| **Right wand trigger** — single click | **Next scene** (cycles in [SCENES](../src/data/scenes.js) order, wraps at end) | [src/three/vrButton.js](../src/three/vrButton.js) → [src/main.js](../src/main.js) → `worldMode.cycleScene(1)` |
-| **Left wand trigger** — single click | **Previous scene** (wraps at start) | same |
-| **Right wand trigger** — double click | **Next world group** (jumps to the first scene of the next world) | [src/three/vrButton.js](../src/three/vrButton.js) → `worldMode.cycleWorld(1)` |
-| **Left wand trigger** — double click | **Previous world group** | same |
+| Left thumbstick / trackpad axes | Walk (forward/back/strafe relative to head direction) | [src/three/vrLocomotion.js](../src/three/vrLocomotion.js) |
+| Right thumbstick / trackpad X-axis flick (past 0.8) | 30° snap-turn (left or right) | [src/three/vrLocomotion.js](../src/three/vrLocomotion.js) |
+| **Either trigger** aimed at a **portal** | **Teleport** through the portal to its target scene (controller-ray raycast, ≤8m reach). Consumes the trigger — takes priority over grab and cycle. | [src/three/vrButton.js](../src/three/vrButton.js) `onTryPortal` → [src/three/portals.js](../src/three/portals.js) `tryPortal` |
+| **Either trigger** aimed at a **grabbable** (object mode on) | **Grab** the object. Release the trigger (`selectend`) to drop it. Consumes the trigger — takes priority over cycle. | [src/three/vrButton.js](../src/three/vrButton.js) `onTryGrab` / `onSelectEnd` → [src/three/grab.js](../src/three/grab.js) |
+| **Right wand trigger** — single click (empty space) | **Next scene** (cycles in [SCENES](../src/data/scenes.js) order, **skipping `hideInPicker` scenes**, wraps at end) | [src/three/vrButton.js](../src/three/vrButton.js) → [src/main.js](../src/main.js) → `worldMode.cycleScene(1)` |
+| **Left wand trigger** — single click (empty space) | **Previous scene** (wraps at start) | same |
+| **Right wand trigger** — double click (empty space) | **Next world group** (jumps to the first scene of the next world) | [src/three/vrButton.js](../src/three/vrButton.js) → `worldMode.cycleWorld(1)` |
+| **Left wand trigger** — double click (empty space) | **Previous world group** | same |
 | **Either wand menu button** (gamepad button[3]) — real-hardware | **Return to spawn** — yaw-recenters dolly so head is back at the scene's defined spawn position/yaw. On Quest Touch this is the thumbstick click instead. | [src/modes/world.js](../src/modes/world.js) `pollRecenterButton` → `returnToOrigin` |
-| **Both triggers simultaneously** (left + right selectstart within 250ms) — emulator-friendly | **Return to spawn** (same as above). Provided because the WebXR Emulator's HTC Vive profile only exposes select + squeeze, not menu/touchpad-press. Cross-hand gesture, so it doesn't collide with single-hand single/double trigger actions. | [src/three/vrButton.js](../src/three/vrButton.js) `onSelectStart` → `onRecenter` → [src/main.js](../src/main.js) → `worldMode.returnToOrigin()` |
+| **Both triggers simultaneously** (left + right selectstart within 250ms, both aimed at empty space) — emulator-friendly | **Return to spawn** (same as above). Provided because the WebXR Emulator's HTC Vive profile only exposes select + squeeze, not menu/touchpad-press. Cross-hand gesture, so it doesn't collide with single-hand single/double trigger actions. | [src/three/vrButton.js](../src/three/vrButton.js) `onSelectStart` → `onRecenter` → [src/main.js](../src/main.js) → `worldMode.returnToOrigin()` |
 | **Either wand grip** (`squeezestart`) | **Exit VR session** | [src/three/vrButton.js](../src/three/vrButton.js) calls `currentSession.end()` |
+
+> ⚠️ Because the trigger is a priority chain, the cross-hand recenter gesture
+> only fires if **neither** trigger landed on a portal or grabbable. If you're
+> aimed at a portal, that trigger teleports instead of contributing to the
+> recenter gesture.
+
+### Portals & the hub
+
+Portals are clickable/aimable doorways (and floating character GLBs) placed in
+scenes via `sceneDef.portals` in [src/data/scenes.js](../src/data/scenes.js).
+The **Portals Hub** (`hub-heart-pool`) is a dedicated scene holding a ring of 12
+portals — one per world — built by
+[src/data/hubPortals.js](../src/data/hubPortals.js). Reach it via the flower /
+hub button in the HUD. In VR, point a wand at a portal and pull the trigger
+([src/three/portals.js](../src/three/portals.js) `tryPortal`); on desktop/touch,
+tap it. This is the in-VR "jump to a specific world" path.
+
+### Object mode (grab / drop)
+
+When object mode is toggled on (HUD button, persisted to
+`fairy-worlds-object-mode`), scenes load a Rapier collider and you can spawn
+droppable GLBs/boxes. In VR, aim a wand at a dropped object and pull the trigger
+to grab it; release the trigger to drop. New objects are spawned via the desktop
+HUD "drop object" button — there is currently no in-VR spawn gesture, only grab
+of already-dropped items.
 
 ### Spawn behavior when cycling
 
@@ -103,8 +165,12 @@ gamepad index — see the next section for menu-button (button[3]) caveats.
 
 - [ ] Set device to **HTC Vive** (two controllers, handedness `left` / `right`)
 - [ ] Enter VR, then:
+  - [ ] Aim at empty space first (a portal/grabbable under the ray would be used
+        instead — see the priority chain above).
   - [ ] Single click **right controller → Trigger** → wait ~250ms → splat reloads,
-        next scene in array order. Wraps from `animal-crossing` back to
+        next scene in array order, **skipping `hideInPicker` scenes** (the
+        lovely-melody/pink/mint interiors and the Portals Hub). The last
+        cyclable scene is `animal-crossing`, which wraps back to
         `heart-pool-1-1-1004`.
   - [ ] Single click **left controller → Trigger** → previous scene. Wraps backward.
   - [ ] **Double click** the right Trigger within 250ms → skips to the first scene
@@ -163,9 +229,13 @@ Not VR, but the same `returnToOrigin` path:
       `translate(-50%, Ypx)` written each frame).
 
 ### Collision
-- [ ] You will walk through splat "geometry" (splats aren't solid) — expected,
-      not a bug
-- [ ] Fix later by adding an invisible floor + wall mesh per scene
+- [ ] You will walk through splat "geometry" while moving — locomotion writes
+      `dolly.position` with no collision test, so the player is never blocked.
+      Expected, not a bug.
+- [ ] Note: per-scene Rapier colliders **do** exist now (loaded in object mode,
+      see `loadSceneCollider` in [src/modes/world.js](../src/modes/world.js)),
+      but they only stop **dropped objects** — they don't constrain the player.
+      Player-vs-world collision is still unimplemented.
 
 ## Limitations of the emulator
 
@@ -178,9 +248,17 @@ Not VR, but the same `returnToOrigin` path:
 
 ## Features not yet implemented
 
-- Teleport locomotion (alternative to smooth movement — some people need it for comfort)
+- Smooth/teleport-arc locomotion as an explicit comfort option (current snap-turn
+  + smooth-walk is the only scheme; some people want a parabolic teleport)
 - Controller models visible in the scene
-- 3D in-VR scene picker (current single/double trigger works for navigating,
-  but jump-to-specific-scene requires exiting VR and using the DOM picker)
-- VR in home mode (button is world-mode only)
-- Collision with splat scenes
+- VR hover feedback on portals (desktop has pointer-hover highlight; the VR
+  controller ray has no hover state yet — you aim blind and pull the trigger)
+- In-VR object **spawn** (you can grab/drop existing objects in VR, but spawning
+  new ones is desktop-HUD-only)
+- VR in home mode (the VR button + all cycle/portal/grab handlers are world-mode only)
+- **Player**-vs-splat collision (object colliders exist; the player still walks
+  through everything)
+
+> Note: jump-to-a-specific-world *inside* VR is now handled by the **Portals
+> Hub** (point + trigger at a doorway), so it's no longer a missing feature —
+> see "Portals & the hub" above.
