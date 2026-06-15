@@ -36,7 +36,7 @@ import {
   noteVRDistance,
 } from "../utils/analytics.js";
 
-export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
+export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onReturnToHub }) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
     60,
@@ -91,6 +91,16 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
   // enterPortal calls racing on the overlay fade + loadToken.
   let isActive = false;
   let portalTransitioning = false;
+  // VR-entry spawn + walk-in guards (see update()). On entering VR we must (a)
+  // reposition the head to the scene spawn and (b) keep walk-into-portal entry
+  // from firing while the head is still at its transient pre-spawn pose (≈world
+  // origin in the WebXR emulator, which can sit inside a ring portal's radius).
+  // _wasPresenting edge-detects entering VR; _vrSpawnFrames counts down a short
+  // settle so applySpawn runs once the XR camera has a valid pose, and gates
+  // walk-in until then. Driven from the render loop (XR rAF) — NOT a window rAF,
+  // which the browser starves inside an immersive session.
+  let _wasPresenting = false;
+  let _vrSpawnFrames = 0;
   const dollySpawnPos = new THREE.Vector3();
   const _spawnVec = new THREE.Vector3();
   const _headPos = new THREE.Vector3();
@@ -98,6 +108,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
   const _spawnQuat = new THREE.Quaternion();
   const _yawQuat = new THREE.Quaternion();
   const _forward = new THREE.Vector3();
+  const _portalHeadPos = new THREE.Vector3();
   const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
   // Pull yaw (rotation around Y) out of a quaternion by rotating the
@@ -147,6 +158,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
       controls.pointerControls?.moveVelocity?.set(0, 0, 0);
     }
     dollySpawnPos.copy(dolly.position);
+    // Any spawn jump (scene load, recenter, VR entry) teleports the head to a
+    // known-safe pose. Reset walk-in arm state so portals re-arm from here
+    // (arm-on-exit) rather than firing the instant the head lands near one.
+    for (const p of currentPortals) p.armed = false;
   }
 
   // Cache the in-flight promise so concurrent callers share one init instead of
@@ -223,8 +238,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
     if (sceneDef) applySpawn(sceneDef);
   }
 
-  // Kept for callers that only want a no-op when not in VR (the VR session-
-  // start hook). Desktop reset is handled by the return-to-spawn UI button.
+  // Recenter to spawn, but only while presenting (no-op on desktop, where the
+  // ⊙ button calls returnToOrigin directly). VR-entry spawn is handled by
+  // update()'s render-loop edge detection now; this stays as an exported helper
+  // for any explicit "recenter in VR" caller.
   function recenterToCurrentSpawn() {
     if (!renderer.xr?.isPresenting) return;
     returnToOrigin();
@@ -443,6 +460,12 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
           root.add(bubble);
         }
 
+        // Walk-into trigger radius (XZ). GLB portals have no authored width, so
+        // derive from the bind-pose box footprint, clamped to a sane range.
+        // Per-portalDef `triggerRadius` overrides if set.
+        const glbFootprint = localBox.isEmpty()
+          ? 0.8
+          : Math.max(localBox.max.x - localBox.min.x, localBox.max.z - localBox.min.z);
         scene.add(root);
         currentPortals.push({
           root,
@@ -454,6 +477,11 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
           loaderText: portalDef.loaderText,
           // Random phase so multiple portals in one scene don't bob in lockstep.
           phase: Math.random() * Math.PI * 2,
+          // Proximity entry: armed only after the head first leaves the radius
+          // (arm-on-exit), so spawning beside a portal doesn't auto-trigger.
+          armed: false,
+          triggerRadius:
+            portalDef.triggerRadius ?? Math.min(1.2, Math.max(0.6, glbFootprint / 2 + 0.3)),
         });
       })
       .catch((err) => {
@@ -535,6 +563,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
       scale: 1,
       loaderText: portalDef.loaderText,
       phase: 0,
+      // Walk-into trigger radius (XZ) ≈ half the door width plus a margin, so
+      // stepping through the opening enters it. Armed on first exit (below).
+      armed: false,
+      triggerRadius: portalDef.triggerRadius ?? width / 2 + 0.3,
       // Doorway-specific: hover state + smoothed uniform updater. uHover is
       // smoothed in update(dt); setHover just nudges the target.
       material,
@@ -795,7 +827,14 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
   // thumbstick click. The WebXR Emulator's Vive profile doesn't expose this
   // button — for emulator testing, press BOTH triggers simultaneously instead
   // (handled in vrButton.js as the cross-hand select gesture).
+  //
+  // Single tap = recenter to spawn. Double tap (within MENU_DOUBLE_MS) = return
+  // to the Portals Hub. We fire recenter immediately on the first tap (no
+  // latency on the common action) and the hub jump on the second; the wasted
+  // recenter is invisible since the hub transition overrides position anyway.
+  const MENU_DOUBLE_MS = 250;
   let _recenterButtonPrev = false;
+  let _menuTapTime = 0;
   function pollRecenterButton() {
     const session = renderer.xr.getSession();
     if (!session) return;
@@ -806,12 +845,40 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
         break;
       }
     }
-    if (pressed && !_recenterButtonPrev) returnToOrigin();
+    if (pressed && !_recenterButtonPrev) {
+      const now = performance.now();
+      if (now - _menuTapTime < MENU_DOUBLE_MS) {
+        _menuTapTime = 0; // consume so a third quick tap doesn't re-fire
+        onReturnToHub?.();
+      } else {
+        _menuTapTime = now;
+        returnToOrigin();
+      }
+    }
     _recenterButtonPrev = pressed;
   }
 
   function update(dt) {
-    if (renderer.xr?.isPresenting) {
+    const presenting = !!renderer.xr?.isPresenting;
+    // Entering VR: disarm walk-in portals immediately (a portal armed during
+    // desktop viewing must not fire while the head is at its transient pre-spawn
+    // pose), then schedule the spawn recenter a frame out so the XR camera has a
+    // valid pose. This OWNS VR-entry spawn — the render loop runs on the XR rAF,
+    // which (unlike the window rAF behind onSessionStart) never gets starved
+    // mid-session, so it fires reliably on every entry, first or Nth.
+    if (presenting && !_wasPresenting) {
+      for (const p of currentPortals) p.armed = false;
+      _vrSpawnFrames = 2;
+    }
+    _wasPresenting = presenting;
+    if (presenting && _vrSpawnFrames > 0) {
+      _vrSpawnFrames--;
+      if (_vrSpawnFrames === 0) {
+        const sceneDef = currentSceneId ? SCENES.find((s) => s.id === currentSceneId) : null;
+        if (sceneDef) applySpawn(sceneDef);
+      }
+    }
+    if (presenting) {
       vrLocomotion.update(dt, dolly);
       pollRecenterButton();
       noteVRDistance(dolly.position.distanceTo(dollySpawnPos));
@@ -819,6 +886,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
       touchControls.update(dt, camera);
       controls.update(camera);
     }
+    // Unconditional: when presenting it stretches the wand rays + drives portal
+    // hover; when not, it hides the rays (so they don't linger on the desktop
+    // mirror after a session ends) and clears any VR hover state.
+    portalInteraction.updateVRHover();
     if (physics) {
       grab?.update(dt);
       physics.step(dt);
@@ -843,6 +914,33 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter }) {
             // Emoji label fades in with hover. Same smoothed value as uHover
             // so the label and halo brightening stay synchronized.
             if (p.emojiSprite) p.emojiSprite.material.opacity = p.hoverValue;
+          }
+        }
+      }
+
+      // Walk-into-portal: enter a portal by physically/stick-walking into it
+      // (VR + desktop), alongside aim/click entry. Each portal arms only once
+      // the head has left its radius (arm-on-exit + hysteresis), so spawning
+      // beside a return portal can't bounce you straight back. enterPortal is
+      // internally guarded by isActive/portalTransitioning, so the per-frame
+      // calls during a fade are cheap no-ops. XZ distance only — door height
+      // and GLB bob shouldn't affect the trigger.
+      if (!portalTransitioning && (!presenting || _vrSpawnFrames === 0)) {
+        const head = presenting ? renderer.xr.getCamera() : camera;
+        head.updateMatrixWorld(true);
+        head.getWorldPosition(_portalHeadPos);
+        for (const p of currentPortals) {
+          const dx = _portalHeadPos.x - p.root.position.x;
+          const dz = _portalHeadPos.z - p.root.position.z;
+          const distSq = dx * dx + dz * dz;
+          const r = p.triggerRadius ?? 0.7;
+          if (!p.armed) {
+            // Re-arm once clear of the radius plus a 1.5× hysteresis margin.
+            const armR = r * 1.5;
+            if (distSq > armR * armR) p.armed = true;
+          } else if (distSq < r * r) {
+            enterPortal(p);
+            break; // one entry per frame
           }
         }
       }

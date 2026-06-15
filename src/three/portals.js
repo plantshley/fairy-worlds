@@ -7,6 +7,11 @@ const TAP_PX = 6;
 const VR_RAY_REACH = 8;
 const DESKTOP_RAY_REACH = 50;
 
+// VR pointer ray colors: pale pink when aiming at nothing, bright pink when the
+// ray is over a portal (matched with the doorway shader's hover brightening).
+const RAY_IDLE = 0xffd5ec;
+const RAY_HOVER = 0xff5fa2;
+
 const _origin = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _forward = new THREE.Vector3(0, 0, -1);
@@ -26,6 +31,27 @@ export function createPortalInteraction({ renderer, camera, dolly, getPortals, o
   const dom = renderer.domElement;
   const controllers = new Map(); // handedness -> THREE.Group
 
+  // A thin laser line parented to each controller so the player can see where
+  // they're aiming. Unit length along -Z; scale.z is stretched to the hit
+  // distance (or full reach) each frame in updateVRHover.
+  function makeRay() {
+    const geom = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, 0, -1),
+    ]);
+    const mat = new THREE.LineBasicMaterial({
+      color: RAY_IDLE,
+      transparent: true,
+      opacity: 0.4,
+      depthTest: false, // draw over splats so the ray is always visible
+    });
+    const line = new THREE.Line(geom, mat);
+    line.scale.z = VR_RAY_REACH;
+    line.renderOrder = 30;
+    line.visible = false; // shown only while presenting (see updateVRHover)
+    return line;
+  }
+
   // Mirror grab.js's controller registration so VR raycast can look up
   // "left"/"right" from a session-level select event. dolly.add(controller) is
   // idempotent if grab.js already parented it — three.js's add() short-circuits
@@ -38,6 +64,11 @@ export function createPortalInteraction({ renderer, camera, dolly, getPortals, o
         controllers.set(hand, c);
         if (!c.userData.handedness) c.userData.handedness = hand;
         if (c.parent !== dolly) dolly.add(c);
+        if (!c.userData.ray) {
+          const ray = makeRay();
+          c.add(ray);
+          c.userData.ray = ray;
+        }
       }
     });
     c.addEventListener("disconnected", () => {
@@ -186,25 +217,71 @@ export function createPortalInteraction({ renderer, camera, dolly, getPortals, o
 
   // --- VR ---
 
-  function tryPortal(hand) {
-    const controller = controllers.get(hand);
-    if (!controller) return false;
+  // Raycast a single controller against the portal proxies. Returns the first
+  // hit portal + its distance, or null. Updates from the dolly down — the
+  // controller is a dolly child and vrLocomotion may have just moved dolly this
+  // frame; updating only the controller would leave its world transform stale.
+  // Matches grab.js:tryGrab.
+  function castController(controller) {
     const roots = portalTargets();
-    if (roots.length === 0) return false;
-    // Update from the dolly down — controller is a dolly child and vrLocomotion
-    // may have just moved dolly this frame; updating only the controller would
-    // leave its world transform stale. Matches grab.js:tryGrab.
+    if (roots.length === 0) return null;
     dolly.updateMatrixWorld(true);
     controller.getWorldPosition(_origin);
     _dir.copy(_forward).applyQuaternion(controller.getWorldQuaternion(_worldQuat));
     raycaster.set(_origin, _dir);
     raycaster.far = VR_RAY_REACH;
     const hits = raycaster.intersectObjects(roots, true);
-    if (hits.length === 0) return false;
+    if (hits.length === 0) return null;
     const portal = findHitPortal(hits[0]);
-    if (!portal) return false;
-    onEnter(portal);
+    if (!portal) return null;
+    return { portal, distance: hits[0].distance };
+  }
+
+  function tryPortal(hand) {
+    const controller = controllers.get(hand);
+    if (!controller) return false;
+    const hit = castController(controller);
+    if (!hit) return false;
+    onEnter(hit.portal);
     return true;
+  }
+
+  // Per-frame VR hover: stretch each controller's laser to its hit (or full
+  // reach) and toggle portal.onHover across the union of what both wands point
+  // at. Called from world.js update() while presenting. Diffing a Set handles
+  // two controllers cleanly (a portal stays hovered while either wand is on it)
+  // and avoids re-firing onHover every frame.
+  let vrHovered = new Set();
+  function updateVRHover() {
+    if (!renderer.xr?.isPresenting) {
+      for (const c of controllers.values()) {
+        if (c.userData.ray) c.userData.ray.visible = false;
+      }
+      if (vrHovered.size) {
+        for (const p of vrHovered) p.onHover?.(false);
+        vrHovered = new Set();
+      }
+      return;
+    }
+    // Desktop hover state is frozen while in VR (pointermove early-returns); drop
+    // it so a portal left "hovered" on desktop doesn't stay lit in the headset.
+    if (hovered) clearHover();
+
+    const nowHovered = new Set();
+    for (const controller of controllers.values()) {
+      const hit = castController(controller);
+      const ray = controller.userData.ray;
+      if (ray) {
+        ray.visible = true;
+        ray.scale.z = hit ? hit.distance : VR_RAY_REACH;
+        ray.material.color.setHex(hit ? RAY_HOVER : RAY_IDLE);
+        ray.material.opacity = hit ? 0.9 : 0.4;
+      }
+      if (hit) nowHovered.add(hit.portal);
+    }
+    for (const p of nowHovered) if (!vrHovered.has(p)) p.onHover?.(true);
+    for (const p of vrHovered) if (!nowHovered.has(p)) p.onHover?.(false);
+    vrHovered = nowHovered;
   }
 
   function dispose() {
@@ -214,7 +291,9 @@ export function createPortalInteraction({ renderer, camera, dolly, getPortals, o
     window.removeEventListener("pointermove", onPointerMove, true);
     pending = null;
     hovered = null;
+    for (const p of vrHovered) p.onHover?.(false);
+    vrHovered = new Set();
   }
 
-  return { tryPortal, dispose, clearHover };
+  return { tryPortal, updateVRHover, dispose, clearHover };
 }

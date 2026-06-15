@@ -61,36 +61,7 @@ export const SCENES = [
       quaternion: [-0.048, 0.014, 0.001, 0.999],
     },
   },
-  {
-    id: "pink-cherry-plane-1-1-pano",
-    world: "Pink Cherry Plane",
-    title: "Pink Cherry Plane 1.1-pano",
-    url: import.meta.env.BASE_URL + "splats/Pink%20Cherry%20Plane%201-1-pano.spz",
-    spawn: {
-      position: [-0.21, 1.57, 0.82],
-      quaternion: [-0.007, -0.115, -0.000, 0.993],
-    },
-  },
-  {
-    id: "pink-cherry-plane-1-1",
-    world: "Pink Cherry Plane",
-    title: "Pink Cherry Plane 1.1",
-    url: import.meta.env.BASE_URL + "splats/Pink%20Cherry%20Plane%201-1.spz",
-    spawn: {
-      position: [-0.21, 1.57, 0.82],
-      quaternion: [-0.007, -0.115, -0.000, 0.993],
-    },
-  },
-  {
-    id: "pink-cherry-plane-1-0",
-    world: "Pink Cherry Plane",
-    title: "Pink Cherry Plane 1.0",
-    url: import.meta.env.BASE_URL + "splats/Pink%20Cherry%20Plane%201-0.spz",
-    spawn: {
-      position: [-0.21, 1.57, 0.82],
-      quaternion: [-0.007, -0.115, -0.000, 0.993],
-    },
-  },
+  
 {
     id: "twinkle-butterfly-patio-1-1004",
     world: "Twinkle Butterfly Patio",
@@ -155,6 +126,37 @@ export const SCENES = [
   },
 
   {
+    id: "sunkissed-sparkle-lounge-1-1",
+    world: "Sunkissed Sparkle Room",
+    title: "Sunkissed Sparkle Room 1.1",
+    url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1.spz",
+    spawn: {
+      position: [-0.43, 1.51, -0.21],
+      quaternion: [-0.038, -0.051, -0.001, 0.998],
+    },
+  },
+  {
+    id: "sunkissed-sparkle-lounge-1-1-E2",
+    world: "Sunkissed Sparkle Room",
+    title: "Sunkissed Sparkle Room 1.1e2",
+    url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1-E2.spz",
+    spawn: {
+      position: [-0.43, 1.51, -0.21],
+      quaternion: [-0.038, -0.051, -0.001, 0.998],
+    },
+  },
+  {
+    id: "sunkissed-sparkle-lounge-1-1-pano",
+    world: "Sunkissed Sparkle Room",
+    title: "Sunkissed Sparkle Room 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1-pano.spz",
+    spawn: {
+      position: [-0.43, 1.51, -0.21],
+      quaternion: [-0.038, -0.051, -0.001, 0.998],
+    },
+  },
+  
+  {
     id: "glitter-frutiger-lounge-1-1-pano",
     world: "Glitter Hibiscus Lodge",
     title: "Glitter Hibiscus Lodge 1.1-pano",
@@ -185,35 +187,35 @@ export const SCENES = [
       quaternion: [-0.035, 0.001, 0.001, 0.999],
     },
   },
-  
+
   {
-    id: "sunkissed-sparkle-lounge-1-1",
-    world: "Sunkissed Sparkle Room",
-    title: "Sunkissed Sparkle Room 1.1",
-    url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1.spz",
+    id: "blooming-frutiger-1-1-pano",
+    world: "Flowers of our Future Club",
+    title: "Flowers of our Future Club 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Blooming%20Frutiger%201-1-pano.spz",
     spawn: {
-      position: [-0.43, 1.51, -0.21],
-      quaternion: [-0.038, -0.051, -0.001, 0.998],
+      position: [-1.00, 1.64, 1.87],
+      quaternion: [-0.064, -0.142, -0.009, 0.988],
     },
   },
   {
-    id: "sunkissed-sparkle-lounge-1-1-E2",
-    world: "Sunkissed Sparkle Room",
-    title: "Sunkissed Sparkle Room 1.1e2",
-    url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1-E2.spz",
+    id: "blooming-frutiger-1-1",
+    world: "Flowers of our Future Club",
+    title: "Flowers of our Future Club 1.1",
+    url: import.meta.env.BASE_URL + "splats/Blooming%20Frutiger%201-1.spz",
     spawn: {
-      position: [-0.43, 1.51, -0.21],
-      quaternion: [-0.038, -0.051, -0.001, 0.998],
+      position: [-0.31, 1.32, -0.46],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
     },
   },
   {
-    id: "sunkissed-sparkle-lounge-1-1-pano",
-    world: "Sunkissed Sparkle Room",
-    title: "Sunkissed Sparkle Room 1.1-pano",
-    url: import.meta.env.BASE_URL + "splats/Sunkissed%20Sparkle%20Lounge%201-1-pano.spz",
+    id: "blooming-frutiger-1-1-E2",
+    world: "Flowers of our Future Club",
+    title: "Flowers of our Future Club 1.1e2",
+    url: import.meta.env.BASE_URL + "splats/Blooming%20Frutiger%201-1-E2.spz",
     spawn: {
-      position: [-0.43, 1.51, -0.21],
-      quaternion: [-0.038, -0.051, -0.001, 0.998],
+      position: [-0.31, 1.32, -0.46],
+      quaternion: [-0.063, 0.005, 0.001, 0.998],
     },
   },
   
@@ -249,33 +251,33 @@ export const SCENES = [
   },
 
   {
-    id: "blooming-frutiger-1-1-pano",
-    world: "Flowers of our Future Club",
-    title: "Flowers of our Future Club 1.1-pano",
-    url: import.meta.env.BASE_URL + "splats/Blooming%20Frutiger%201-1-pano.spz",
+    id: "pink-cherry-plane-1-1-pano",
+    world: "Pink Cherry Plane",
+    title: "Pink Cherry Plane 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Pink%20Cherry%20Plane%201-1-pano.spz",
     spawn: {
-      position: [-1.00, 1.64, 1.87],
-      quaternion: [-0.064, -0.142, -0.009, 0.988],
+      position: [-0.21, 1.57, 0.82],
+      quaternion: [-0.007, -0.115, -0.000, 0.993],
     },
   },
   {
-    id: "blooming-frutiger-1-1",
-    world: "Flowers of our Future Club",
-    title: "Flowers of our Future Club 1.1",
-    url: import.meta.env.BASE_URL + "splats/Blooming%20Frutiger%201-1.spz",
+    id: "pink-cherry-plane-1-1",
+    world: "Pink Cherry Plane",
+    title: "Pink Cherry Plane 1.1",
+    url: import.meta.env.BASE_URL + "splats/Pink%20Cherry%20Plane%201-1.spz",
     spawn: {
-      position: [-0.31, 1.32, -0.46],
-      quaternion: [-0.063, 0.005, 0.001, 0.998],
+      position: [-0.21, 1.57, 0.82],
+      quaternion: [-0.007, -0.115, -0.000, 0.993],
     },
   },
   {
-    id: "blooming-frutiger-1-1-E2",
-    world: "Flowers of our Future Club",
-    title: "Flowers of our Future Club 1.1e2",
-    url: import.meta.env.BASE_URL + "splats/Blooming%20Frutiger%201-1-E2.spz",
+    id: "pink-cherry-plane-1-0",
+    world: "Pink Cherry Plane",
+    title: "Pink Cherry Plane 1.0",
+    url: import.meta.env.BASE_URL + "splats/Pink%20Cherry%20Plane%201-0.spz",
     spawn: {
-      position: [-0.31, 1.32, -0.46],
-      quaternion: [-0.063, 0.005, 0.001, 0.998],
+      position: [-0.21, 1.57, 0.82],
+      quaternion: [-0.007, -0.115, -0.000, 0.993],
     },
   },
 
@@ -342,7 +344,27 @@ export const SCENES = [
       quaternion: [-0.028, -0.205, -0.005, 0.978],
     },
   },
-
+  
+  {
+    id: "swan-lake-suite-1-1",
+    world: "Swan Lake Suite",
+    title: "Swan Lake Suite 1.1",
+    url: import.meta.env.BASE_URL + "splats/Swan%20Lake%20Suite%201-1.spz",
+    spawn: {
+      position: [-0.31, 1.60, -0.75],
+  quaternion: [-0.024, -0.175, -0.003, 0.984],
+    },
+  },
+  {
+    id: "swan-lake-suite-1-1-pano",
+    world: "Swan Lake Suite",
+    title: "Swan Lake Suite 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Swan%20Lake%20Suite%201-1-pano.spz",
+    spawn: {
+      position: [-0.93, 1.61, 0.86],
+    quaternion: [-0.030, -0.268, -0.007, 0.963],
+    },
+  },
 
   {
     id: "lovecore-patio-1-1",
@@ -563,7 +585,7 @@ export const SCENES = [
     // and paste its position into both spawn.position and center (XZ).
     id: "hub-heart-pool",
     world: "Random",
-    title: "Portals Hub",
+    title: "Portals Glade",
     // Reached via its own flower / hub button (#btn-portals-hub), so keep it out
     // of the world-picker dropdown AND out of single/double-trigger cycling
     // (cycleScene skips hideInPicker). cycleWorld never lands here anyway since

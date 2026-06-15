@@ -88,7 +88,13 @@ export function createWorldPicker({ container, scenes, onSelectScene }) {
   }
 
   document.addEventListener("click", (e) => {
-    if (!e.target.closest(".scene-group")) closeOpenGroup();
+    if (e.target.closest(".scene-group")) return;
+    // Keep the current world's dropdown open even when clicking elsewhere
+    // (e.g. moving around inside the 3D scene). Only an outside click on a
+    // non-active group dismisses it; the active group is collapsed only by
+    // clicking its own pill.
+    if (openGroupEl?.classList.contains("has-active")) return;
+    closeOpenGroup();
   });
 
   build();

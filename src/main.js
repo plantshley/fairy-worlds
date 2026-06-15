@@ -78,6 +78,14 @@ const worldMode = createWorldMode({
   // Entering a scene via a clickable portal flips us into portal-nav. If the
   // target is the hub itself, onSceneLoaded overrides this to "hub" after load.
   onPortalEnter: () => setNavMode("portal"),
+  // VR double-tap of the menu button. Jump straight back to the Portals Hub
+  // from any world; no-op if we're already there. onSceneLoaded flips navMode
+  // to "hub" once the splat is in (same path as goHomeOrHub / the hub button).
+  onReturnToHub: () => {
+    if (worldMode.getCurrentSceneId?.() === HUB_ID) return;
+    const hub = SCENES.find((s) => s.id === HUB_ID);
+    if (hub) worldMode.loadScene(hub);
+  },
 });
 manager.register(homeMode);
 manager.register(worldMode);
@@ -322,9 +330,12 @@ const vr = createVRController(
     onRecenter: () => {
       if (manager.currentName() === "world") worldMode.returnToOrigin();
     },
-    onSessionStart: () => {
-      if (manager.currentName() === "world") worldMode.recenterToCurrentSpawn();
-    },
+    // VR-entry spawn is now owned by worldMode.update()'s render-loop edge
+    // detection (XR rAF — reliable inside the session). We deliberately do NOT
+    // recenter from here: this hook rides a window rAF that the browser starves
+    // mid-session, so a late firing would yank the user back to spawn after
+    // they'd already moved.
+    onSessionStart: undefined,
     onTryPortal: (hand) => {
       if (manager.currentName() !== "world") return false;
       return worldMode.tryPortal(hand);
