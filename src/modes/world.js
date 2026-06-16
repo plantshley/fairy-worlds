@@ -91,16 +91,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // enterPortal calls racing on the overlay fade + loadToken.
   let isActive = false;
   let portalTransitioning = false;
-  // VR-entry spawn + walk-in guards (see update()). On entering VR we must (a)
-  // reposition the head to the scene spawn and (b) keep walk-into-portal entry
-  // from firing while the head is still at its transient pre-spawn pose (≈world
-  // origin in the WebXR emulator, which can sit inside a ring portal's radius).
-  // _wasPresenting edge-detects entering VR; _vrSpawnFrames counts down a short
-  // settle so applySpawn runs once the XR camera has a valid pose, and gates
-  // walk-in until then. Driven from the render loop (XR rAF) — NOT a window rAF,
-  // which the browser starves inside an immersive session.
+  // Edge-detects entering VR (see update()) so we can disarm walk-in portals on
+  // the VR-entry frame — a portal armed during desktop viewing must not fire
+  // while the head is still at its transient pre-spawn pose.
   let _wasPresenting = false;
-  let _vrSpawnFrames = 0;
   const dollySpawnPos = new THREE.Vector3();
   const _spawnVec = new THREE.Vector3();
   const _headPos = new THREE.Vector3();
@@ -109,7 +103,25 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   const _yawQuat = new THREE.Quaternion();
   const _forward = new THREE.Vector3();
   const _portalHeadPos = new THREE.Vector3();
+  const _headMat = new THREE.Matrix4();
   const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+  // Head world matrix, correct in BOTH modes. In VR, renderer.xr.getCamera() is
+  // NOT a scene-graph child of the dolly — three.js only sets its world matrix
+  // transiently inside render() as `dolly.matrixWorld * getCamera().matrix`, so
+  // getWorldPosition()/getWorldDirection()/getWorldQuaternion() read reference
+  // space (missing the dolly + spawn-yaw recenter) anywhere outside render. We
+  // compose it explicitly. On desktop the camera is a real dolly child, so its
+  // matrixWorld is already correct. Writes into `target` (defaults to the shared
+  // _headMat scratch — pass your own if you need the result to persist).
+  function getHeadWorldMatrix(target = _headMat) {
+    if (renderer.xr?.isPresenting) {
+      dolly.updateMatrixWorld(true);
+      return target.multiplyMatrices(dolly.matrixWorld, renderer.xr.getCamera().matrix);
+    }
+    camera.updateMatrixWorld(true);
+    return target.copy(camera.matrixWorld);
+  }
 
   // Pull yaw (rotation around Y) out of a quaternion by rotating the
   // canonical "forward" vector and projecting onto the ground plane.
@@ -186,12 +198,13 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       ensurePhysics().then(() => physics && spawnBox());
       return;
     }
-    const head = renderer.xr?.isPresenting ? renderer.xr.getCamera() : camera;
-    head.updateMatrixWorld(true);
     const p = new THREE.Vector3();
     const fwd = new THREE.Vector3();
-    head.getWorldPosition(p);
-    head.getWorldDirection(fwd);
+    const head = getHeadWorldMatrix();
+    p.setFromMatrixPosition(head);
+    // Camera looks down -Z; the matrix's third column is +Z. (Unit scale on
+    // dolly/camera, and fwd is normalized below, so reading the column is safe.)
+    fwd.set(-head.elements[8], -head.elements[9], -head.elements[10]);
     fwd.y = 0;
     if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
     else fwd.normalize();
@@ -238,10 +251,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     if (sceneDef) applySpawn(sceneDef);
   }
 
-  // Recenter to spawn, but only while presenting (no-op on desktop, where the
-  // ⊙ button calls returnToOrigin directly). VR-entry spawn is handled by
-  // update()'s render-loop edge detection now; this stays as an exported helper
-  // for any explicit "recenter in VR" caller.
+  // VR session-start hook (main.js → vrButton.js onSessionStart). Recenters to
+  // the current scene's spawn, but only while presenting — desktop reset is the
+  // ⊙ button (returnToOrigin) instead. applySpawn also disarms walk-in portals,
+  // so they re-arm from the spawn pose after every entry.
   function recenterToCurrentSpawn() {
     if (!renderer.xr?.isPresenting) return;
     returnToOrigin();
@@ -858,29 +871,53 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     _recenterButtonPrev = pressed;
   }
 
-  function update(dt) {
-    const presenting = !!renderer.xr?.isPresenting;
-    // Entering VR: disarm walk-in portals immediately (a portal armed during
-    // desktop viewing must not fire while the head is at its transient pre-spawn
-    // pose), then schedule the spawn recenter a frame out so the XR camera has a
-    // valid pose. This OWNS VR-entry spawn — the render loop runs on the XR rAF,
-    // which (unlike the window rAF behind onSessionStart) never gets starved
-    // mid-session, so it fires reliably on every entry, first or Nth.
-    if (presenting && !_wasPresenting) {
-      for (const p of currentPortals) p.armed = false;
-      _vrSpawnFrames = 2;
+  // Edge-detect the RIGHT controller's trackpad/thumbstick PRESS (button[2] —
+  // touchpad-press in the xr-standard mapping; the trackpad's *axes* drive
+  // snap-turn, the click is separate). Drops a new object, but only while object
+  // mode is on so it can't fire by accident in normal browsing. Like the menu
+  // button, this isn't exposed by the WebXR Emulator's Vive profile, so it's
+  // real-hardware only. Mirrors the desktop #btn-spawn-box HUD button.
+  let _spawnButtonPrev = false;
+  function pollSpawnButton() {
+    if (!isObjectMode()) {
+      _spawnButtonPrev = false;
+      return;
     }
-    _wasPresenting = presenting;
-    if (presenting && _vrSpawnFrames > 0) {
-      _vrSpawnFrames--;
-      if (_vrSpawnFrames === 0) {
-        const sceneDef = currentSceneId ? SCENES.find((s) => s.id === currentSceneId) : null;
-        if (sceneDef) applySpawn(sceneDef);
+    const session = renderer.xr.getSession();
+    if (!session) return;
+    let pressed = false;
+    for (const src of session.inputSources) {
+      if (src.handedness === "right" && src.gamepad?.buttons?.[2]?.pressed) {
+        pressed = true;
+        break;
       }
     }
+    if (pressed && !_spawnButtonPrev) spawnBox();
+    _spawnButtonPrev = pressed;
+  }
+
+  function update(dt) {
+    const presenting = !!renderer.xr?.isPresenting;
+    // Entering VR: disarm all walk-in portals so one armed during desktop
+    // viewing can't fire while the head is still at its transient pre-spawn pose
+    // (≈world origin in the emulator, which can sit inside a ring portal's
+    // radius). They re-arm via arm-on-exit once the spawn recenter lands. The
+    // actual recenter is driven by onSessionStart (see main.js / vrButton.js);
+    // we only need to clear stale arm-state here so nothing fires in between.
+    if (presenting && !_wasPresenting) {
+      for (const p of currentPortals) p.armed = false;
+      // Fresh session: clear button edge-state so a button still held as the
+      // previous session tore down can't swallow its first press now. (The poll
+      // functions early-return on a null session without resetting these.)
+      _recenterButtonPrev = false;
+      _spawnButtonPrev = false;
+      _menuTapTime = 0;
+    }
+    _wasPresenting = presenting;
     if (presenting) {
       vrLocomotion.update(dt, dolly);
       pollRecenterButton();
+      pollSpawnButton();
       noteVRDistance(dolly.position.distanceTo(dollySpawnPos));
     } else {
       touchControls.update(dt, camera);
@@ -925,10 +962,16 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       // internally guarded by isActive/portalTransitioning, so the per-frame
       // calls during a fade are cheap no-ops. XZ distance only — door height
       // and GLB bob shouldn't affect the trigger.
-      if (!portalTransitioning && (!presenting || _vrSpawnFrames === 0)) {
-        const head = presenting ? renderer.xr.getCamera() : camera;
-        head.updateMatrixWorld(true);
-        head.getWorldPosition(_portalHeadPos);
+      // Walk-in is NOT gated on the VR-entry spawn settle: arm-on-exit already
+      // makes this safe (every portal is disarmed on the VR-entry edge below, so
+      // one you're standing inside at the transient pre-spawn pose stays disarmed
+      // until you leave it). Gating on the settle counter risked wedging walk-in
+      // off permanently if that counter ever failed to reach 0.
+      if (!portalTransitioning) {
+        // Head world position (see getHeadWorldMatrix — getCamera() reads
+        // reference space in update(), which would drop the dolly's spawn-yaw
+        // recenter and land us on the ≈opposite portal).
+        _portalHeadPos.setFromMatrixPosition(getHeadWorldMatrix());
         for (const p of currentPortals) {
           const dx = _portalHeadPos.x - p.root.position.x;
           const dz = _portalHeadPos.z - p.root.position.z;
@@ -1045,18 +1088,11 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // For Animal Crossing's larger scale, pass eyeToFoot ≈ 3.6 (eyeball-tuned;
   // bake the empirical value here once the first portal is placed).
   window.logPortalSpot = (eyeToFoot = 1.6) => {
-    let p, q;
-    if (renderer.xr?.isPresenting) {
-      const xrCam = renderer.xr.getCamera();
-      xrCam.updateMatrixWorld(true);
-      p = new THREE.Vector3();
-      q = new THREE.Quaternion();
-      xrCam.getWorldPosition(p);
-      xrCam.getWorldQuaternion(q);
-    } else {
-      p = camera.position;
-      q = camera.quaternion;
-    }
+    // getHeadWorldMatrix handles the VR reference-space gotcha (see its comment),
+    // so authored coords are correct even in a yaw-recentered scene.
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    getHeadWorldMatrix(new THREE.Matrix4()).decompose(p, q, new THREE.Vector3());
     const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
     // yaw = camera heading angle θ such that fwd = (-sin θ, 0, -cos θ).
     // Matches extractYaw above.
@@ -1070,19 +1106,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     );
   };
   window.logPose = () => {
-    let p, q;
-    if (renderer.xr?.isPresenting) {
-      const xrCam = renderer.xr.getCamera();
-      xrCam.updateMatrixWorld(true);
-      p = new THREE.Vector3();
-      q = new THREE.Quaternion();
-      xrCam.getWorldPosition(p);
-      xrCam.getWorldQuaternion(q);
-      console.log(`[VR head world pose, world=${currentWorld}]`);
-    } else {
-      p = camera.position;
-      q = camera.quaternion;
-    }
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    getHeadWorldMatrix(new THREE.Matrix4()).decompose(p, q, new THREE.Vector3());
+    if (renderer.xr?.isPresenting) console.log(`[VR head world pose, world=${currentWorld}]`);
     console.log(
       `position: [${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}],\n` +
         `quaternion: [${q.x.toFixed(3)}, ${q.y.toFixed(3)}, ${q.z.toFixed(3)}, ${q.w.toFixed(3)}],`,

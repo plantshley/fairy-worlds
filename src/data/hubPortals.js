@@ -17,6 +17,12 @@ export function buildHubPortals({
   startAngle = 0,
   hueStart = 0,
   hueDirection = 1,
+  // Non-linear hue distribution. hueBias = 0 sweeps the full wheel evenly;
+  // larger values cluster portals around hueWarmCenter (still hitting every
+  // hue, just lingering longer in the warm band). Must stay < 1 or hue(u)
+  // becomes non-monotonic and adjacent portals could share / reverse colors.
+  hueBias = 0,
+  hueWarmCenter = 320,
   saturation = 0.78,
   lightnessA = 0.62,
   lightnessB = 0.86,
@@ -26,6 +32,7 @@ export function buildHubPortals({
   const n = targets.length;
   const portals = new Array(n);
   const TWO_PI = Math.PI * 2;
+  const warmRad = (hueWarmCenter * Math.PI) / 180;
   for (let i = 0; i < n; i++) {
     const t = targets[i];
     const alpha = startAngle + (i * TWO_PI) / n;
@@ -33,7 +40,12 @@ export function buildHubPortals({
     // bit-identical rotation values — purely cosmetic for three.js but keeps
     // serialized output stable.
     const rotationY = ((alpha % TWO_PI) + TWO_PI) % TWO_PI;
-    const hue = (((hueStart + hueDirection * i * (360 / n)) % 360) + 360) % 360;
+    // Warp uniform ring index through θ − A·sin(θ − θ_warm) so density peaks
+    // at hueWarmCenter. A=0 reproduces the old even sweep exactly.
+    const theta = (i * TWO_PI) / n;
+    const warped = theta - hueBias * Math.sin(theta - warmRad);
+    const hueDeg = (warped * 180) / Math.PI;
+    const hue = (((hueStart + hueDirection * hueDeg) % 360) + 360) % 360;
     portals[i] = {
       id: `hub-to-${t.id}`,
       target: t.id,

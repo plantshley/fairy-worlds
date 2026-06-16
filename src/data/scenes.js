@@ -604,6 +604,17 @@ export const SCENES = [
       startAngle: 0,               // radians — rotate the whole ring
       hueStart: 0,                 // degrees — first portal's hue (0 = red)
       hueDirection: 1,             // +1 clockwise around the wheel
+      // Hue density bias — see hubPortals.js for the math (θ − A·sin(θ − θ_warm)).
+      // hueBias  : 0 = even rainbow, 0.55 = moderate warm cluster, ~0.7 = strong
+      //            (cool hues compress to a brief sweep). Must stay < 1 or the
+      //            curve goes non-monotonic and adjacent portals share/reverse hues.
+      // hueWarm  : 300 = more purple, 310 = pink-purple, 320 = magenta,
+      //            340 = pink-red, 0 = red. Picks the hue that gets densest sampling.
+      // hueStart : rotates which target lands on the densest hue (e.g. -60 shifts
+      //            everyone 60° earlier in the spectrum, without changing the bias).
+      hueBias: 0.25,
+      hueWarmCenter: 310,
+
       // Each label uses a distinct kaomoji-style text decoration on both sides
       // (https://emojicombos.com/deco-kaomoji). Per-target colorA/colorB can
       // override the rainbow if a specific portal needs a brand color.
@@ -618,6 +629,7 @@ export const SCENES = [
         { id: "frutiger-rainbow-cafe-1-1-API",    label: "⋆｡‧˚ʚ Frutiger Rainbow Cafe ɞ˚‧｡⋆", emoji: "🌈" },
         { id: "jewel-princess-bathroom-1-1",      label: "⊹˚.♡ Jewel Princess Bathroom ♡.˚⊹",  emoji: "💎" },
         { id: "angelic-quartz-chamber-1-1",       label: "ೃ⁀➷ Angelic Quartz Chamber ೃ⁀➷",     emoji: "🪽" },
+        { id: "swan-lake-suite-1-1",              label: "ೃ｡୨୧ Swan Lake Suite ୨୧˚࿐ೃ",     emoji: "🦢" },
         { id: "lavender-laundry-1-1",             label: "⸜♡⸝ Lavender Laundry ⸜♡⸝",           emoji: "🪻" },
         { id: "lovecore-patio-1-1",               label: "˚₊‧ ꒰ა  Random ໒꒱ ‧₊˚",                    emoji: "🦄" },
       ],

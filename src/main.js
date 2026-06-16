@@ -330,12 +330,9 @@ const vr = createVRController(
     onRecenter: () => {
       if (manager.currentName() === "world") worldMode.returnToOrigin();
     },
-    // VR-entry spawn is now owned by worldMode.update()'s render-loop edge
-    // detection (XR rAF — reliable inside the session). We deliberately do NOT
-    // recenter from here: this hook rides a window rAF that the browser starves
-    // mid-session, so a late firing would yank the user back to spawn after
-    // they'd already moved.
-    onSessionStart: undefined,
+    onSessionStart: () => {
+      if (manager.currentName() === "world") worldMode.recenterToCurrentSpawn();
+    },
     onTryPortal: (hand) => {
       if (manager.currentName() !== "world") return false;
       return worldMode.tryPortal(hand);

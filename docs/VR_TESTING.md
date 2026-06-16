@@ -28,6 +28,7 @@ without physically spinning (handy on the VIVE so you don't wind up the cable).
 | **Jump to a whole new world** | Double-pull the **right** trigger (quickly, twice) to jump to the next world; double-pull the **left** trigger for the previous one. |
 | **Step through a magic doorway** | Either point a wand at a glowing portal (or a floating character) and pull that wand's trigger — *or just walk into it.* Either way you're whisked to where it leads. Visit the **Portals Hub** for a ring of doorways to every world. |
 | **Pick up an object** *(object mode on)* | Point a wand at a droppable object and pull the trigger to grab it. **Let go of the trigger** to drop it. |
+| **Drop a new object** *(object mode on)* | Click in (press down) the **right** trackpad / thumbstick to plop a fresh object in front of you. |
 | **Reset your spot** | Wandered off or facing the wrong way? Press the **menu button** on either wand to snap back to this world's entrance (your spawn point). It won't leave the world — just repositions you here. |
 | **Back to the portals glade** | **Double-tap the menu button** (two quick presses) on either wand to whisk yourself back to the Portals Glade — the ring of doorways to every world. |
 | **Take the headset off** | Squeeze the **grip** on either wand to leave VR. |
@@ -56,6 +57,7 @@ trigger on the **other** hand within that window fires recenter instead.
 | Right thumbstick / trackpad X-axis flick (past 0.8) | 30° snap-turn (left or right) | [src/three/vrLocomotion.js](../src/three/vrLocomotion.js) |
 | **Either trigger** aimed at a **portal** | **Teleport** through the portal to its target scene (controller-ray raycast, ≤8m reach). Consumes the trigger — takes priority over grab and cycle. | [src/three/vrButton.js](../src/three/vrButton.js) `onTryPortal` → [src/three/portals.js](../src/three/portals.js) `tryPortal` |
 | **Either trigger** aimed at a **grabbable** (object mode on) | **Grab** the object. Release the trigger (`selectend`) to drop it. Consumes the trigger — takes priority over cycle. | [src/three/vrButton.js](../src/three/vrButton.js) `onTryGrab` / `onSelectEnd` → [src/three/grab.js](../src/three/grab.js) |
+| **Right wand trackpad/thumbstick press** (gamepad button[2], object mode on) — real-hardware | **Spawn** a new object in front of the head (cycles the scene's mapped GLBs, else a colored box). Gated on object mode so it can't fire while browsing. Not exposed by the WebXR Emulator. | [src/modes/world.js](../src/modes/world.js) `pollSpawnButton` → `spawnBox` |
 | **Right wand trigger** — single click (empty space) | **Next scene** (cycles in [SCENES](../src/data/scenes.js) order, **skipping `hideInPicker` scenes**, wraps at end) | [src/three/vrButton.js](../src/three/vrButton.js) → [src/main.js](../src/main.js) → `worldMode.cycleScene(1)` |
 | **Left wand trigger** — single click (empty space) | **Previous scene** (wraps at start) | same |
 | **Right wand trigger** — double click (empty space) | **Next world group** (jumps to the first scene of the next world) | [src/three/vrButton.js](../src/three/vrButton.js) → `worldMode.cycleWorld(1)` |
@@ -110,8 +112,10 @@ When object mode is toggled on (HUD button, persisted to
 `fairy-worlds-object-mode`), scenes load a Rapier collider and you can spawn
 droppable GLBs/boxes. In VR, aim a wand at a dropped object and pull the trigger
 to grab it; release the trigger to drop. New objects are spawned via the desktop
-HUD "drop object" button — there is currently no in-VR spawn gesture, only grab
-of already-dropped items.
+HUD "drop object" button, or in VR by pressing the **right wand's
+trackpad/thumbstick** (`pollSpawnButton`, gated on object mode). Object mode
+itself is still toggled from the desktop HUD before entering VR — there's no
+in-VR toggle.
 
 ### Spawn behavior when cycling
 
@@ -250,22 +254,31 @@ proximity check). Enter VR on a scene that has portals — the **Portals Hub**
 - [ ] Moving off the portal returns the laser to pale full-length and the
       doorway dims again
 - [ ] Pull the trigger while aimed at a portal → teleports through it
-- [ ] **Walk into** a portal (left-stick toward it) → also teleports
+- [ ] **Walk into** a portal (left-stick / move toward it) → also teleports
+- [ ] **You enter the portal you moved toward, not the opposite one.** (Regression
+      guard: in VR the head world position must be composed as
+      `dolly.matrixWorld * getCamera().matrix`; reading `getCamera()
+      .getWorldPosition()` in `update()` drops the dolly's spawn-yaw recenter and
+      sends you to the ≈opposite portal in the hub ring.)
 - [ ] After arriving, you spawn beside the return portal but do NOT bounce
       straight back (arm-on-exit) — step away and back in to re-enter
 - [ ] **Enter VR while viewing the Portals Hub** → you land at the defined ring
       center (NOT wherever you'd moved before) and are NOT instantly teleported
       into a portal. (Regression guard: the ring's first portal sits ~0.69m from
       world origin, where the emulator's head starts before the spawn recenter;
-      `update()` disarms portals on the VR-entry edge and gates walk-in via
-      `_vrSpawnFrames` until `applySpawn` repositions + re-arms.)
+      `update()` disarms every portal on the VR-entry edge, so arm-on-exit keeps
+      the one you're standing in from firing until you step out of it.)
 - [ ] **Re-entry works too:** hub → VR → walk through a portal → exit VR →
       return to hub (flower button) → VR again → walk-into entry STILL works,
-      and you're back at the ring center. (Regression guard: VR-entry spawn is
-      driven by the render loop's XR rAF, not the window rAF behind
-      `onSessionStart`, which the browser starves mid-session.)
+      and you're back at the ring center. (Regression guard: no sticky
+      "suppress walk-in" flag — entry is only ever blocked by an in-flight
+      portal transition, and disarm-on-entry resets arm-state each time.)
 - [ ] **Double-tap the menu button** (real hardware only) from any world →
       returns to the Portals Hub; single tap still just recenters to spawn
+- [ ] **Press the right trackpad/thumbstick** (real hardware only, object mode
+      on) → a new object drops ~2.5m in front of where you're looking (NOT
+      behind/opposite you — same dolly-transform fix as walk-in); does nothing
+      when object mode is off
 - [ ] Exit the session → lasers disappear from the desktop mirror (not left
       floating at the dolly origin)
 
@@ -310,8 +323,6 @@ Not VR, but the same `returnToOrigin` path:
   + smooth-walk is the only scheme; some people want a parabolic teleport)
 - Controller models visible in the scene (you get an aiming laser, but not a
   rendered wand mesh)
-- In-VR object **spawn** (you can grab/drop existing objects in VR, but spawning
-  new ones is desktop-HUD-only)
 - VR in home mode (the VR button + all cycle/portal/grab handlers are world-mode only)
 - **Player**-vs-splat collision (object colliders exist; the player still walks
   through everything)
