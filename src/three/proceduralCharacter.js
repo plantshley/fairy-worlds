@@ -521,8 +521,9 @@ function makeHairVariant(id, material) {
 }
 
 // `accentMaterial` (the bottom color) is used only by the overalls bib + straps,
-// so the dungarees track whatever bottom color is selected
-function makeShirtVariant(id, material, accentMaterial) {
+// so the dungarees track whatever bottom color is selected; `buttonMaterial` is a
+// slightly darker shade of that color for the strap buttons
+function makeShirtVariant(id, material, accentMaterial, buttonMaterial) {
   const group = new THREE.Group();
   const top = ANCHORS.shoulder + 0.02;
   const bottom = id === "crop" ? (ANCHORS.shoulder + ANCHORS.waist) / 2 + 0.02 : ANCHORS.waist+0.025;
@@ -586,8 +587,8 @@ function makeShirtVariant(id, material, accentMaterial) {
     // ExtrudeGeometry maps shape-x onto the frame normal (the horizontal X axis
     // here) and shape-y onto the radial binormal — so width goes on x, the thin
     // thickness on y, keeping the flat face flush to the body.
-    const sw = 0.04; // strap width (across the body)
-    const st = 0.005; // strap thickness (radial)
+    const sw = 0.03; // strap width (across the body)
+    const st = 0.008; // strap thickness (radial)
     const strapShape = new THREE.Shape();
     strapShape.moveTo(-sw / 2, -st / 2);
     strapShape.lineTo(sw / 2, -st / 2);
@@ -612,7 +613,7 @@ function makeShirtVariant(id, material, accentMaterial) {
       ]);
       const strap = new THREE.Mesh(
         new THREE.ExtrudeGeometry(strapShape, {
-          steps: 28,
+          steps: 35,
           extrudePath: curve,
           bevelEnabled: false,
         }),
@@ -621,11 +622,11 @@ function makeShirtVariant(id, material, accentMaterial) {
       group.add(strap);
       // little button where each strap meets the bib top
       const button = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.012, 0.012, 0.012, 12),
-        accentMaterial,
+        new THREE.CylinderGeometry(0.015, 0.015, 0.015, 12),
+        buttonMaterial ?? accentMaterial,
       );
       button.rotation.x = Math.PI / 2;
-      button.position.set(sx, bibTop - 0.005, BODY.torsoRadius -0.005);
+      button.position.set(sx, bibTop - 0.005, BODY.torsoRadius);
       group.add(button);
     }
   }
@@ -1277,6 +1278,8 @@ export function createProceduralCharacter(initialState = {}) {
   const hairMat = softMat(state.colors.hair, { roughness: 0.75 });
   const shirtMat = softMat(state.colors.shirt);
   const bottomMat = softMat(state.colors.bottom);
+  // overall buttons: a slightly darker shade of the bottom color, kept in sync
+  const overallButtonMat = softMat(darkerShade(state.colors.bottom, 0.3));
   const wingsMat = softMat(state.colors.wings, { transparent: true, opacity: 0.78 });
   const shoesMat = softMat(state.colors.shoes, { roughness: 0.6 });
   const irisMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(state.colors.eyes) });
@@ -1298,7 +1301,7 @@ export function createProceduralCharacter(initialState = {}) {
   let bottomGroup = makeBottomVariant(state.variants.bottom, bottomMat);
   let wingsGroup = makeWingsVariant(state.variants.wings, wingsMat);
   const { group: accessoriesGroup, materials: accessoryMaterials, nodes: accessoryNodes } = makeAccessories();
-  let shirtGroup = makeShirtVariant(state.variants.shirt, shirtMat, bottomMat);
+  let shirtGroup = makeShirtVariant(state.variants.shirt, shirtMat, bottomMat, overallButtonMat);
 
   root.add(shirtGroup);
   root.add(hairGroup);
@@ -1338,7 +1341,10 @@ export function createProceduralCharacter(initialState = {}) {
     if (partId === "skin") skinMat.color.copy(color);
     else if (partId === "hair") hairMat.color.copy(color);
     else if (partId === "shirt") shirtMat.color.copy(color);
-    else if (partId === "bottom") bottomMat.color.copy(color);
+    else if (partId === "bottom") {
+      bottomMat.color.copy(color);
+      overallButtonMat.color.copy(darkerShade(hex, 0.7));
+    }
     else if (partId === "wings") wingsMat.color.copy(color);
     else if (partId === "shoes") shoesMat.color.copy(color);
     else if (partId === "blush") blushMat.color.copy(color);
@@ -1364,7 +1370,7 @@ export function createProceduralCharacter(initialState = {}) {
       root.add(wingsGroup);
     } else if (partId === "shirt") {
       root.remove(shirtGroup);
-      shirtGroup = makeShirtVariant(variantId, shirtMat, bottomMat);
+      shirtGroup = makeShirtVariant(variantId, shirtMat, bottomMat, overallButtonMat);
       root.add(shirtGroup);
     }
   }
