@@ -44,7 +44,7 @@ The app is a single-page experience with two **modes** (home vs. world) coordina
 
 `main.js` saves to `localStorage` under two keys:
 - `fairy-worlds-character` — selected character id
-- `fairy-worlds-character-config` — procedural character state (from `character.getState()`)
+- `fairy-worlds-character-config-v2` — procedural character state (from `character.getState()`); the legacy `fairy-worlds-character-config` key is removed on load
 
 First-run detection (`!localStorage.getItem(CHARACTER_KEY)`) auto-opens the picker.
 

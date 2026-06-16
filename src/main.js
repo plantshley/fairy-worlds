@@ -75,9 +75,16 @@ const worldMode = createWorldMode({
     // we just landed on the hub (hidden) vs any other scene (per-toggle).
     applyObjectModeUI();
   },
-  // Entering a scene via a clickable portal flips us into portal-nav. If the
-  // target is the hub itself, onSceneLoaded overrides this to "hub" after load.
-  onPortalEnter: () => setNavMode("portal"),
+  // Portal-nav is the "touring worlds from the glade" flow, so only a portal
+  // entered FROM the hub/glade starts it. A doorway inside a normal world (e.g.
+  // Celeste's home within Animal Crossing) leaves the current nav mode alone —
+  // picker-nav stays picker-nav, and an ongoing portal-tour stays portal-nav.
+  // onPortalEnter fires before loadScene swaps the scene, so getCurrentSceneId()
+  // is still the SOURCE scene here. (If the target IS the hub, onSceneLoaded
+  // sets "hub" after load regardless.)
+  onPortalEnter: () => {
+    if (worldMode.getCurrentSceneId?.() === HUB_ID) setNavMode("portal");
+  },
   // VR double-tap of the menu button. Jump straight back to the Portals Hub
   // from any world; no-op if we're already there. onSceneLoaded flips navMode
   // to "hub" once the splat is in (same path as goHomeOrHub / the hub button).

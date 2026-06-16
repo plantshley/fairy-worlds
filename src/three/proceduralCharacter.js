@@ -27,52 +27,52 @@ const BODY = {
 
 const ACCESSORY_DEFS = [
   { id: "bow", label: "bow", defaultColor: "#ff008c" },
-  { id: "halo", label: "halo", defaultColor: "#fff1a8" },
-  { id: "horns", label: "horns", defaultColor: "#2a1830" },
-  { id: "ears", label: "cat ears", defaultColor: "#ffb0de" },
-  { id: "lashes", label: "lashes", defaultColor: "#591246" },
+  { id: "halo", label: "halo", defaultColor: "#ff80c0" },
+  { id: "horns", label: "horns", defaultColor: "#dd001c" },
+  { id: "ears", label: "cat ears", defaultColor: "#e20e43" },
+  { id: "lashes", label: "lashes", defaultColor: "#ca0098" },
   { id: "mustache", label: "mustache", defaultColor: "#591246" },
-  { id: "star", label: "star", defaultColor: "#fff6e8" },
-  { id: "socks", label: "socks", defaultColor: "#ffe1f2" },
-  { id: "glasses", label: "glasses", defaultColor: "#2a1830" },
-  { id: "freckles", label: "freckles", defaultColor: "#a8623c" },
-  { id: "flowerCrown", label: "flower crown", defaultColor: "#ff9ad5" },
-  { id: "antennae", label: "antennae", defaultColor: "#ff66c4" },
-  { id: "blushHeart", label: "heart stickers", defaultColor: "#ff5ea8" },
+  { id: "star", label: "star", defaultColor: "#6efff1" },
+  { id: "socks", label: "socks", defaultColor: "#ff80c0" },
+  { id: "glasses", label: "glasses", defaultColor: "#b16ec7" },
+  { id: "freckles", label: "freckles", defaultColor: "#c40040" },
+  { id: "flowerCrown", label: "flower crown", defaultColor: "#ec6af1" },
+  { id: "antennae", label: "antennae", defaultColor: "#66ff96" },
+  { id: "blushHeart", label: "heart stickers", defaultColor: "#550033" },
   { id: "blushStar", label: "star stickers", defaultColor: "#ffd166" },
 ];
 
 const DEFAULTS = {
   colors: {
-    skin: "#936a4e",
-    hair: "#ea1dc8",
-    shirt: "#ff7ec5",
-    bottom: "#ff008c",
-    wings: "#d37df8",
-    eyes: "#930d9d",
-    blush: "#c91d6a",
-    shoes: "#d37df8",
+    skin: "#5f453a",
+    hair: "#ff2461",
+    shirt: "#f715c4",
+    bottom: "#f715c4",
+    wings: "#ffaee1",
+    eyes: "#c1003f",
+    blush: "#d7006b",
+    shoes: "#f715c4",
   },
   variants: {
     hair: "long",
     bottom: "skirt",
-    wings: "bat",
-    shirt: "tee",
+    wings: "angel",
+    shirt: "crop",
   },
   accessories: {
-    bow: true,
-    halo: false,
+    bow: false,
+    halo: true,
     horns: false,
-    ears: false,
+    ears: true,
     lashes: true,
     mustache: false,
     star: false,
-    socks: false,
+    socks: true,
     glasses: false,
-    freckles: false,
+    freckles: true,
     flowerCrown: false,
     antennae: false,
-    blushHeart: false,
+    blushHeart: true,
     blushStar: false,
   },
   accessoryColors: Object.fromEntries(
@@ -482,14 +482,19 @@ function makeHairVariant(id, material) {
       const braid = new THREE.Group();
       const N = 9;
       const len = 0.5;
+      const topGap = 0.072; // wider gaps near the crown
+      const botGap = len / N; // settle to the original even spacing by the tip
+      let y = 0;
       for (let i = 0; i <= N; i++) {
         const t = i / N;
-        const beadR = 0.05 * (1 - t * 0.45) * (1 + 0.18 * Math.sin(i * 1.6));
+        const beadR = 0.05 * (1 - 0.45 * t); // linear taper down the braid
         const bead = new THREE.Mesh(new THREE.SphereGeometry(beadR, 10, 8), material);
         // arc forward as it descends so the braid drapes over the front of the
         // shoulder and clears the arms instead of clipping through them
-        bead.position.set(0, -len * t, t * t * 0.1);
+        bead.position.set(0, -y, t * t * 0.1);
         braid.add(bead);
+        // gap to the next bead shrinks from topGap to botGap as we go down
+        y += topGap + (botGap - topGap) * Math.min(1, i / (N - 1));
       }
       braid.position.set(side * (r - 0.02), capY - 0.09, 0.04);
       braid.rotation.z = side * 0.2;
@@ -564,40 +569,63 @@ function makeShirtVariant(id, material, accentMaterial) {
     const bibTop = ANCHORS.chest - 0.02;
     const bibBottom = ANCHORS.waist + 0.02;
     const bibH = bibTop - bibBottom;
-    const bibR = BODY.torsoRadius + 0.025; // just outside the tee tube
+    const bibR = BODY.torsoRadius + 0.02; // just outside the tee tube
+    // CylinderGeometry theta=0 is +Z (front), so center the arc with thetaStart
+    // = -thetaLength/2 to keep the bib square on the chest
+    const bibArc = Math.PI / 1.7;
     const bib = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        bibR,
-        bibR,
-        bibH,
-        24,
-        1,
-        true,
-        Math.PI / 2 - Math.PI / 3.4,
-        Math.PI / 1.7,
-      ),
+      new THREE.CylinderGeometry(bibR, bibR, bibH, 24, 1, true, -bibArc / 2, bibArc),
       accentMaterial,
     );
     bib.material.side = THREE.DoubleSide;
     bib.position.y = (bibTop + bibBottom) / 2;
     group.add(bib);
 
+    // flat fabric strap: a thin wide rectangle extruded along an over-the-shoulder
+    // curve. The control points share a constant x so the curve is planar (Y-Z).
+    // ExtrudeGeometry maps shape-x onto the frame normal (the horizontal X axis
+    // here) and shape-y onto the radial binormal — so width goes on x, the thin
+    // thickness on y, keeping the flat face flush to the body.
+    const sw = 0.04; // strap width (across the body)
+    const st = 0.005; // strap thickness (radial)
+    const strapShape = new THREE.Shape();
+    strapShape.moveTo(-sw / 2, -st / 2);
+    strapShape.lineTo(sw / 2, -st / 2);
+    strapShape.lineTo(sw / 2, st / 2);
+    strapShape.lineTo(-sw / 2, st / 2);
+    strapShape.closePath();
+
     for (const side of [-1, 1]) {
-      const front = new THREE.Vector3(side * 0.06, bibTop, BODY.torsoRadius + 0.03);
-      const over = new THREE.Vector3(side * 0.085, ANCHORS.shoulder + 0.04, 0);
-      const back = new THREE.Vector3(side * 0.06, ANCHORS.waist + 0.08, -BODY.torsoRadius - 0.03);
-      const curve = new THREE.CatmullRomCurve3([front, over, back]);
+      const sx = side * 0.1;
+      const R = BODY.torsoRadius + 0.012; // tee surface radius
+      const fz = Math.sqrt(Math.max(0, R * R - sx * sx)); // front/back surface z at this x
+      const topY = ANCHORS.shoulder + fz-0.02; // top of the shoulder at this x
+      // hug the torso: climb the front at constant surface-z, cross z=0 only at
+      // the very top of the shoulder, then descend the back at surface-z. This
+      // keeps the ribbon flush instead of slicing through the chest.
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(sx, bibTop-0.01, fz+0.02),
+        new THREE.Vector3(sx, ANCHORS.shoulder + 0.01, fz-0),
+        new THREE.Vector3(sx, topY-0.02, 0),
+        new THREE.Vector3(sx, ANCHORS.shoulder - 0, -fz+0.01),
+        new THREE.Vector3(sx, ANCHORS.waist + 0.02, -fz-0.0),
+      ]);
       const strap = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 24, 0.014, 8, false),
+        new THREE.ExtrudeGeometry(strapShape, {
+          steps: 28,
+          extrudePath: curve,
+          bevelEnabled: false,
+        }),
         accentMaterial,
       );
       group.add(strap);
+      // little button where each strap meets the bib top
       const button = new THREE.Mesh(
         new THREE.CylinderGeometry(0.012, 0.012, 0.012, 12),
         accentMaterial,
       );
       button.rotation.x = Math.PI / 2;
-      button.position.set(side * 0.06, bibTop - 0.005, BODY.torsoRadius + 0.04);
+      button.position.set(sx, bibTop - 0.005, BODY.torsoRadius -0.005);
       group.add(button);
     }
   }
@@ -1024,7 +1052,7 @@ function starShape(outer, inner, points = 5) {
 function buildGlasses(material) {
   const glasses = new THREE.Group();
   const eyeX = 0.085;
-  const eyeY = -0.05; // sit low on the face, around/below the eyes
+  const eyeY = -0.062; // sit low on the face, below the eyes
   for (const side of [-1, 1]) {
     const pivot = headSurfacePivot(side * eyeX, eyeY);
     const frame = new THREE.Mesh(
@@ -1135,7 +1163,8 @@ function buildAntennae(material) {
     stalk.rotation.z = side * -0.35;
     antennae.add(stalk);
     const tip = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 10), material);
-    tip.position.set(side * 0.13, ANCHORS.headTop + 0.15, -0.01);
+    // sit the ball right on the (tilted) stalk top so there's no gap
+    tip.position.set(side * 0.1, ANCHORS.headTop + 0.145, -0.01);
     antennae.add(tip);
   }
   return antennae;
