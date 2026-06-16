@@ -26,7 +26,7 @@ without physically spinning (handy on the VIVE so you don't wind up the cable).
 | **Turn without spinning yourself** | Flick the **right** thumbstick / trackpad left or right. You snap-turn 30° each flick (comfier than smooth spinning). Flick again to keep turning. |
 | **Hop to the next scene** | Pull the **right** trigger. Pull the **left** trigger to go back a scene. |
 | **Jump to a whole new world** | Double-pull the **right** trigger (quickly, twice) to jump to the next world; double-pull the **left** trigger for the previous one. |
-| **Step through a magic doorway** | Either point a wand at a glowing portal (or a floating character) and pull that wand's trigger — *or just walk into it.* Either way you're whisked to where it leads. Visit the **Portals Hub** for a ring of doorways to every world. |
+| **Step through a magic doorway** | Either point a wand at a glowing portal (or a floating character) and pull that wand's trigger — *or just walk into it.* Either way you're whisked to where it leads. Visit the **Portals Glade** for a ring of doorways to every world. |
 | **Pick up an object** *(object mode on)* | Point a wand at a droppable object and pull the trigger to grab it. **Let go of the trigger** to drop it. |
 | **Drop a new object** *(object mode on)* | Click in (press down) the **right** trackpad / thumbstick to plop a fresh object in front of you. |
 | **Reset your spot** | Wandered off or facing the wrong way? Press the **menu button** on either wand to snap back to this world's entrance (your spawn point). It won't leave the world — just repositions you here. |
@@ -63,7 +63,7 @@ trigger on the **other** hand within that window fires recenter instead.
 | **Right wand trigger** — double click (empty space) | **Next world group** (jumps to the first scene of the next world) | [src/three/vrButton.js](../src/three/vrButton.js) → `worldMode.cycleWorld(1)` |
 | **Left wand trigger** — double click (empty space) | **Previous world group** | same |
 | **Either wand menu button** (gamepad button[3]) — single tap, real-hardware | **Return to spawn** — yaw-recenters dolly so head is back at the scene's defined spawn position/yaw. On Quest Touch this is the thumbstick click instead. | [src/modes/world.js](../src/modes/world.js) `pollRecenterButton` → `returnToOrigin` |
-| **Either wand menu button** — double tap (two presses within 250ms), real-hardware | **Return to the Portals Hub** from any world (no-op if already at the hub). Recenter still fires on the first tap; the hub jump on the second — the wasted recenter is invisible under the transition fade. **Not testable in the WebXR emulator** (Vive profile exposes no menu button). | [src/modes/world.js](../src/modes/world.js) `pollRecenterButton` → `onReturnToHub` → [src/main.js](../src/main.js) → `worldMode.loadScene(hub)` |
+| **Either wand menu button** — double tap (two presses within 250ms), real-hardware | **Return to the Portals Glade** from any world (no-op if already at the hub). Recenter still fires on the first tap; the hub jump on the second — the wasted recenter is invisible under the transition fade. **Not testable in the WebXR emulator** (Vive profile exposes no menu button). | [src/modes/world.js](../src/modes/world.js) `pollRecenterButton` → `onReturnToHub` → [src/main.js](../src/main.js) → `worldMode.loadScene(hub)` |
 | **Both triggers simultaneously** (left + right selectstart within 250ms, both aimed at empty space) — emulator-friendly | **Return to spawn** (same as above). Provided because the WebXR Emulator's HTC Vive profile only exposes select + squeeze, not menu/touchpad-press. Cross-hand gesture, so it doesn't collide with single-hand single/double trigger actions. | [src/three/vrButton.js](../src/three/vrButton.js) `onSelectStart` → `onRecenter` → [src/main.js](../src/main.js) → `worldMode.returnToOrigin()` |
 | **Either wand grip** (`squeezestart`) | **Exit VR session** | [src/three/vrButton.js](../src/three/vrButton.js) calls `currentSession.end()` |
 
@@ -76,7 +76,8 @@ trigger on the **other** hand within that window fires recenter instead.
 
 Portals are clickable/aimable doorways (and floating character GLBs) placed in
 scenes via `sceneDef.portals` in [src/data/scenes.js](../src/data/scenes.js).
-The **Portals Hub** (`hub-heart-pool`) is a dedicated scene holding a ring of 12
+The **Portals Glade** (scene id `hub-heart-pool`; still called "the hub" in code
+and internal nav-mode) is a dedicated scene holding a ring of 12
 portals — one per world — built by
 [src/data/hubPortals.js](../src/data/hubPortals.js). Reach it via the flower /
 hub button in the HUD. In VR, point a wand at a portal and pull the trigger
@@ -108,14 +109,15 @@ target.
 
 ### Object mode (grab / drop)
 
-When object mode is toggled on (HUD button, persisted to
-`fairy-worlds-object-mode`), scenes load a Rapier collider and you can spawn
-droppable GLBs/boxes. In VR, aim a wand at a dropped object and pull the trigger
-to grab it; release the trigger to drop. New objects are spawned via the desktop
-HUD "drop object" button, or in VR by pressing the **right wand's
-trackpad/thumbstick** (`pollSpawnButton`, gated on object mode). Object mode
-itself is still toggled from the desktop HUD before entering VR — there's no
-in-VR toggle.
+Object mode is **on by default** — the HUD toggle persists to
+`fairy-worlds-object-mode`, and only an explicit `"0"` disables it (see
+`isObjectMode` in [src/modes/world.js](../src/modes/world.js)). When on, scenes
+load a Rapier collider and you can spawn droppable GLBs/boxes. In VR, aim a wand
+at a dropped object and pull the trigger to grab it; release the trigger to drop.
+New objects are spawned via the desktop HUD "drop object" button, or in VR by
+pressing the **right wand's trackpad/thumbstick** (`pollSpawnButton`, gated on
+object mode). Object mode itself is toggled from the desktop HUD before entering
+VR — there's no in-VR toggle.
 
 ### Spawn behavior when cycling
 
@@ -198,7 +200,7 @@ gamepad index — see the next section for menu-button (button[3]) caveats.
         instead — see the priority chain above).
   - [ ] Single click **right controller → Trigger** → wait ~250ms → splat reloads,
         next scene in array order, **skipping `hideInPicker` scenes** (the
-        lovely-melody/pink/mint interiors and the Portals Hub). The last
+        lovely-melody/pink/mint interiors and the Portals Glade). The last
         cyclable scene is `animal-crossing`, which wraps back to
         `heart-pool-1-1-1004`.
   - [ ] Single click **left controller → Trigger** → previous scene. Wraps backward.
@@ -229,8 +231,12 @@ On Quest Touch controllers this is the thumbstick click. Wired in
 [src/modes/world.js](../src/modes/world.js) `pollRecenterButton` (polls each
 frame, rising-edge detection).
 
-- [ ] Pitch and roll are intentionally preserved (a tilted dolly is nauseating)
+- [ ] Only **yaw** (heading) is recentered — the dolly is never pitched or
+      rolled (a tilted dolly is nauseating); your real head tilt still applies.
+      See `extractYaw` in [src/modes/world.js](../src/modes/world.js).
 - [ ] Holding the button down only fires once. Release and press again to fire twice.
+- [ ] **Double-tap** the menu button → returns to the **Portals Glade** instead
+      (single tap stays a recenter); see `pollRecenterButton`.
 
 ### Random world group recenter
 - [ ] Cycle to a scene in the **Random** group (e.g. ocean-breeze-office)
@@ -243,7 +249,7 @@ frame, rising-edge detection).
 ### Portals: pointer, hover & entry
 Wired in [src/three/portals.js](../src/three/portals.js) (`updateVRHover`,
 `tryPortal`) + [src/modes/world.js](../src/modes/world.js) (`update`'s walk-into
-proximity check). Enter VR on a scene that has portals — the **Portals Hub**
+proximity check). Enter VR on a scene that has portals — the **Portals Glade**
 (flower / hub button) or one of the Animal Crossing / lovely-interior scenes.
 
 - [ ] A thin laser projects from each controller; drag a controller in DevTools
@@ -262,7 +268,7 @@ proximity check). Enter VR on a scene that has portals — the **Portals Hub**
       sends you to the ≈opposite portal in the hub ring.)
 - [ ] After arriving, you spawn beside the return portal but do NOT bounce
       straight back (arm-on-exit) — step away and back in to re-enter
-- [ ] **Enter VR while viewing the Portals Hub** → you land at the defined ring
+- [ ] **Enter VR while viewing the Portals Glade** → you land at the defined ring
       center (NOT wherever you'd moved before) and are NOT instantly teleported
       into a portal. (Regression guard: the ring's first portal sits ~0.69m from
       world origin, where the emulator's head starts before the spawn recenter;
@@ -274,7 +280,7 @@ proximity check). Enter VR on a scene that has portals — the **Portals Hub**
       "suppress walk-in" flag — entry is only ever blocked by an in-flight
       portal transition, and disarm-on-entry resets arm-state each time.)
 - [ ] **Double-tap the menu button** (real hardware only) from any world →
-      returns to the Portals Hub; single tap still just recenters to spawn
+      returns to the Portals Glade; single tap still just recenters to spawn
 - [ ] **Press the right trackpad/thumbstick** (real hardware only, object mode
       on) → a new object drops ~2.5m in front of where you're looking (NOT
       behind/opposite you — same dolly-transform fix as walk-in); does nothing

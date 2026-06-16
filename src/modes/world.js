@@ -14,7 +14,8 @@ import { createPortalInteraction } from "../three/portals.js";
 
 const OBJECT_MODE_KEY = "fairy-worlds-object-mode";
 function isObjectMode() {
-  return localStorage.getItem(OBJECT_MODE_KEY) === "1";
+  // Default ON when unset; only an explicit "0" disables it.
+  return localStorage.getItem(OBJECT_MODE_KEY) !== "0";
 }
 
 // Single in-world target size (meters, longest bbox dimension) applied to

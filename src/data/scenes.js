@@ -355,6 +355,16 @@ export const SCENES = [
   quaternion: [-0.024, -0.175, -0.003, 0.984],
     },
   },
+    {
+    id: "swan-lake-suite-1-1-1004",
+    world: "Swan Lake Suite",
+    title: "Swan Lake Suite 1.1-1004",
+    url: import.meta.env.BASE_URL + "splats/Swan%20Lake%20Suite%201-1-1004.spz",
+    spawn: {
+      position: [-0.31, 1.60, -0.75],
+  quaternion: [-0.024, -0.175, -0.003, 0.984],
+    },
+  },
   {
     id: "swan-lake-suite-1-1-pano",
     world: "Swan Lake Suite",

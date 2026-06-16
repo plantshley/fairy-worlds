@@ -274,7 +274,7 @@ if (boxHint) {
 }
 
 function applyObjectModeUI() {
-  const on = localStorage.getItem(OBJECT_MODE_KEY) === "1";
+  const on = localStorage.getItem(OBJECT_MODE_KEY) !== "0";
   // Hub has no useful objects to drop and the spawn-box button competes with
   // the variant pills for HUD space — hide it at hub even when object mode is
   // on. Re-evaluated on every scene load so swapping in/out of hub updates it.
@@ -293,7 +293,7 @@ function applyObjectModeUI() {
 applyObjectModeUI();
 
 objectModeToggle?.addEventListener("click", () => {
-  const next = localStorage.getItem(OBJECT_MODE_KEY) === "1" ? "0" : "1";
+  const next = localStorage.getItem(OBJECT_MODE_KEY) === "0" ? "1" : "0";
   localStorage.setItem(OBJECT_MODE_KEY, next);
   applyObjectModeUI();
   window.dispatchEvent(new Event("objectmodechange"));
@@ -339,7 +339,7 @@ const vr = createVRController(
     },
     onTryGrab: (hand) => {
       if (manager.currentName() !== "world") return false;
-      if (localStorage.getItem(OBJECT_MODE_KEY) !== "1") return false;
+      if (localStorage.getItem(OBJECT_MODE_KEY) === "0") return false;
       return worldMode.tryGrab(hand);
     },
     onGrabRelease: (hand) => {

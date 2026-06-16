@@ -21,7 +21,9 @@
       "Bash(certutil -hashfile \"C:\\\\Users\\\\ashle\\\\Pictures\\\\Sketchbook Art\\\\png-jpg\\\\sparkle bun1.png\" MD5)",
       "Bash(node --test tests/hubPortals.test.mjs)",
       "Bash(node -e \"console.log\\(require.resolve\\('sharp'\\)\\)\")",
-      "Bash(node --test --test-name-pattern=\"startAngle=0 and startAngle=2\" tests/hubPortals.test.mjs)"
+      "Bash(node --test --test-name-pattern=\"startAngle=0 and startAngle=2\" tests/hubPortals.test.mjs)",
+      "Bash(node --check \"c:/Users/ashle/Documents/GitHub/fairy-worlds/src/three/proceduralCharacter.js\")",
+      "Bash(node --check src/three/proceduralCharacter.js)"
     ],
     "additionalDirectories": [
       "C:\\Users\\ashle\\Downloads"

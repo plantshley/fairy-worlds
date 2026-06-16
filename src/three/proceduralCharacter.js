@@ -34,6 +34,12 @@ const ACCESSORY_DEFS = [
   { id: "mustache", label: "mustache", defaultColor: "#591246" },
   { id: "star", label: "star", defaultColor: "#fff6e8" },
   { id: "socks", label: "socks", defaultColor: "#ffe1f2" },
+  { id: "glasses", label: "glasses", defaultColor: "#2a1830" },
+  { id: "freckles", label: "freckles", defaultColor: "#a8623c" },
+  { id: "flowerCrown", label: "flower crown", defaultColor: "#ff9ad5" },
+  { id: "antennae", label: "antennae", defaultColor: "#ff66c4" },
+  { id: "blushHeart", label: "heart stickers", defaultColor: "#ff5ea8" },
+  { id: "blushStar", label: "star stickers", defaultColor: "#ffd166" },
 ];
 
 const DEFAULTS = {
@@ -62,6 +68,12 @@ const DEFAULTS = {
     mustache: false,
     star: false,
     socks: false,
+    glasses: false,
+    freckles: false,
+    flowerCrown: false,
+    antennae: false,
+    blushHeart: false,
+    blushStar: false,
   },
   accessoryColors: Object.fromEntries(
     ACCESSORY_DEFS.map((a) => [a.id, a.defaultColor]),
@@ -457,11 +469,55 @@ function makeHairVariant(id, material) {
     );
     band.position.y = ANCHORS.headCenter;
     group.add(band);
+  } else if (id === "twinbuns") {
+    group.add(bobShell(Math.PI * 0.17, Math.PI * 0.2));
+    for (const side of [-1, 1]) {
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.1, 18, 14), material);
+      bun.position.set(side * 0.2, capY + 0.12, -0.01);
+      group.add(bun);
+    }
+  } else if (id === "braids") {
+    group.add(bobShell(Math.PI * 0.17, Math.PI * 0.2));
+    for (const side of [-1, 1]) {
+      const braid = new THREE.Group();
+      const N = 9;
+      const len = 0.5;
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const beadR = 0.05 * (1 - t * 0.45) * (1 + 0.18 * Math.sin(i * 1.6));
+        const bead = new THREE.Mesh(new THREE.SphereGeometry(beadR, 10, 8), material);
+        // arc forward as it descends so the braid drapes over the front of the
+        // shoulder and clears the arms instead of clipping through them
+        bead.position.set(0, -len * t, t * t * 0.1);
+        braid.add(bead);
+      }
+      braid.position.set(side * (r - 0.02), capY - 0.09, 0.04);
+      braid.rotation.z = side * 0.2;
+      group.add(braid);
+    }
+  } else if (id === "mohawk") {
+    // central strip of spikes following the scalp midline; shaved sides show skin
+    const spikes = 8;
+    for (let i = 0; i < spikes; i++) {
+      const t = i / (spikes - 1); // 0 front → 1 back
+      const ang = -0.6 + t * 1.9;
+      const ny = Math.cos(ang) * r;
+      const nz = -Math.sin(ang) * r;
+      const h = 0.07 + 0.07 * Math.sin(t * Math.PI);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05, h, 12), material);
+      spike.position.set(0, capY + ny, nz);
+      const normal = new THREE.Vector3(0, ny, nz).normalize();
+      spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+      spike.translateY(h / 2 - 0.02); // push outward so the base sits on the scalp
+      group.add(spike);
+    }
   }
   return group;
 }
 
-function makeShirtVariant(id, material) {
+// `accentMaterial` (the bottom color) is used only by the overalls bib + straps,
+// so the dungarees track whatever bottom color is selected
+function makeShirtVariant(id, material, accentMaterial) {
   const group = new THREE.Group();
   const top = ANCHORS.shoulder + 0.02;
   const bottom = id === "crop" ? (ANCHORS.shoulder + ANCHORS.waist) / 2 + 0.02 : ANCHORS.waist+0.025;
@@ -503,7 +559,83 @@ function makeShirtVariant(id, material) {
     }
   }
 
+  if (id === "overalls" && accentMaterial) {
+    // dungaree bib + straps laid over the tee base, in the bottom's color
+    const bibTop = ANCHORS.chest - 0.02;
+    const bibBottom = ANCHORS.waist + 0.02;
+    const bibH = bibTop - bibBottom;
+    const bibR = BODY.torsoRadius + 0.025; // just outside the tee tube
+    const bib = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        bibR,
+        bibR,
+        bibH,
+        24,
+        1,
+        true,
+        Math.PI / 2 - Math.PI / 3.4,
+        Math.PI / 1.7,
+      ),
+      accentMaterial,
+    );
+    bib.material.side = THREE.DoubleSide;
+    bib.position.y = (bibTop + bibBottom) / 2;
+    group.add(bib);
+
+    for (const side of [-1, 1]) {
+      const front = new THREE.Vector3(side * 0.06, bibTop, BODY.torsoRadius + 0.03);
+      const over = new THREE.Vector3(side * 0.085, ANCHORS.shoulder + 0.04, 0);
+      const back = new THREE.Vector3(side * 0.06, ANCHORS.waist + 0.08, -BODY.torsoRadius - 0.03);
+      const curve = new THREE.CatmullRomCurve3([front, over, back]);
+      const strap = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 24, 0.014, 8, false),
+        accentMaterial,
+      );
+      group.add(strap);
+      const button = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.012, 0.012, 0.012, 12),
+        accentMaterial,
+      );
+      button.rotation.x = Math.PI / 2;
+      button.position.set(side * 0.06, bibTop - 0.005, BODY.torsoRadius + 0.04);
+      group.add(button);
+    }
+  }
+
   return group;
+}
+
+// yoke + crotch seat + two trouser legs — shared by pants and overalls
+function addTrouserBase(group, material, waistY) {
+  const yokeHeight = 0.1;
+  const seatY = waistY - yokeHeight + 0.01;
+  const yokeBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.0;
+  const yoke = new THREE.Mesh(
+    new THREE.CylinderGeometry(BODY.torsoRadius + 0.02, yokeBottomR + 0.005, yokeHeight, 28),
+    material,
+  );
+  yoke.position.y = 0.025 + waistY - yokeHeight / 2;
+  group.add(yoke);
+
+  // seat cap fills the crotch so no skin shows between the legs;
+  // its widest point sits exactly at the yoke's bottom edge for a flush join
+  const seat = new THREE.Mesh(
+    new THREE.SphereGeometry(yokeBottomR + 0.005, 24, 16),
+    material,
+  );
+  seat.position.y = 0.025 + seatY;
+  seat.scale.set(1, 0.6, 1);
+  group.add(seat);
+
+  const legTop = seatY + 0.05;
+  for (const side of [-1, 1]) {
+    const leg = new THREE.Mesh(
+      new THREE.CylinderGeometry(BODY.legRadius + 0.0075, BODY.legRadius + 0.0175, legTop - ANCHORS.ankle - 0.03, 20),
+      material,
+    );
+    leg.position.set(side * BODY.hipHalfWidth, 0.03 + (legTop + ANCHORS.ankle) / 2, 0);
+    group.add(leg);
+  }
 }
 
 function makeBottomVariant(id, material) {
@@ -527,40 +659,7 @@ function makeBottomVariant(id, material) {
     hem.material.side = THREE.DoubleSide;
     group.add(hem);
   } else if (id === "pants") {
-    const yokeHeight = 0.1;
-    const seatY = waistY - yokeHeight + 0.01;
-    const yokeBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.0;
-    const yoke = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        BODY.torsoRadius + 0.02,
-        yokeBottomR + 0.005,
-        yokeHeight,
-        28,
-      ),
-      material,
-    );
-    yoke.position.y = 0.025 + waistY - yokeHeight / 2;
-    group.add(yoke);
-
-    // seat cap fills the crotch so no skin shows between the legs;
-    // its widest point sits exactly at the yoke's bottom edge for a flush join
-    const seat = new THREE.Mesh(
-      new THREE.SphereGeometry(yokeBottomR + 0.005, 24, 16),
-      material,
-    );
-    seat.position.y = 0.025 + seatY;
-    seat.scale.set(1, 0.6, 1);
-    group.add(seat);
-
-    const legTop = seatY + 0.05;
-    for (const side of [-1, 1]) {
-      const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(BODY.legRadius + 0.0075, BODY.legRadius + 0.0175, legTop - ANCHORS.ankle - 0.03, 20),
-        material,
-      );
-      leg.position.set(side * BODY.hipHalfWidth, 0.03 + (legTop + ANCHORS.ankle) / 2, 0);
-      group.add(leg);
-    }
+    addTrouserBase(group, material, waistY);
   } else if (id === "shorts") {
     const yokeHeight = 0.1;
     const shortsHeight = 0.1;
@@ -885,6 +984,194 @@ function buildSocks(material) {
   return group;
 }
 
+// pivot at head center oriented so its local +z is the head-surface normal at
+// (xLocal, yLocal); place children at z ≈ BODY.headRadius to sit flush on the face
+function headSurfacePivot(xLocal, yLocal) {
+  const zLocal = Math.sqrt(
+    Math.max(0, BODY.headRadius * BODY.headRadius - yLocal * yLocal - xLocal * xLocal),
+  );
+  const pivot = new THREE.Group();
+  pivot.position.set(0, ANCHORS.headCenter, 0);
+  const normal = new THREE.Vector3(xLocal, yLocal, zLocal).normalize();
+  pivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+  return pivot;
+}
+
+function heartShape(s) {
+  const shape = new THREE.Shape();
+  shape.moveTo(0, -0.6 * s);
+  shape.bezierCurveTo(0, -0.3 * s, 0.5 * s, -0.1 * s, 0.5 * s, 0.25 * s);
+  shape.bezierCurveTo(0.5 * s, 0.55 * s, 0.2 * s, 0.62 * s, 0, 0.4 * s);
+  shape.bezierCurveTo(-0.2 * s, 0.62 * s, -0.5 * s, 0.55 * s, -0.5 * s, 0.25 * s);
+  shape.bezierCurveTo(-0.5 * s, -0.1 * s, 0, -0.3 * s, 0, -0.6 * s);
+  return shape;
+}
+
+function starShape(outer, inner, points = 5) {
+  const shape = new THREE.Shape();
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    if (i === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  return shape;
+}
+
+function buildGlasses(material) {
+  const glasses = new THREE.Group();
+  const eyeX = 0.085;
+  const eyeY = -0.05; // sit low on the face, around/below the eyes
+  for (const side of [-1, 1]) {
+    const pivot = headSurfacePivot(side * eyeX, eyeY);
+    const frame = new THREE.Mesh(
+      new THREE.TorusGeometry(0.058, 0.0035, 10, 32),
+      material,
+    );
+    frame.position.z = BODY.headRadius - 0.001;
+    frame.scale.set(1.12, 1, 1);
+    pivot.add(frame);
+    // short temple arm sweeping back toward the ear
+    const arm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0035, 0.0035, 0.08, 8),
+      material,
+    );
+    arm.rotation.z = Math.PI / 2;
+    arm.position.set(side * 0.07, 0.01, BODY.headRadius - 0.035);
+    arm.rotation.y = side * 0.6;
+    pivot.add(arm);
+    glasses.add(pivot);
+  }
+  // bridge across the nose
+  const bridge = headSurfacePivot(0, eyeY + 0.005);
+  const bar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0035, 0.0035, 0.045, 8),
+    material,
+  );
+  bar.rotation.z = Math.PI / 2;
+  bar.position.z = BODY.headRadius - 0.001;
+  bridge.add(bar);
+  glasses.add(bridge);
+  return glasses;
+}
+
+function buildFreckles(material) {
+  const freckles = new THREE.Group();
+  const layout = [
+    // nose bridge
+    { x: 0.0, y: -0.048, r: 0.0045 },
+    { x: 0.014, y: -0.058, r: 0.003 },
+    { x: -0.014, y: -0.058, r: 0.003 },
+    // inner cheeks
+    { x: 0.034, y: -0.062, r: 0.005 },
+    { x: -0.034, y: -0.062, r: 0.005 },
+    { x: 0.05, y: -0.052, r: 0.0035 },
+    { x: -0.05, y: -0.052, r: 0.0035 },
+    // mid cheeks
+    { x: 0.066, y: -0.07, r: 0.0055 },
+    { x: -0.066, y: -0.07, r: 0.0055 },
+    { x: 0.084, y: -0.062, r: 0.003 },
+    { x: -0.084, y: -0.062, r: 0.003 },
+    // outer cheeks
+    { x: 0.1, y: -0.078, r: 0.005 },
+    { x: -0.1, y: -0.078, r: 0.005 },
+    { x: 0.088, y: -0.098, r: 0.0035 },
+    { x: -0.088, y: -0.098, r: 0.0035 },
+    { x: 0.112, y: -0.094, r: 0.003 },
+    { x: -0.112, y: -0.094, r: 0.003 },
+  ];
+  for (const { x, y, r } of layout) {
+    const pivot = headSurfacePivot(x, y);
+    const dot = new THREE.Mesh(new THREE.CircleGeometry(r, 12), material);
+    dot.position.z = BODY.headRadius + 0.0008;
+    pivot.add(dot);
+    freckles.add(pivot);
+  }
+  return freckles;
+}
+
+function buildFlowerCrown(material) {
+  const crown = new THREE.Group();
+  const crownY = ANCHORS.headCenter + 0.12;
+  const headXZ = Math.sqrt(
+    Math.max(0, BODY.headRadius * BODY.headRadius - (crownY - ANCHORS.headCenter) ** 2),
+  );
+  const ringR = headXZ + 0.02;
+  const N = 14; // full ring around the head
+  for (let i = 0; i < N; i++) {
+    const alpha = (i / N) * Math.PI * 2;
+    const x = ringR * Math.cos(alpha);
+    const z = ringR * Math.sin(alpha);
+    const flower = new THREE.Group();
+    flower.position.set(x, crownY + (i % 2) * 0.012, z);
+    flower.rotation.y = Math.PI / 2 - alpha; // local +z faces outward
+    const petalR = 0.022;
+    for (let p = 0; p < 5; p++) {
+      const a = (p / 5) * Math.PI * 2;
+      const petal = new THREE.Mesh(new THREE.SphereGeometry(petalR, 8, 6), material);
+      petal.position.set(Math.cos(a) * petalR, Math.sin(a) * petalR, 0);
+      petal.scale.set(1, 1, 0.5);
+      flower.add(petal);
+    }
+    const center = new THREE.Mesh(new THREE.SphereGeometry(petalR * 0.7, 8, 6), material);
+    center.scale.set(1, 1, 0.6);
+    flower.add(center);
+    crown.add(flower);
+  }
+  return crown;
+}
+
+function buildAntennae(material) {
+  const antennae = new THREE.Group();
+  for (const side of [-1, 1]) {
+    const stalk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.004, 0.008, 0.18, 8),
+      material,
+    );
+    stalk.position.set(side * 0.07, ANCHORS.headTop + 0.06, -0.01);
+    stalk.rotation.z = side * -0.35;
+    antennae.add(stalk);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 10), material);
+    tip.position.set(side * 0.13, ANCHORS.headTop + 0.15, -0.01);
+    antennae.add(tip);
+  }
+  return antennae;
+}
+
+function buildBlushHeart(material) {
+  const group = new THREE.Group();
+  const cheekX = 0.12;
+  const cheekY = -0.075;
+  for (const side of [-1, 1]) {
+    const pivot = headSurfacePivot(side * cheekX, cheekY);
+    const heart = new THREE.Mesh(new THREE.ShapeGeometry(heartShape(0.036)), material);
+    heart.position.z = BODY.headRadius + 0.0009;
+    pivot.add(heart);
+    group.add(pivot);
+  }
+  return group;
+}
+
+function buildBlushStar(material) {
+  const group = new THREE.Group();
+  const cheekX = 0.12;
+  const cheekY = -0.075;
+  for (const side of [-1, 1]) {
+    const pivot = headSurfacePivot(side * cheekX, cheekY);
+    const star = new THREE.Mesh(
+      new THREE.ShapeGeometry(starShape(0.028, 0.013)),
+      material,
+    );
+    star.position.z = BODY.headRadius + 0.0009;
+    pivot.add(star);
+    group.add(pivot);
+  }
+  return group;
+}
+
 function makeAccessories() {
   const group = new THREE.Group();
   const materials = {};
@@ -906,8 +1193,16 @@ function makeAccessories() {
         emissiveIntensity: 0.5,
         roughness: 0.3,
       });
-    } else if (def.id === "lashes") {
+    } else if (def.id === "lashes" || def.id === "freckles") {
       mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(def.defaultColor) });
+    } else if (def.id === "blushHeart" || def.id === "blushStar") {
+      mat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(def.defaultColor),
+        transparent: true,
+        opacity: 0.92,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
     } else {
       mat = softMat(def.defaultColor, { roughness: 0.5 });
     }
@@ -922,6 +1217,12 @@ function makeAccessories() {
     else if (def.id === "mustache") node = buildMustache(mat);
     else if (def.id === "star") node = buildStar(mat);
     else if (def.id === "socks") node = buildSocks(mat);
+    else if (def.id === "glasses") node = buildGlasses(mat);
+    else if (def.id === "freckles") node = buildFreckles(mat);
+    else if (def.id === "flowerCrown") node = buildFlowerCrown(mat);
+    else if (def.id === "antennae") node = buildAntennae(mat);
+    else if (def.id === "blushHeart") node = buildBlushHeart(mat);
+    else if (def.id === "blushStar") node = buildBlushStar(mat);
 
     node.name = def.id;
     node.visible = false;
@@ -968,7 +1269,7 @@ export function createProceduralCharacter(initialState = {}) {
   let bottomGroup = makeBottomVariant(state.variants.bottom, bottomMat);
   let wingsGroup = makeWingsVariant(state.variants.wings, wingsMat);
   const { group: accessoriesGroup, materials: accessoryMaterials, nodes: accessoryNodes } = makeAccessories();
-  let shirtGroup = makeShirtVariant(state.variants.shirt, shirtMat);
+  let shirtGroup = makeShirtVariant(state.variants.shirt, shirtMat, bottomMat);
 
   root.add(shirtGroup);
   root.add(hairGroup);
@@ -1034,7 +1335,7 @@ export function createProceduralCharacter(initialState = {}) {
       root.add(wingsGroup);
     } else if (partId === "shirt") {
       root.remove(shirtGroup);
-      shirtGroup = makeShirtVariant(variantId, shirtMat);
+      shirtGroup = makeShirtVariant(variantId, shirtMat, bottomMat);
       root.add(shirtGroup);
     }
   }
@@ -1076,8 +1377,8 @@ export const PROCEDURAL_CUSTOMIZATION_SCHEMA = {
     { id: "shoes", label: "shoes", default: DEFAULTS.colors.shoes },
   ],
   variants: [
-    { id: "hair", label: "⋆.˚⟡ hair styles ⟡˚.⋆", options: ["bob", "long", "pigtails", "bun", "afro", "fade"] },
-    { id: "shirt", label: "⊹˚. ♡ shirts ♡ .˚⊹", options: ["tee", "tank", "crop", "long"] },
+    { id: "hair", label: "⋆.˚⟡ hair styles ⟡˚.⋆", options: ["bob", "long", "pigtails", "bun", "afro", "fade", "twinbuns", "braids", "mohawk"] },
+    { id: "shirt", label: "⊹˚. ♡ shirts ♡ .˚⊹", options: ["tee", "tank", "crop", "long", "overalls"] },
     { id: "bottom", label: "*ೃ.⋆❀ bottoms ❀⋆.ೃ࿔*", options: ["skirt", "pants", "shorts"] },
     { id: "wings", label: "꒰ა ⊹ wings ⊹ ࣪໒꒱", options: ["off", "butterfly", "angel", "bat"] },
   ],
