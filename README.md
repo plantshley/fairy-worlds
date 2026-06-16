@@ -1,15 +1,22 @@
 # ⋆.˚✿🌷 fairy worlds 🌷✿˚.⋆
 
 A dreamy little web experience: pick a cute character, customize it, and wander
-through a gallery of pastel 3D worlds rendered as Gaussian splats. Works on
+through a gallery of twinkling 3D worlds rendered as Gaussian splats. Works on
 desktop, phone/tablet, and in VR.
 
 **⁠❥ Live site:** https://plantshley.github.io/fairy-worlds/
 
-The worlds are real captured/AI-generated 3D scenes (Marble AI `.spz` splats)
+The worlds are real captured, world model-generated 3D scenes (Marble AI `.spz` splats)
 streamed in your browser with [three.js](https://threejs.org/) +
 [Spark](https://github.com/sparkjsdev/spark). No install, no account — just open
 the link.
+
+---
+</p></p>
+
+<p align="center">
+  ˚₊‧꒰ა  <a href="#-user-guide-"> USER GUIDE </a>  ⋆˚꩜｡⊹  <a href="#ʚ-navigation-controls-ɞ"> NAVIGATION CONTROLS </a>  ⋆˚꩜｡⊹  <a href="#ೃ୨୧-for-developers-୨୧ೃ"> FOR DEVELOPERS </a>  ໒꒱‧₊˚
+</p>
 
 ---
 
