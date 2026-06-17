@@ -70,6 +70,11 @@ export function createCompanion({ containerEl, canvasEl, bubbleEl, recenterEl, o
         currentCharacter.setColor?.(id, hex);
       }
     }
+    if (state.accessoryColors) {
+      for (const [id, hex] of Object.entries(state.accessoryColors)) {
+        currentCharacter.setAccessoryColor?.(id, hex);
+      }
+    }
     if (state.variants) {
       for (const [id, v] of Object.entries(state.variants)) {
         currentCharacter.setVariant?.(id, v);

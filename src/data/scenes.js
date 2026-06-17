@@ -125,6 +125,38 @@ export const SCENES = [
     },
   },
 
+    {
+    id: "swan-lake-suite-1-1",
+    world: "Swan Lake Suite",
+    title: "Swan Lake Suite 1.1",
+    url: import.meta.env.BASE_URL + "splats/Swan%20Lake%20Suite%201-1.spz",
+    spawn: {
+      position: [-0.31, 1.60, -0.75],
+  quaternion: [-0.024, -0.175, -0.003, 0.984],
+    },
+    
+  },
+    {
+    id: "swan-lake-suite-1-1-1004",
+    world: "Swan Lake Suite",
+    title: "Swan Lake Suite 1.1-1004",
+    url: import.meta.env.BASE_URL + "splats/Swan%20Lake%20Suite%201-1-1004.spz",
+    spawn: {
+      position: [-0.31, 1.60, -0.75],
+  quaternion: [-0.024, -0.175, -0.003, 0.984],
+    },
+  },
+  {
+    id: "swan-lake-suite-1-1-pano",
+    world: "Swan Lake Suite",
+    title: "Swan Lake Suite 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Swan%20Lake%20Suite%201-1-pano.spz",
+    spawn: {
+      position: [-0.93, 1.61, 0.86],
+    quaternion: [-0.030, -0.268, -0.007, 0.963],
+    },
+  },
+
   {
     id: "sunkissed-sparkle-lounge-1-1",
     world: "Sunkissed Sparkle Room",
@@ -345,36 +377,6 @@ export const SCENES = [
     },
   },
   
-  {
-    id: "swan-lake-suite-1-1",
-    world: "Swan Lake Suite",
-    title: "Swan Lake Suite 1.1",
-    url: import.meta.env.BASE_URL + "splats/Swan%20Lake%20Suite%201-1.spz",
-    spawn: {
-      position: [-0.31, 1.60, -0.75],
-  quaternion: [-0.024, -0.175, -0.003, 0.984],
-    },
-  },
-    {
-    id: "swan-lake-suite-1-1-1004",
-    world: "Swan Lake Suite",
-    title: "Swan Lake Suite 1.1-1004",
-    url: import.meta.env.BASE_URL + "splats/Swan%20Lake%20Suite%201-1-1004.spz",
-    spawn: {
-      position: [-0.31, 1.60, -0.75],
-  quaternion: [-0.024, -0.175, -0.003, 0.984],
-    },
-  },
-  {
-    id: "swan-lake-suite-1-1-pano",
-    world: "Swan Lake Suite",
-    title: "Swan Lake Suite 1.1-pano",
-    url: import.meta.env.BASE_URL + "splats/Swan%20Lake%20Suite%201-1-pano.spz",
-    spawn: {
-      position: [-0.93, 1.61, 0.86],
-    quaternion: [-0.030, -0.268, -0.007, 0.963],
-    },
-  },
 
   {
     id: "lovecore-patio-1-1",

@@ -1279,7 +1279,7 @@ export function createProceduralCharacter(initialState = {}) {
   const shirtMat = softMat(state.colors.shirt);
   const bottomMat = softMat(state.colors.bottom);
   // overall buttons: a slightly darker shade of the bottom color, kept in sync
-  const overallButtonMat = softMat(darkerShade(state.colors.bottom, 0.3));
+  const overallButtonMat = softMat(darkerShade(state.colors.bottom, 0.5));
   const wingsMat = softMat(state.colors.wings, { transparent: true, opacity: 0.78 });
   const shoesMat = softMat(state.colors.shoes, { roughness: 0.6 });
   const irisMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(state.colors.eyes) });
@@ -1390,6 +1390,22 @@ export function createProceduralCharacter(initialState = {}) {
     return JSON.parse(JSON.stringify(state));
   }
 
+  function applyState(next) {
+    if (!next) return;
+    if (next.colors) {
+      for (const [id, hex] of Object.entries(next.colors)) setColor(id, hex);
+    }
+    if (next.accessoryColors) {
+      for (const [id, hex] of Object.entries(next.accessoryColors)) setAccessoryColor(id, hex);
+    }
+    if (next.variants) {
+      for (const [id, v] of Object.entries(next.variants)) setVariant(id, v);
+    }
+    if (next.accessories) {
+      for (const [id, on] of Object.entries(next.accessories)) setAccessory(id, on);
+    }
+  }
+
   return {
     root,
     setColor,
@@ -1397,6 +1413,7 @@ export function createProceduralCharacter(initialState = {}) {
     setAccessory,
     setAccessoryColor,
     getState,
+    applyState,
   };
 }
 

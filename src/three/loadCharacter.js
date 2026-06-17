@@ -95,6 +95,7 @@ export async function loadCharacter(def, initialState) {
       setAccessory: proc.setAccessory,
       setAccessoryColor: proc.setAccessoryColor,
       getState: proc.getState,
+      applyState: proc.applyState,
       update: () => {},
     };
   }

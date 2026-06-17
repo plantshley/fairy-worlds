@@ -23,7 +23,9 @@
       "Bash(node -e \"console.log\\(require.resolve\\('sharp'\\)\\)\")",
       "Bash(node --test --test-name-pattern=\"startAngle=0 and startAngle=2\" tests/hubPortals.test.mjs)",
       "Bash(node --check \"c:/Users/ashle/Documents/GitHub/fairy-worlds/src/three/proceduralCharacter.js\")",
-      "Bash(node --check src/three/proceduralCharacter.js)"
+      "Bash(node --check src/three/proceduralCharacter.js)",
+      "Bash(node --check src/ui/companion.js)",
+      "Bash(node --check src/three/loadCharacter.js)"
     ],
     "additionalDirectories": [
       "C:\\Users\\ashle\\Downloads"
