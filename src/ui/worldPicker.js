@@ -2,6 +2,12 @@ export function createWorldPicker({ container, scenes, onSelectScene }) {
   let openGroupEl = null;
   let activeSceneId = null;
 
+  // Phones in portrait get little screen real estate, so collapse the dropdown
+  // after entering a scene there. Larger / landscape layouts keep it open.
+  function isPhonePortrait() {
+    return window.matchMedia("(max-width: 480px) and (orientation: portrait)").matches;
+  }
+
   function closeOpenGroup() {
     if (openGroupEl) {
       openGroupEl.classList.remove("open");
@@ -75,7 +81,10 @@ export function createWorldPicker({ container, scenes, onSelectScene }) {
     }
     // Keep the current world's dropdown expanded while any of its scenes is
     // active, so switching scenes within a world doesn't collapse the picker.
-    if (activeGroup && activeGroup !== openGroupEl) {
+    // Exception: phones in portrait collapse it after entering a scene.
+    if (isPhonePortrait()) {
+      closeOpenGroup();
+    } else if (activeGroup && activeGroup !== openGroupEl) {
       closeOpenGroup();
       activeGroup.classList.add("open");
       openGroupEl = activeGroup;
@@ -86,6 +95,22 @@ export function createWorldPicker({ container, scenes, onSelectScene }) {
     activeSceneId = sceneId;
     applyActive();
   }
+
+  // External close — used by setNavMode when leaving picker-nav, and by the
+  // viewport matchMedia listener when desktop→phone-portrait resize happens
+  // while a group was left open. Without this, .scene-group.open persists in
+  // the DOM and any rule like :has(#scenes .scene-group.open) keeps firing
+  // even though the picker is no longer visible (e.g. hides #btn-spawn-box).
+  function close() {
+    closeOpenGroup();
+  }
+
+  // Desktop keeps the active world's dropdown open; phone-portrait collapses
+  // it. If the viewport flips desktop→phone-portrait mid-session, no scene
+  // re-activation fires to trigger applyActive's collapse path — so close
+  // imperatively here too.
+  window.matchMedia("(max-width: 480px) and (orientation: portrait)")
+    .addEventListener("change", (e) => { if (e.matches) closeOpenGroup(); });
 
   document.addEventListener("click", (e) => {
     if (e.target.closest(".scene-group")) return;
@@ -98,5 +123,5 @@ export function createWorldPicker({ container, scenes, onSelectScene }) {
   });
 
   build();
-  return { setActiveScene };
+  return { setActiveScene, close };
 }

@@ -21,6 +21,12 @@ let navMode = "picker";
 function setNavMode(mode) {
   navMode = mode;
   document.body.dataset.navMode = mode;
+  // Leaving picker-nav: collapse any open scene-group so its `.open` class
+  // doesn't linger in the (now hidden) #scenes DOM. Stale `.open` was matching
+  // :has(#scenes .scene-group.open) selectors elsewhere and hiding
+  // #btn-spawn-box in portal-nav. worldPicker is created later in this file,
+  // so the optional-chain handles the initial setNavMode("picker") below.
+  if (mode !== "picker") worldPicker?.close();
 }
 setNavMode("picker");
 

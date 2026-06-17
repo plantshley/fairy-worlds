@@ -1159,9 +1159,14 @@ canvas { touch-action: none; }
       rgba(200, 179, 251, 0.75) 100%);
   }
 
-  /* hide both buttons while a scenes dropdown is open so they don't overlap it */
-  body:has(#scenes .scene-group.open) .object-mode-toggle,
-  body:has(#scenes .scene-group.open) #btn-spawn-box {
+  /* hide both buttons while a scenes dropdown is open so they don't overlap it.
+     Gated on data-nav-mode="picker" because the .open class on a scene-group
+     persists in the DOM even when #scenes itself is display:none'd (portal-nav,
+     hub-nav). Without that gate, :has() ignores the ancestor's display:none and
+     keeps hiding #btn-spawn-box after entering portal-nav — which is how the
+     mobile drop-object button went "missing" in portal-nav. */
+  body[data-nav-mode="picker"]:has(#scenes .scene-group.open) .object-mode-toggle,
+  body[data-nav-mode="picker"]:has(#scenes .scene-group.open) #btn-spawn-box {
     display: none !important;
   }
 
@@ -1561,6 +1566,51 @@ body:not([data-mode="world"]) #variant-pills-mobile {
     left: 8px !important;
     z-index: 12 !important;
     margin: 0 !important;
+  }
+
+  /* Mirror of the flower home button: in portal-nav on mobile, the drop-object
+     button becomes a circle ✦ at top-right instead of the wide pill at
+     top-center. Same dimensions / blur / gradient as .home-btn so the two read
+     as a matched pair flanking the portal-nav pill bar. font-size:0 hides the
+     "✦ drop object ✦" label so the ::before glyph is the only visible content
+     (the original text remains as the accessible name for screen readers). */
+  body[data-nav-mode="portal"] #btn-spawn-box {
+    position: fixed !important;
+    top: 8px !important;
+    right: 8px !important;
+    left: auto !important;
+    transform: none !important;
+    z-index: 12 !important;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px !important;
+    border: 0 solid rgba(255,255,255,0.45) !important;
+    background: linear-gradient(90deg,
+      rgba(252, 204, 131, 0.45) 0%,
+      rgba(242, 0, 222, 0.45) 40%,
+      rgba(168, 131, 255, 0.45) 100%) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    box-shadow: none !important;
+    font-size: 0 !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+    color: #fff !important;
+  }
+  body[data-nav-mode="portal"] #btn-spawn-box::before {
+    content: "✦";
+    font-family: var(--font-display);
+    font-size: 22px;
+    line-height: 1;
+  }
+  body[data-nav-mode="portal"] #btn-spawn-box:hover {
+    transform: translate(-3px, -3px) !important;
+    border-color: rgba(255, 216, 242, 0.95) !important;
+    box-shadow: 0 8px 24px rgba(255, 172, 234, 0.55) !important;
   }
 }
 

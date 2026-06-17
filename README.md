@@ -73,23 +73,25 @@ but the player walks freely (you can pass through scenery). Use right-click-drag
 
 | You want to… | Do this |
 | --- | --- |
+| **Travel to a world** | Open a world dropdown and click a scene from the list, or enter/click a portal. |
 | **Look around** | **Click the canvas** to capture the mouse, then move the mouse to look. |
 | **Move** | **WASD** keys, or **scroll** to glide forward/back. |
 | **Move faster / slower** | Hold **Shift** to speed up, **Ctrl** to slow down. |
-| **Travel to a world** | Click a world in the "select a world" list, or enter a portal. |
-| **Reset your position** | Click the **⊙** button (top-right HUD) to snap back to the world's entrance. |
-| **Return to home** | Click the **✿** flower button in the toolbar, or your **companion character**. |
-| **Drop an object** *(object mode on)* | Click **✦ drop object ✦**. Right-drag to slide it, Alt+right-drag to lift. |
-| **Change character** | Click **♡ pick a character ♡**. |
+| **Reset your position** | Click the **⊙** button in the toolbar to snap back to the world's entrance. |
+| **Return to home** | Click the **✿** flower button in the toolbar, or your **companion character**. *(Note: **✿** returns to **portals glade** when in portal mode.)* |
+| **Drop an object** *(object mode on)* | Click **✦ drop object ✦**. Right-drag to slide, Alt+right-drag to lift. |
+| **Change character** | Click **♡ pick a character ♡** on the homepage. |
 
 ### ♥︎ Mobile / tablet (touch)
 
 | You want to… | Do this |
 | --- | --- |
+| **Travel to a world** | Tap a scene from the world drowndowns in the list, or enter/tap a portal doorway. |
 | **Look around** | **Drag** anywhere on the scene (one finger). |
 | **Move** | Use the **on-screen joystick** in the bottom corner or two-finger pinch gestures. |
-| **Travel to a world** | Tap a world in the list, or tap a portal doorway. |
-| **Reset your position** | Tap the **⊙** button that floats by your companion. |
+| **Drop an object** *(object mode on)* | Click **✦ drop object ✦** (or **✦** button in the top right when in portal mode). Tap and drag the object to move around. |
+| **Reset your position** | Tap the **⊙** button that floats above your companion. |
+| **Return to home** | Tap your floating companion. |
 
 ### ♥︎ VR (WebXR — built for the HTC VIVE)
 
@@ -177,8 +179,6 @@ Persisted to `localStorage`: the selected character id
 (`fairy-worlds-character-config-v2`), and the object-mode toggle
 (`fairy-worlds-object-mode`).
 
-See [CLAUDE.md](CLAUDE.md) for deeper conventions (splat orientation, asset path
-rules, character anchors).
 
 ### ✦ Deployment
 
