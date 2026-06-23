@@ -25,7 +25,15 @@
       "Bash(node --check \"c:/Users/ashle/Documents/GitHub/fairy-worlds/src/three/proceduralCharacter.js\")",
       "Bash(node --check src/three/proceduralCharacter.js)",
       "Bash(node --check src/ui/companion.js)",
-      "Bash(node --check src/three/loadCharacter.js)"
+      "Bash(node --check src/three/loadCharacter.js)",
+      "Bash(node -e ' *)",
+      "Bash('/c/Program Files/Blender Foundation/Blender 5.1/blender.exe' --background --factory-startup --python c:/Users/ashle/Documents/GitHub/fairy-worlds/tools/convert_to_glb.py -- 'C:/Users/ashle/Downloads/obj-fbx/Flower Arch/fobj_arch_flower.obj' C:/Users/ashle/Downloads/obj-fbx/_glb/flower-arch.glb --normals)",
+      "Bash(python -c ' *)",
+      "Bash(cp /tmp/gren/front.png tmp_render/front.png)",
+      "Bash(cp /tmp/gren/back.png tmp_render/back.png)",
+      "Read(//tmp/**)",
+      "Bash(mkdir -p tmp_render/g4)",
+      "Bash(cp /tmp/gren4/*.png tmp_render/g4/)"
     ],
     "additionalDirectories": [
       "C:\\Users\\ashle\\Downloads"

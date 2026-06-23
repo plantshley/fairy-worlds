@@ -81,6 +81,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // world change so each new world starts at object 0.
   let objectCycleIdx = 0;
   const currentPortals = []; // { root, target, baseY, animation, scale, loaderText, phase }
+  const currentDecorations = []; // { id, root } — static, non-interactive props
   let portalClock = 0;
   // Held by loadScene so a follow-up loadScene can unblock the previous load's
   // awaiters before replacing the resolver. Cleared on resolve. enterPortal
@@ -281,6 +282,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       currentSplat = null;
     }
     disposePortals();
+    disposeDecorations();
 
     if (isObjectMode() && !physics) ensurePhysics();
     const sceneChanged = sceneDef.id !== currentSceneId;
@@ -360,6 +362,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     currentSceneId = sceneDef.id;
 
     spawnPortals(sceneDef, myToken);
+    spawnDecorations(sceneDef, myToken);
 
     // "Random" is a catchall group, not a real world — each scene there has its
     // own unrelated spawn, so always recenter when cycling within it.
@@ -422,6 +425,49 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     }
   }
 
+  // Static decorations: plain GLBs placed in the scene with no portal trigger,
+  // bubble, or animation. Unlike portals, the load is raw (scale 1) and ALL
+  // transforms live on the outer group, so window.deco() can mutate them live
+  // and the logged values paste back 1:1 into the scene's `decorations` array.
+  function spawnDecorations(sceneDef, myToken) {
+    const defs = sceneDef.decorations;
+    if (!defs || defs.length === 0) return;
+    for (const def of defs) {
+      loadCharacter({ kind: "glb", url: def.url })
+        .then(({ root: inner }) => {
+          if (myToken !== loadToken) return;
+          const root = new THREE.Group();
+          root.position.fromArray(def.position);
+          root.rotation.set(def.rotationX ?? 0, def.rotationY ?? 0, def.rotationZ ?? 0);
+          root.scale.setScalar(def.scale ?? 1);
+          root.add(inner);
+          scene.add(root);
+          currentDecorations.push({ id: def.id, root });
+        })
+        .catch((err) => {
+          console.warn(`[deco] failed to load ${def.id ?? def.url}:`, err);
+        });
+    }
+  }
+
+  function disposeDecorations() {
+    if (currentDecorations.length === 0) return;
+    for (const d of currentDecorations) {
+      scene.remove(d.root);
+      d.root.traverse((obj) => {
+        if (obj.isMesh) obj.geometry?.dispose?.();
+        if (obj.isMesh) {
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          for (const m of mats) {
+            m?.map?.dispose?.();
+            m?.dispose?.();
+          }
+        }
+      });
+    }
+    currentDecorations.length = 0;
+  }
+
   // Existing GLB path (Celeste-style character). Async because loadCharacter
   // fetches a GLB; the loadToken gate is checked once that resolves.
   function buildGLBPortal(portalDef, myToken) {
@@ -463,11 +509,13 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
           root.add(proxy);
         }
 
-        // ♡ speech bubble above her head — anchored on the bind-pose top.
+        // Speech bubble above her head — anchored on the bind-pose top. Glyph is
+        // ♡ by default; set portalDef.bubble to a string (e.g. "★") to override,
+        // or false to disable.
         if (portalDef.bubble !== false && !localBox.isEmpty()) {
           const height = localBox.max.y - localBox.min.y;
           const width = Math.max(localBox.max.x - localBox.min.x, localBox.max.z - localBox.min.z);
-          const bubble = createHeartBubble();
+          const bubble = createBubble(typeof portalDef.bubble === "string" ? portalDef.bubble : "♡");
           const bubbleSize = Math.max(height * 0.14, width * 0.2);
           bubble.scale.set(bubbleSize, bubbleSize, 1);
           bubble.position.set(0, localBox.max.y + bubbleSize * 0.65, 0);
@@ -767,10 +815,11 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     return sprite;
   }
 
-  // Pink circular ♡ bubble drawn into a CanvasTexture. Sprite auto-billboards
-  // toward the camera (works in VR too). Texture + material are disposed when
-  // the portal is torn down via the standard traverse in disposePortals.
-  function createHeartBubble() {
+  // Pink circular speech bubble drawn into a CanvasTexture, with a single glyph
+  // (♡ by default, or e.g. ★). Sprite auto-billboards toward the camera (works
+  // in VR too). Texture + material are disposed when the portal is torn down via
+  // the standard traverse in disposePortals.
+  function createBubble(glyph = "♡") {
     const canvas = document.createElement("canvas");
     canvas.width = 128;
     canvas.height = 128;
@@ -786,8 +835,8 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     ctx.font = "bold 80px serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    // ♡ visual weight sits in the lobes; nudge down a hair to look centered.
-    ctx.fillText("♡", 64, 70);
+    // Glyph visual weight tends to sit high; nudge down a hair to look centered.
+    ctx.fillText(glyph, 64, 70);
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.minFilter = THREE.LinearFilter;
@@ -1104,6 +1153,34 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     console.log(
       `position: [${p.x.toFixed(2)}, ${(p.y - eyeToFoot).toFixed(2)}, ${p.z.toFixed(2)}],\n` +
         `rotationY: ${facing.toFixed(3)},`,
+    );
+  };
+  // Live-tune a decoration (static prop) in the current scene. Pass an index
+  // (order in the scene's `decorations` array) and any of { x, y, z, rx, ry,
+  // rz, s }. Mutates the loaded group immediately and logs the full transform
+  // in scene-def shape, so you can eyeball scale/placement then paste the
+  // values back into scenes.js. e.g. window.deco(0, { s: 0.05, y: 1.2 })
+  window.deco = (i = 0, t = {}) => {
+    const d = currentDecorations[i];
+    if (!d) {
+      console.warn(`[deco] no decoration at index ${i} (count=${currentDecorations.length})`);
+      return;
+    }
+    const r = d.root;
+    if (t.x !== undefined) r.position.x = t.x;
+    if (t.y !== undefined) r.position.y = t.y;
+    if (t.z !== undefined) r.position.z = t.z;
+    if (t.rx !== undefined) r.rotation.x = t.rx;
+    if (t.ry !== undefined) r.rotation.y = t.ry;
+    if (t.rz !== undefined) r.rotation.z = t.rz;
+    if (t.s !== undefined) r.scale.setScalar(t.s);
+    console.log(
+      `decoration "${d.id}" [${i}]:\n` +
+        `  position: [${r.position.x.toFixed(2)}, ${r.position.y.toFixed(2)}, ${r.position.z.toFixed(2)}],\n` +
+        (r.rotation.x ? `  rotationX: ${r.rotation.x.toFixed(3)},\n` : "") +
+        `  rotationY: ${r.rotation.y.toFixed(3)},\n` +
+        (r.rotation.z ? `  rotationZ: ${r.rotation.z.toFixed(3)},\n` : "") +
+        `  scale: ${r.scale.x.toFixed(4)},`,
     );
   };
   window.logPose = () => {

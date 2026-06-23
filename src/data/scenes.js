@@ -486,6 +486,24 @@ export const SCENES = [
           colorB: "#d5f5e8",
         },
       },
+      {
+        id: "melody-to-ac",
+        target: "animal-crossing",
+        // Exit back outside. Circular lavender return (same style as the room
+        // returns), placed ~1m behind the spawn (spawn yaw ≈ 0.34) with y dropped
+        // 0.3m to door center. TUNE: stand in the real exit, run window.logPose().
+        position: [-0.3, 1.76, 1.1],
+        rotationY: 0.34,
+        loaderText: "ೃ⁀➷ back to Animal Crossing ࿐ೃ.",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
     ],
   },
   {
@@ -567,19 +585,209 @@ export const SCENES = [
     },
     portals: [
       {
-        id: "ac-to-melody",
-        target: "lovely-melody-interior",
+        id: "ac-to-observatory",
+        target: "ac-observatory",
         // TUNE: feet-on-ground. Logged camera pose was [-0.76, 3.98, -6.77]
         // (eye height in AC's scaled space); subtract ~1.6 × 2.3 ≈ 3.6 for
         // feet. Use window.logPortalSpot(3.6) in the console for live tuning.
-        position: [-1.54, 1.75, -10.82],
-        rotationY: 0.398,
+        position: [-3.25, 2.1, -8.82],
+        rotationY: 0.7,
         animation: "bob",
-        loaderText: "·˚*୨୧ entering Celeste's home ୨୧*˚·",
+        bubble: "☆", // star bubble instead of the default ♡
+        loaderText: "˚.⋆⊹☆ entering the observatory ☆⊹⋆.˚",
         render: {
           kind: "glb",
           url: import.meta.env.BASE_URL + "characters/celeste_-_animal_crossing_new_horizons.glb",
           scale: 0.075, // TUNE
+        },
+      },
+      {
+        id: "ac-to-melody",
+        target: "lovely-melody-interior",
+        // Just behind Celeste (who stands at [-1.54, 1.75, -10.82]), pushed
+        // ~2.5m further along the spawn→Celeste direction so the house reads as
+        // set back behind her. ALL THREE are placeholders — see the tuning note
+        // in the response / below. To retune: in AC, run
+        // window.logPortalSpot(3.6) in the console where you want the house — it
+        // prints a feet-on-ground position AND a rotationY already turned to
+        // face you. Paste both here.
+        position: [-0.65, -0.8, -15.4], // pushed back behind Celeste + lowered
+        rotationY: 0.18, // = 3.455 − π, flipped 180° so its front faces you
+        animation: "none", // a bobbing house looks wrong — keep it planted
+        bubble: false, // no ♡ speech bubble over a building
+        loaderText: "·˚*୨୧ entering Celeste's home ୨୧*˚·",
+        render: {
+          kind: "glb",
+          url: import.meta.env.BASE_URL + "characters/ac-house2.glb",
+          // Raw model is HUGE (~228 units wide) and centered on its own origin
+          // (extends ~79 units below it), so scale 1.0 buried the camera inside
+          // it. scale 0.03 → ~6.8 units wide / ~4.8 tall (a person here is ~3.6
+          // units, so this reads as a small building). TUNE the size from here.
+          scale: 0.0475,
+          // Lifts the base to the portal's ground y, since the origin is the
+          // model's center. Keep this ≈ 79.3 × scale whenever you change scale,
+          // or just nudge it until the base sits on the ground.
+          offsetY: 2.38,
+        },
+      },
+    ],
+    // Static, non-interactive props (no portal trigger, no bubble). All
+    // transforms live on the outer group — position is world coords, scale is
+    // uniform. These two are TEST placements near Celeste; tune live in the
+    // console with window.deco(i, { x, y, z, ry, s }) then paste the logged
+    // values back here. Celeste stands at ≈[-1.54, 1.75, -10.82].
+    decorations: [
+      {
+        id: "flower-arch",
+        url: import.meta.env.BASE_URL + "props/flower-arch.glb",
+        // Raw GLB ≈95 units wide / 82 tall, so scale ~0.06 → ~5 units (a person
+        // here is ~3.6). TUNE.
+        position: [-3.35, 1.50, -9.00],
+        rotationY: 0.6,
+        scale: 0.0550,
+      },
+    ],
+  },
+
+  {
+    id: "ac-observatory",
+    world: "Random",
+    title: "AC Observatory",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-observatory.spz",
+    objectTags: ["ac"],
+    // Reached only by walking into / clicking the AC house — keep it out of the
+    // picker dropdown and the single/double-trigger cycle (same as the lovely
+    // interiors above).
+    hideInPicker: true,
+    // TUNE — placeholder spawn. Walk to where you want to start inside the
+    // observatory, run window.logPose(), and paste its position + quaternion.
+    spawn: {
+      position: [1.51, 1.46, 1.33],
+      quaternion: [-0.002, 0.274, 0.001, 0.962],
+    },
+    // Two doorways out to the witchy-coven and spooky rooms. Positions are from
+    // logPose() taken in the observatory facing each door; y dropped ~0.3m from
+    // logged eye height to the door center, and rotationY = logged-yaw + π so
+    // each plane faces back toward the player. TUNE with HMR if a door sits off.
+    portals: [
+      {
+        id: "observatory-to-witchy",
+        target: "ac-witchy-coven",
+        // Logged: [0.00, 1.50, -5.12], quaternion identity → yaw 0 → rotationY π.
+        position: [0.15, 1.2, -6.5],
+        rotationY: Math.PI,
+        loaderText: "‧₊˚.entering the witchy coven ⋆˚꩜｡",
+        render: {
+          kind: "doorway",
+          width: 2.2,
+          height: 2.5,
+          radius: 0.18,
+          colorA: "#7a5ded",
+          colorB: "#c098ff",
+        },
+      },
+      {
+        id: "observatory-to-spooky",
+        target: "ac-spooky",
+        // Logged: [-2.85, 1.38, -0.43], quaternion ≈ [-0.018, 0.802, 0.024,
+        // 0.597] → yaw ≈ 1.863 → rotationY = yaw + π ≈ 5.00.
+        position: [-3.85, 1.06, -0.6],
+        rotationY: 5.0,
+        loaderText: "·˚*🎃 entering the spooky room 🎃*˚·",
+        render: {
+          kind: "doorway",
+          width: 2.3,
+          height: 2.5,
+          radius: 0.18,
+          colorA: "#4dfff6",
+          colorB: "#ad9bff",
+        },
+      },
+      {
+        id: "observatory-to-ac",
+        target: "animal-crossing",
+        // Exit back outside. Circular lavender return (same style as the room
+        // returns), placed ~1m behind the spawn (spawn yaw ≈ 0.55) with y dropped
+        // 0.3m to door center. TUNE: stand in the real exit, run window.logPose().
+        position: [1.04, 1.75, 3],
+        rotationY: 0.0,
+        loaderText: "ೃ⁀➷ back to Animal Crossing ࿐ೃ.",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    id: "ac-witchy-coven",
+    world: "Random",
+    title: "AC Witchy Coven",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-witchy-coven.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    // Spawn from your in-room logPose(). Facing ≈ -Z (near-identity quaternion).
+    spawn: {
+      position: [0.0, 1.5, 1.65],
+      quaternion: [-0.005, 0.014, 0.0, 1.0],
+    },
+    // Return portal — same style/behavior as the pink & mint interiors: a small
+    // circular lavender doorway placed ~1m behind the spawn (you face -Z, so
+    // behind is +Z) with y dropped 0.3m to door center; rotationY = spawn yaw so
+    // it faces you after you turn around. TUNE position/rotationY with HMR.
+    portals: [
+      {
+        id: "witchy-to-observatory",
+        target: "ac-observatory",
+        position: [0.0, 1.2, 2.65],
+        rotationY: 0,
+        loaderText: "⋆.˚returning to the observatory ⋆˖࿔",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    id: "ac-spooky",
+    world: "Random",
+    title: "AC Spooky Room",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-spooky.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    // Spawn from your in-room logPose(). Facing yaw ≈ -0.39 rad.
+    spawn: {
+      position: [-0.05, 1.61, 0.52],
+      quaternion: [-0.016, -0.194, -0.003, 0.981],
+    },
+    // Return portal — same circular lavender doorway as the pink/mint interiors
+    // (see witchy-coven note). ~1m behind the spawn along your back vector (spawn
+    // yaw ≈ -0.39), y dropped 0.3m to door center; rotationY = spawn yaw.
+    portals: [
+      {
+        id: "spooky-to-observatory",
+        target: "ac-observatory",
+        position: [-0.43, 1.31, 1.44],
+        rotationY: -0.39,
+        loaderText: "⋆.˚returning to the observatory ⋆˖࿔",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
         },
       },
     ],
