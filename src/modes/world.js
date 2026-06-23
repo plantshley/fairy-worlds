@@ -55,6 +55,26 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   const spark = new SparkRenderer({ renderer, focalAdjustment: 2.0 });
   scene.add(spark);
 
+  // Make the splats write depth so meshes (portals, GLB houses, props) occlude
+  // against them instead of always drawing on top. This build uses Spark's new
+  // SparkRenderer, which has no smooth "stochastic" depth mode — the only lever
+  // is the splat material itself: to write depth a fragment must be in the
+  // OPAQUE pass (transparent:false), since transparent splats draw AFTER opaque
+  // meshes and their depth lands too late to occlude. The cost is that opaque
+  // splats lose alpha blending → harder, darker-fringed edges (no soft dither).
+  // Off = the default smooth transparent overlay. Guarded against a Spark rename.
+  function setSceneStochastic(on) {
+    try {
+      const mat = spark.material;
+      if (!mat) return;
+      mat.transparent = !on;
+      mat.depthWrite = on;
+      mat.needsUpdate = true;
+    } catch (err) {
+      console.warn("[world] could not set splat depth mode:", err);
+    }
+  }
+
   // Splats are self-colored (Spark) and physics boxes are MeshBasicMaterial,
   // so the world scene was unlit. Portal GLBs (e.g. Celeste) use PBR
   // materials — without lights they render solid black. Adding lights here is
@@ -371,6 +391,15 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     currentSplat = splat;
     currentSceneId = sceneDef.id;
 
+    // Per-scene splat depth. Spark only writes a depth buffer in "stochastic"
+    // mode; without it, splats are pure alpha-blended overlays and any mesh
+    // (portals, GLB houses, props) draws on top regardless of where it sits in
+    // 3D. Opting a scene in (stochastic: true) makes splats write depth so
+    // meshes occlude correctly — at the cost of per-pixel dither/shimmer on the
+    // soft splat edges. Set every load (not just when true) so the flag doesn't
+    // leak from a stochastic scene into the next one.
+    setSceneStochastic(!!sceneDef.stochastic);
+
     spawnPortals(sceneDef, myToken);
     spawnDecorations(sceneDef, myToken);
 
@@ -429,6 +458,11 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       const kind = portalDef.render?.kind ?? "glb";
       if (kind === "doorway") {
         buildDoorwayPortal(portalDef, myToken);
+      } else if (kind === "floorpad") {
+        // Same swirl/sparkle material as a doorway, laid flat on the ground.
+        buildDoorwayPortal(portalDef, myToken, { flat: true });
+      } else if (kind === "orb") {
+        buildOrbPortal(portalDef, myToken);
       } else {
         buildGLBPortal(portalDef, myToken);
       }
@@ -570,10 +604,14 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // Geometry is slightly larger than the rect so the halo has uv space to
   // render in the surrounding ring. Click target is a SEPARATE invisible plane
   // sized exactly to the rect — clicks in the halo ring don't count.
-  function buildDoorwayPortal(portalDef, myToken) {
+  function buildDoorwayPortal(portalDef, myToken, opts = {}) {
     // Token check is symmetrical with the GLB path even though we're sync —
     // future-proofs against any added await without changing the contract.
     if (myToken !== loadToken) return;
+    // `flat` lays the same plane down on the ground (a glowing floor pad) by
+    // tilting it -90° about X. The swirl/sparkle shader works in UV space, so
+    // orientation is irrelevant to it; only the mesh transform changes.
+    const flat = !!opts.flat;
     const r = portalDef.render;
     const width = r.width ?? 0.9;
     const height = r.height ?? 1.8;
@@ -603,6 +641,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     const planeGeom = new THREE.PlaneGeometry(planeW, planeH);
     const planeMesh = new THREE.Mesh(planeGeom, material);
     planeMesh.renderOrder = 20; // draw over splats
+    if (flat) planeMesh.rotation.x = -Math.PI / 2; // lay flat on the floor
     root.add(planeMesh);
 
     // Invisible click proxy sized to the inner rect — the halo ring isn't
@@ -612,6 +651,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     const proxyGeom = new THREE.PlaneGeometry(width, height);
     const proxyMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
     const proxy = new THREE.Mesh(proxyGeom, proxyMat);
+    if (flat) proxy.rotation.x = -Math.PI / 2;
     root.add(proxy);
 
     // Optional emoji label above the portal, faded by hoverValue. Sprite
@@ -630,7 +670,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     scene.add(root);
     currentPortals.push({
       id: portalDef.id,
-      kind: "doorway",
+      kind: flat ? "floorpad" : "doorway",
       root,
       proxy,
       planeMesh,
@@ -694,6 +734,168 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     p.width = w;
     p.height = h;
     p.radius = rad;
+  }
+
+  // Glowing orb / wisp portal: a small additive-blended sphere with a fresnel
+  // rim glow + gentle pulse. Reads as an intentional magical light, so always
+  // drawing over splats looks deliberate rather than broken. Bobs like the GLB
+  // portals. render: { kind:"orb", size, colorA, colorB }.
+  function buildOrbPortal(portalDef, myToken) {
+    if (myToken !== loadToken) return;
+    const r = portalDef.render;
+    const size = r.size ?? 0.25; // sphere radius (meters)
+    const colorA = new THREE.Color(r.colorA ?? "#bfe9ff");
+    const colorB = new THREE.Color(r.colorB ?? "#ffffff");
+
+    const material = createOrbMaterial(colorA, colorB);
+    const root = new THREE.Group();
+    root.position.fromArray(portalDef.position);
+    root.rotation.y = portalDef.rotationY ?? 0;
+
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(size, 24, 16), material);
+    orb.renderOrder = 20; // draw over splats
+    root.add(orb);
+
+    // Invisible click proxy — a touch larger than the orb so it's easy to hit.
+    const proxy = new THREE.Mesh(
+      new THREE.SphereGeometry(size * 1.6, 12, 8),
+      new THREE.MeshBasicMaterial({ visible: false }),
+    );
+    root.add(proxy);
+
+    // Glyph sits INSIDE the orb (centered, billboarded toward camera) with no
+    // background/outline — just the symbol floating in the glow. portalDef.glyph
+    // sets it (e.g. "🐚"); portalDef.bubble:false (or no glyph) omits it.
+    const glyph = portalDef.glyph ?? (typeof portalDef.bubble === "string" ? portalDef.bubble : null);
+    if (glyph && portalDef.bubble !== false) {
+      const sprite = createGlyphSprite(glyph);
+      const glyphSize = size * 1.3; // a touch smaller than the orb so it reads as "within"
+      sprite.scale.set(glyphSize, glyphSize, 1);
+      sprite.position.set(0, 0, 0); // orb center
+      root.add(sprite);
+    }
+
+    scene.add(root);
+    currentPortals.push({
+      id: portalDef.id,
+      kind: "orb",
+      root,
+      proxy,
+      target: portalDef.target,
+      baseY: portalDef.position[1],
+      animation: portalDef.animation ?? "bob",
+      scale: 1,
+      loaderText: portalDef.loaderText,
+      phase: Math.random() * Math.PI * 2,
+      armed: false,
+      triggerRadius: portalDef.triggerRadius ?? Math.max(0.6, size * 2.5),
+      material,
+      hoverTarget: 0,
+      hoverValue: 0,
+      onHover: (hover) => {
+        const entry = currentPortals.find((cp) => cp.root === root);
+        if (entry) entry.hoverTarget = hover ? 1 : 0;
+      },
+    });
+  }
+
+  // Additive fresnel-glow sphere material for orb portals. uTime pulses it,
+  // uHover brightens on cursor/ray hover (smoothed in update()).
+  function createOrbMaterial(colorA, colorB) {
+    return new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.FrontSide,
+      uniforms: {
+        uTime: { value: 0 },
+        uHover: { value: 0 },
+        uColorA: { value: colorA },
+        uColorB: { value: colorB },
+      },
+      vertexShader: /* glsl */ `
+        varying vec3 vN;
+        varying vec3 vView;
+        varying vec2 vUv;
+        void main() {
+          vN = normalize(normalMatrix * normal);
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vView = normalize(-mv.xyz);
+          vUv = uv;
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uTime;
+        uniform float uHover;
+        uniform vec3 uColorA;
+        uniform vec3 uColorB;
+        varying vec3 vN;
+        varying vec3 vView;
+        varying vec2 vUv;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        void main() {
+          float rim = pow(1.0 - max(dot(vN, vView), 0.0), 1.6);
+          float pulse = 0.85 + 0.15 * sin(uTime * 2.0);
+          vec3 col = mix(uColorA, uColorB, rim);
+          float a = (0.30 + 0.70 * rim) * pulse * (0.85 + 0.5 * uHover);
+
+          // Twinkling sparkle field across the orb surface — same cross-star
+          // technique as the doorway shader, sampled on the sphere's UVs. Each
+          // grid cell holds one star with a random sub-position + twinkle phase.
+          vec2 grid = vUv * vec2(10.0, 6.0);
+          vec2 cell = floor(grid);
+          vec2 cellUv = fract(grid) - 0.5;
+          float rnd = hash(cell);
+          vec2 starPos = (vec2(hash(cell + 1.7), hash(cell + 5.3)) - 0.5) * 0.6;
+          float twinkle = 0.5 + 0.5 * sin(uTime * (2.0 + 4.0 * rnd) + rnd * 6.28);
+          vec2 sp = cellUv - starPos;
+          float cross = exp(-90.0 * sp.x * sp.x) + exp(-90.0 * sp.y * sp.y);
+          float radial = exp(-12.0 * dot(sp, sp));
+          float star = (cross * 0.5 + radial) * twinkle;
+          float starGain = mix(0.25, 0.9, uHover);
+          // Additive material: add sparkle straight into the color/alpha.
+          col += vec3(1.0, 0.98, 1.0) * star * starGain;
+          a = clamp(a + star * starGain * 0.6, 0.0, 1.0);
+
+          gl_FragColor = vec4(col, a);
+        }
+      `,
+    });
+  }
+
+  // A single glyph (e.g. a 🐚 seashell) drawn onto a transparent canvas — no
+  // background circle, no outline. Used inside orb portals. depthTest:false +
+  // renderOrder 22 so it shows over the orb's additive glow; billboards toward
+  // the camera so the symbol always faces the player. Disposed by the standard
+  // disposePortals traverse (covers Sprite + material.map).
+  function createGlyphSprite(glyph) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+    ctx.font =
+      '96px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Twemoji", serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(glyph, 64, 70);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.renderOrder = 22;
+    return sprite;
   }
 
   // Standalone material factory so the shader is one self-contained block.
@@ -1356,6 +1558,16 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       const renderScale = (p.scale || 1) * r.scale.x;
       console.log(header + `\n  render: { scale: ${renderScale.toFixed(3)} }`);
     }
+  };
+  // Live preview of the splat-depth/occlusion tradeoff WITHOUT editing scenes.js.
+  // window.stochastic(true) makes the current scene's splats render opaque + write
+  // depth (meshes occlude correctly, but splat edges harden); (false) reverts to
+  // the smooth transparent overlay. Transient — the next scene load reapplies
+  // that scene's `stochastic` flag. Bake `stochastic: true` into the rooms you
+  // want once you've judged the look.
+  window.stochastic = (on = true) => {
+    setSceneStochastic(on);
+    console.log(`[splat-depth] ${on ? "ON (opaque, occludes)" : "OFF (smooth overlay)"} — transient; bake into scene def with stochastic: true`);
   };
   window.logPose = () => {
     const p = new THREE.Vector3();

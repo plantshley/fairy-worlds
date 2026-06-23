@@ -1059,20 +1059,22 @@ export const SCENES = [
     },
     portals: [
       {
+        // Orb / wisp portal into the mermaid sanctuary — small additive glowing
+        // sphere with twinkling sparkles, a 🐚 seashell glyph floating inside it,
+        // and a gentle bob. This is the only room on the orb style for now; the
+        // other scenes keep their doorways. TUNE: window.portal("gullivers-to-mermaid",
+        // { x, y, z, ry }) for position, or render.size for the orb radius.
         id: "gullivers-to-mermaid",
         target: "ac-dreamy-mermaid-sanctuary",
-        // Doorway into the mermaid sanctuary, from window.logPortalSpot(). TUNE
-        // further with window.portal("gullivers-to-mermaid", { x, y, z, ry, w, h }).
-        position: [3.57, -0.57, -2.45],
-        rotationY: 3.053,
+        position: [-4.40, 2.00, -5.34],
+        rotationY: 4.652,
+        glyph: "🐚",
         loaderText: "‧₊˚.into the mermaid sanctuary ⋆˚꩜｡",
         render: {
-          kind: "doorway",
-          width: 1.9,
-          height: 2.5,
-          radius: 0.18,
+          kind: "orb",
+          size: 0.3,
           colorA: "#8fd6e0",
-          colorB: "#d0f0f5",
+          colorB: "#eaffff",
         },
       },
       {
