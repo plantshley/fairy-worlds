@@ -33,7 +33,9 @@
       "Bash(cp /tmp/gren/back.png tmp_render/back.png)",
       "Read(//tmp/**)",
       "Bash(mkdir -p tmp_render/g4)",
-      "Bash(cp /tmp/gren4/*.png tmp_render/g4/)"
+      "Bash(cp /tmp/gren4/*.png tmp_render/g4/)",
+      "Bash(python -)",
+      "Bash(PYTHONIOENCODING=utf-8 python -)"
     ],
     "additionalDirectories": [
       "C:\\Users\\ashle\\Downloads"

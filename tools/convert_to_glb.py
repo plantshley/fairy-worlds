@@ -399,12 +399,19 @@ def main():
         # Default mode is MASK/CLIP (alphaTest): it renders in the opaque pass and
         # writes depth, so it survives Spark's global blend-state changes. BLEND
         # (--alpha-blend) gives soft edges but breaks once the splat loads.
-        if args["alpha"] and base_node and not bsdf.inputs["Alpha"].is_linked:
-            if image_alpha_varies(base_node.image):
+        if args["alpha"] and base_node and base_node.image and image_alpha_varies(base_node.image):
+            # Blender's OBJ importer may already have linked Alpha from the MTL's
+            # map_d (e.g. the Tortimer shack). Only add the link if it's missing,
+            # but ALWAYS set MASK + register the material — otherwise
+            # patch_glb_alpha forces it OPAQUE and the cutout (hibiscus/shell
+            # holes) renders as solid squares.
+            if not bsdf.inputs["Alpha"].is_linked:
                 nt.links.new(base_node.outputs["Alpha"], bsdf.inputs["Alpha"])
-                set_alpha_mode(mat, args["alpha_blend"])
                 status["alpha"] = "(own channel)"
-                mask_mats.add(mat.name)
+            else:
+                status["alpha"] = "(own channel, pre-linked)"
+            set_alpha_mode(mat, args["alpha_blend"])
+            mask_mats.add(mat.name)
 
         if args["normals"]:
             npath = pick_texture(mat.name, images, "normal")

@@ -73,6 +73,15 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   let currentSplat = null;
   let currentSceneId = null;
   let currentWorld = null;
+  // Pose to restore when returning to Animal Crossing through a portal. Captured
+  // on AC exit (recording where/how the user left), consumed on AC re-entry —
+  // see enterPortal + computeReturnPose. Picker/home loads of AC don't go
+  // through enterPortal, so they keep the default spawn.
+  let acReturnPose = null;
+  // How far (AC's scaled units) in front of a house to drop the player when they
+  // RETURN after WALKING into it. Click-entry restores the exact click pose, so
+  // this only affects the walk-in case.
+  const AC_WALK_RETURN_DIST = 4.0;
   let loadToken = 0;
   let physics = null;
   let grab = null;
@@ -143,9 +152,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // spawn.position facing spawn yaw — pitch/roll are discarded since a tilted
   // dolly is nauseating. Desktop branch resets dolly to origin and writes
   // spawn directly into the camera.
-  function applySpawn(sceneDef) {
-    const [px, py, pz] = sceneDef.spawn.position;
-    const [qx, qy, qz, qw] = sceneDef.spawn.quaternion;
+  function applySpawn(sceneDef, override = null) {
+    const spawn = override ?? sceneDef.spawn;
+    const [px, py, pz] = spawn.position;
+    const [qx, qy, qz, qw] = spawn.quaternion;
     if (renderer.xr?.isPresenting) {
       const xrCam = renderer.xr.getCamera();
       xrCam.updateMatrixWorld(true);
@@ -373,7 +383,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       onSceneLoaded?.(sceneDef);
       return loadPromise;
     }
-    applySpawn(sceneDef);
+    applySpawn(sceneDef, opts.spawnOverride);
 
     onSceneLoaded?.(sceneDef);
     return loadPromise;
@@ -530,6 +540,8 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
           : Math.max(localBox.max.x - localBox.min.x, localBox.max.z - localBox.min.z);
         scene.add(root);
         currentPortals.push({
+          id: portalDef.id,
+          kind: "glb",
           root,
           proxy,
           target: portalDef.target,
@@ -617,8 +629,16 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
 
     scene.add(root);
     currentPortals.push({
+      id: portalDef.id,
+      kind: "doorway",
       root,
       proxy,
+      planeMesh,
+      // Live size, kept in sync by resizeDoorway so window.portal() can rebuild
+      // the geometry + shader uniforms when width/height/radius are tuned.
+      width,
+      height,
+      radius,
       target: portalDef.target,
       baseY: portalDef.position[1],
       animation: portalDef.animation ?? "none", // doorways don't bob
@@ -640,6 +660,40 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
         if (entry) entry.hoverTarget = hover ? 1 : 0;
       },
     });
+  }
+
+  // Rebuild a doorway portal's geometry + shader uniforms for new width/height/
+  // radius. PlaneGeometry can't resize in place, so we swap geometries (disposing
+  // the old ones) and re-point the size-dependent uniforms. Mirrors the sizing
+  // math in buildDoorwayPortal — keep the two in sync. Used by window.portal().
+  function resizeDoorway(p, { width, height, radius } = {}) {
+    const w = width ?? p.width;
+    const h = height ?? p.height;
+    const rad = radius ?? p.radius;
+    const haloMargin = Math.min(0.3, Math.max(w, h) * 0.25);
+    const planeW = w + haloMargin * 2;
+    const planeH = h + haloMargin * 2;
+
+    p.planeMesh.geometry.dispose();
+    p.planeMesh.geometry = new THREE.PlaneGeometry(planeW, planeH);
+    p.proxy.geometry.dispose();
+    p.proxy.geometry = new THREE.PlaneGeometry(w, h);
+
+    p.material.uniforms.uRectSize.value.set(w, h);
+    p.material.uniforms.uPlaneSize.value.set(planeW, planeH);
+    p.material.uniforms.uRadius.value = rad;
+
+    if (p.emojiSprite) {
+      const spriteScale = Math.max(w, h) * 0.28;
+      p.emojiSprite.scale.set(spriteScale, spriteScale, 1);
+      p.emojiSprite.position.set(0, h / 2 + spriteScale * 0.7, 0);
+    }
+
+    // Keep the walk-into radius proportional to the new opening.
+    p.triggerRadius = w / 2 + 0.3;
+    p.width = w;
+    p.height = h;
+    p.radius = rad;
   }
 
   // Standalone material factory so the shader is one self-contained block.
@@ -859,12 +913,50 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // canvas tap that happens to raycast-hit a stale portal mesh), and (b)
   // re-entrant calls during the fade/load, which would stomp the overlay fade
   // and race the loadToken. Both would corrupt the user-visible transition.
-  async function enterPortal(portal) {
+  // Build the pose to restore when the user returns to Animal Crossing from a
+  // house/building. Click entry → the exact head pose they clicked from ("same
+  // as when the user clicked the house"). Walk-in entry → just in front of the
+  // house, facing it (the walk-in pose is basically inside the building, a bad
+  // landing spot), keeping the eye height they had.
+  function computeReturnPose(portal, entryMode) {
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    getHeadWorldMatrix(new THREE.Matrix4()).decompose(p, q, new THREE.Vector3());
+    if (entryMode !== "walk") {
+      return { position: [p.x, p.y, p.z], quaternion: [q.x, q.y, q.z, q.w] };
+    }
+    // Walk-in: the player is already facing the house (they walked into it), so
+    // step straight BACK along their own view direction and keep that heading.
+    // This lands them just outside, still looking at the house, regardless of
+    // which way the house model happens to face (the GLBs vary: doorways/Celeste
+    // face -Z, the AC house props face +Z — so we can't derive it from the
+    // portal's rotationY without getting it backwards).
+    _forward.set(0, 0, -1).applyQuaternion(q);
+    _forward.y = 0;
+    if (_forward.lengthSq() < 1e-6) _forward.set(0, 0, -1);
+    else _forward.normalize();
+    const x = p.x - _forward.x * AC_WALK_RETURN_DIST;
+    const z = p.z - _forward.z * AC_WALK_RETURN_DIST;
+    return { position: [x, p.y, z], quaternion: [q.x, q.y, q.z, q.w] };
+  }
+
+  async function enterPortal(portal, entryMode = "click") {
     if (!isActive || portalTransitioning) return;
     const target = SCENES.find((s) => s.id === portal.target);
     if (!target) {
       console.warn(`[portals] target scene not found: ${portal.target}`);
       return;
+    }
+    // Leaving Animal Crossing: remember where/how we left so a later return
+    // portal can land us back at the house instead of AC's default spawn.
+    if (currentSceneId === "animal-crossing") {
+      acReturnPose = computeReturnPose(portal, entryMode);
+    }
+    // Returning to AC and we have a stored pose → override the default spawn.
+    let spawnOverride = null;
+    if (target.id === "animal-crossing" && acReturnPose) {
+      spawnOverride = acReturnPose;
+      acReturnPose = null;
     }
     portalTransitioning = true;
     // Fire BEFORE the fade so the HUD can flip to portal-nav while the overlay
@@ -873,7 +965,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     try {
       const overlay = document.getElementById("transition-overlay");
       await fadeElement(overlay, 0, 1, 250);
-      const loadPromise = loadScene(target, { loaderText: portal.loaderText });
+      const loadPromise = loadScene(target, { loaderText: portal.loaderText, spawnOverride });
       // Fallback so a failed splat load can't leave the screen permanently black.
       await Promise.race([
         loadPromise,
@@ -1032,7 +1124,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
             const armR = r * 1.5;
             if (distSq > armR * armR) p.armed = true;
           } else if (distSq < r * r) {
-            enterPortal(p);
+            enterPortal(p, "walk");
             break; // one entry per frame
           }
         }
@@ -1137,7 +1229,14 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // position (y - eyeToFoot) plus a rotationY that makes the portal face you.
   // For Animal Crossing's larger scale, pass eyeToFoot ≈ 3.6 (eyeball-tuned;
   // bake the empirical value here once the first portal is placed).
-  window.logPortalSpot = (eyeToFoot = 1.6) => {
+  //
+  // `forward` pushes the logged spot that many meters straight ahead along your
+  // view (on the floor plane). Splats don't write depth, so a doorway is never
+  // occluded by the room and any gap between it and the wall reads as the door
+  // "sliding"/floating as you move (parallax). Stand back from the wall, pass
+  // the approx distance to it (e.g. logPortalSpot(1.6, 3)) so the door lands ON
+  // the wall — coplanar with the wall, it parallaxes with it and feels stuck.
+  window.logPortalSpot = (eyeToFoot = 1.6, forward = 0) => {
     // getHeadWorldMatrix handles the VR reference-space gotcha (see its comment),
     // so authored coords are correct even in a yaw-recentered scene.
     const p = new THREE.Vector3();
@@ -1147,11 +1246,15 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     // yaw = camera heading angle θ such that fwd = (-sin θ, 0, -cos θ).
     // Matches extractYaw above.
     const yaw = Math.atan2(-fwd.x, -fwd.z);
+    // Ground-projected heading for the optional forward push (don't let pitch
+    // shorten/lengthen the XZ step).
+    const gx = -Math.sin(yaw);
+    const gz = -Math.cos(yaw);
     // Setting outer.rotation.y = θ + π makes the portal's local -Z (its
     // "forward") point back toward the camera, so the portal faces you.
     const facing = yaw + Math.PI;
     console.log(
-      `position: [${p.x.toFixed(2)}, ${(p.y - eyeToFoot).toFixed(2)}, ${p.z.toFixed(2)}],\n` +
+      `position: [${(p.x + gx * forward).toFixed(2)}, ${(p.y - eyeToFoot).toFixed(2)}, ${(p.z + gz * forward).toFixed(2)}],\n` +
         `rotationY: ${facing.toFixed(3)},`,
     );
   };
@@ -1182,6 +1285,77 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
         (r.rotation.z ? `  rotationZ: ${r.rotation.z.toFixed(3)},\n` : "") +
         `  scale: ${r.scale.x.toFixed(4)},`,
     );
+  };
+  // Live-tune a portal (GLB house/character or doorway) in the current scene —
+  // same idea as window.deco() but for portals. Select by portal id (preferred:
+  // GLB portals load async, so array order isn't deterministic) OR by index.
+  // Common params: { x, y, z, ry }. GLB portals also take `s` (the ABSOLUTE
+  // render.scale you'd paste back, not a multiplier). Doorway portals also take
+  // { w, h, radius } — width/height/corner-radius, which rebuild the geometry.
+  // Logs the result in scene-def shape, split into the portal-level fields and
+  // the render-block fields. Call window.portal() with no args to list this
+  // scene's portals. e.g. window.portal("mushroom-to-woodland", { w: 2.2, h: 2.6 })
+  window.portal = (sel, t = {}) => {
+    if (sel === undefined) {
+      console.log(
+        currentPortals.length
+          ? currentPortals
+              .map((p, i) => `  [${i}] ${p.id ?? "(no id)"} (${p.kind}) → ${p.target}`)
+              .join("\n")
+          : "(no portals in this scene)",
+      );
+      return;
+    }
+    const p =
+      typeof sel === "number"
+        ? currentPortals[sel]
+        : currentPortals.find((cp) => cp.id === sel) ??
+          currentPortals.find((cp) => cp.target === sel);
+    if (!p) {
+      console.warn(
+        `[portal] no portal matching ${JSON.stringify(sel)} (count=${currentPortals.length}). ` +
+          `Call window.portal() to list them.`,
+      );
+      return;
+    }
+    const r = p.root;
+    if (t.x !== undefined) r.position.x = t.x;
+    // Update baseY too, or a "bob" portal's per-frame y write snaps it back.
+    if (t.y !== undefined) { r.position.y = t.y; p.baseY = t.y; }
+    if (t.z !== undefined) r.position.z = t.z;
+    if (t.ry !== undefined) r.rotation.y = t.ry;
+
+    if (p.kind === "doorway") {
+      if (t.s !== undefined) {
+        console.warn("[portal] doorways size with { w, h, radius }, not { s } — ignoring s.");
+      }
+      if (t.w !== undefined || t.h !== undefined || t.radius !== undefined) {
+        resizeDoorway(p, { width: t.w, height: t.h, radius: t.radius });
+      }
+    } else if (t.s !== undefined) {
+      // The render.scale was baked into an inner wrapper (p.scale); the outer
+      // root starts at scale 1. Convert the requested absolute render.scale into
+      // the outer multiplier so the logged value pastes straight back.
+      r.scale.setScalar(t.s / (p.scale || 1));
+    }
+
+    const header =
+      `portal "${p.id ?? p.target}" [${currentPortals.indexOf(p)}] (${p.kind}) → ${p.target}:\n` +
+      `  position: [${r.position.x.toFixed(2)}, ${r.position.y.toFixed(2)}, ${r.position.z.toFixed(2)}],\n` +
+      `  rotationY: ${r.rotation.y.toFixed(3)},`;
+    if (p.kind === "doorway") {
+      console.log(
+        header +
+          `\n  render: {\n` +
+          `    width: ${p.width.toFixed(2)},\n` +
+          `    height: ${p.height.toFixed(2)},\n` +
+          `    radius: ${p.radius.toFixed(2)},\n` +
+          `  }`,
+      );
+    } else {
+      const renderScale = (p.scale || 1) * r.scale.x;
+      console.log(header + `\n  render: { scale: ${renderScale.toFixed(3)} }`);
+    }
   };
   window.logPose = () => {
     const p = new THREE.Vector3();

@@ -630,6 +630,73 @@ export const SCENES = [
           offsetY: 2.38,
         },
       },
+      {
+        id: "ac-to-mushroom-forest",
+        target: "mushroom-forest",
+        // The house you walk into to reach the mushroom forest. Derived from a
+        // logPose() taken standing at [6.94, 3.77, -4.47] facing yaw ≈ -1.445:
+        // pushed ~5.5m along that forward vector (0.99, -0.13) so it sits in
+        // front of you, and turned to face back (rotationY = yaw + π ≈ 1.697).
+        // TUNE: stand where you want it, run window.logPortalSpot(1.9), paste
+        // both the position and rotationY it prints.
+        position: [10.80, 3.10, -4.75],
+        rotationY: -1.400,
+        animation: "none", // a bobbing house looks wrong — keep it planted
+        bubble: false, // no ♡ speech bubble over a building
+        loaderText: "‧₊˚ ⊹ entering the mystical mushroom room ⊹ ˚₊‧",
+        render: {
+          kind: "glb",
+          url: import.meta.env.BASE_URL + "props/ac-house-notreefence.glb",
+          // Raw GLB assembles to ~0.15 units wide (an FBX cm→m 0.01 scale is
+          // baked into its node tree), so scale 50 → ~7.4 wide / ~2.4 tall /
+          // ~6 deep. Its origin sits at the model's base, so no offsetY is
+          // needed — position[1] is the ground the house stands on. TUNE size
+          // from here; bump position[1] if the base floats or sinks.
+          scale: 50,
+        },
+      },
+      {
+        id: "ac-to-sakura-spa",
+        target: "ac-sakura-spa",
+        // Zen house. From a logPose() at [-6.50, 4.59, 9.12] facing yaw ≈ 1.845:
+        // pushed ~5m along that forward vector so it sits in front of you. These
+        // AC house models face +Z, so rotationY = yaw (not yaw+π) turns the front
+        // toward you. TUNE: window.portal("ac-to-sakura-spa", { x, y, z, ry, s }).
+        position: [-11.31, 3.59, 10.47],
+        rotationY: 1.845,
+        animation: "none",
+        bubble: false,
+        loaderText: "‧₊˚ ⊹ entering the sakura spa ⊹ ˚₊‧",
+        render: {
+          kind: "glb",
+          url: import.meta.env.BASE_URL + "props/zen-house.glb",
+          // Assembles to ~1.46 units wide; scale 4.8 → ~7 wide. Clean origin
+          // (base at model origin), so offsetY: 0. TUNE size with window.portal.
+          scale: 4.8,
+          offsetY: 0,
+        },
+      },
+      {
+        id: "ac-to-gullivers-office",
+        target: "ac-gullivers-office",
+        // Tortimer shack. From a logPose() at [6.77, 3.60, 3.23] facing yaw ≈
+        // -1.189: pushed ~5m forward. AC house models face +Z, so rotationY = yaw
+        // (not yaw+π) turns the front toward you. Re-origined GLB grounds at
+        // offsetY: 0 (base at origin). TUNE: window.portal("ac-to-gullivers-office", …).
+        position: [10.00, 0.70, 3.75],
+        rotationY: -1.300,
+        animation: "none",
+        bubble: false,
+        loaderText: "‧₊˚ ⊹ entering Gulliver's office ⊹ ˚₊‧",
+        render: {
+          kind: "glb",
+          url: import.meta.env.BASE_URL + "props/tortimer-shack.glb",
+          // Assembles to ~2.2 units wide; scale 3.2 → ~7 wide. Re-origined so the
+          // base sits at the model origin → offsetY: 0. TUNE with window.portal.
+          scale: 2.2,
+          offsetY: 0,
+        },
+      },
     ],
     // Static, non-interactive props (no portal trigger, no bubble). All
     // transforms live on the outer group — position is world coords, scale is
@@ -781,6 +848,276 @@ export const SCENES = [
         position: [-0.43, 1.31, 1.44],
         rotationY: -0.39,
         loaderText: "⋆.˚returning to the observatory ⋆˖࿔",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    // Reached by walking into the new house in Animal Crossing
+    // (ac-to-mushroom-forest). Like the other AC interiors, it's out of the
+    // picker and the cycle — portal-only.
+    id: "mushroom-forest",
+    world: "Random",
+    title: "Mystical Mushroom Forest",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-mystical-mushroom-forest.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    // TUNE — placeholder spawn. Walk to where you want to arrive, run
+    // window.logPose(), and paste its position + quaternion here.
+    spawn: {
+      position: [1.00, 1.65, 1.91],
+      quaternion: [-0.033, 0.238, 0.008, 0.971],
+    },
+    portals: [
+      {
+        id: "mushroom-to-woodland",
+        target: "woodland-interior",
+        // The one doorway through to the woodland interior. TUNE: stand facing
+        // the real doorway, run window.logPose(), drop y ~0.3m to door center,
+        // and set rotationY = logged-yaw + π so the plane faces back at you.
+        position: [0.055, 1, -3.5],
+        rotationY: Math.PI,
+        loaderText: "‧₊˚.into the woodland room⋆˚꩜｡",
+        render: {
+          kind: "doorway",
+          width: 1.9,
+          height: 2.1,
+          radius: 0.18,
+          colorA: "#8fd68a",
+          colorB: "#d9f5c8",
+        },
+      },
+      {
+        id: "mushroom-to-ac",
+        target: "animal-crossing",
+        // Return back outside to Animal Crossing — small circular lavender
+        // doorway ~1m behind the spawn ([1.00, 1.65, 1.91], yaw 0.481), y dropped
+        // 0.3m to door center; rotationY = spawn yaw so it faces you after you
+        // turn around. (Where you LAND in AC is decided by the return-pose
+        // capture in world.js, not here.) TUNE: stand at the exit, logPose().
+        position: [1.46, 1.35, 2.8],
+        rotationY: 0.481,
+        loaderText: "ೃ⁀➷ back to Animal Crossing ࿐ೃ.",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    // Reached only via the doorway in the mushroom forest. Portal-only.
+    id: "woodland-interior",
+    world: "Random",
+    title: "Woodland Interior",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-woodland-interior.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    // TUNE — placeholder spawn. Walk to where you want to arrive, run
+    // window.logPose(), and paste its position + quaternion here.
+    spawn: {
+      position: [-0.49, 1.49, 2.11],
+      quaternion: [-0.025, -0.026, -0.001, 0.999],
+    },
+    portals: [
+      {
+        id: "woodland-to-mushroom",
+        target: "mushroom-forest",
+        // Return ~1m behind the spawn ([-0.49, 1.49, 2.11], yaw -0.052) to the
+        // mushroom forest, y dropped 0.3m to door center; rotationY = spawn yaw.
+        // TUNE with logPose.
+        position: [-0.54, 1.19, 3.11],
+        rotationY: -0.052,
+        loaderText: "⋆.˚returning to the mushroom forest ⋆˖࿔",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    // Reached by entering the Zen house in Animal Crossing (ac-to-sakura-spa).
+    // Portal-only, like the other AC interiors.
+    id: "ac-sakura-spa",
+    world: "Random",
+    title: "Sakura Spa",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-sakura-spa.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    // TUNE — placeholder spawn. Walk to where you want to arrive, run
+    // window.logPose(), and paste its position + quaternion here.
+    spawn: {
+      position: [0, 1.5, 0],
+      quaternion: [0, 0, 0, 1],
+    },
+    portals: [
+      {
+        id: "sakura-to-onsen",
+        target: "ac-onsen-garden",
+        // The one doorway through to the onsen garden. TUNE: stand facing the
+        // real doorway, run window.logPose(), drop y ~0.3m to door center, and
+        // set rotationY = logged-yaw + π so the plane faces back at you. (Or use
+        // window.portal("sakura-to-onsen", { x, y, z, ry, w, h }).)
+        position: [0, 1.2, -3.5],
+        rotationY: Math.PI,
+        loaderText: "‧₊˚.into the onsen garden ⋆˚꩜｡",
+        render: {
+          kind: "doorway",
+          width: 1.9,
+          height: 2.5,
+          radius: 0.18,
+          colorA: "#ffb7d5",
+          colorB: "#ffe0ee",
+        },
+      },
+      {
+        id: "sakura-to-ac",
+        target: "animal-crossing",
+        // Return outside to Animal Crossing. Where you LAND in AC is set by the
+        // return-pose capture in world.js (back at the Zen house); this just
+        // places the doorway ~1m behind the spawn. TUNE with logPose.
+        position: [0, 1.2, 1.0],
+        rotationY: 0,
+        loaderText: "ೃ⁀➷ back to Animal Crossing ࿐ೃ.",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    // Reached only via the doorway in the sakura spa. Portal-only.
+    id: "ac-onsen-garden",
+    world: "Random",
+    title: "Onsen Garden",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-onsen-garden.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    // TUNE — placeholder spawn.
+    spawn: {
+      position: [0, 1.5, 0],
+      quaternion: [0, 0, 0, 1],
+    },
+    portals: [
+      {
+        id: "onsen-to-sakura",
+        target: "ac-sakura-spa",
+        // Return ~1m behind the spawn to the sakura spa. TUNE with logPose.
+        position: [0, 1.2, 1.0],
+        rotationY: 0,
+        loaderText: "⋆.˚returning to the sakura spa ⋆˖࿔",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    // Reached by entering the Tortimer shack in Animal Crossing
+    // (ac-to-gullivers-office). Portal-only.
+    id: "ac-gullivers-office",
+    world: "Random",
+    title: "Gulliver's Office",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-gullivers-office.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    // TUNE — placeholder spawn.
+    spawn: {
+      position: [-1.06, 1.41, 0.71],
+      quaternion: [0.003, -0.158, 0.001, 0.987],
+    },
+    portals: [
+      {
+        id: "gullivers-to-mermaid",
+        target: "ac-dreamy-mermaid-sanctuary",
+        // Doorway into the mermaid sanctuary, from window.logPortalSpot(). TUNE
+        // further with window.portal("gullivers-to-mermaid", { x, y, z, ry, w, h }).
+        position: [3.57, -0.57, -2.45],
+        rotationY: 3.053,
+        loaderText: "‧₊˚.into the mermaid sanctuary ⋆˚꩜｡",
+        render: {
+          kind: "doorway",
+          width: 1.9,
+          height: 2.5,
+          radius: 0.18,
+          colorA: "#8fd6e0",
+          colorB: "#d0f0f5",
+        },
+      },
+      {
+        id: "gullivers-to-ac",
+        target: "animal-crossing",
+        // Return outside to Animal Crossing (lands back at the shack via the
+        // return-pose capture in world.js). Doorway ~1m behind spawn
+        // ([-1.06, 1.41, 0.71], yaw -0.317), y dropped 0.3m. TUNE.
+        position: [-1.37, 1.11, 1.66],
+        rotationY: -0.317,
+        loaderText: "ೃ⁀➷ back to Animal Crossing ࿐ೃ.",
+        render: {
+          kind: "doorway",
+          width: 1,
+          height: 1,
+          radius: 0.5,
+          colorA: "#cba6e2",
+          colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    // Reached only via the doorway in Gulliver's office. Portal-only.
+    id: "ac-dreamy-mermaid-sanctuary",
+    world: "Random",
+    title: "Dreamy Mermaid Sanctuary",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-dreamy-mermaid-sanctuary.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    // TUNE — placeholder spawn.
+    spawn: {
+      position: [0.00, 1.50, 1.73],
+      quaternion: [-0.044, -0.002, -0.000, 0.999],
+    },
+    portals: [
+      {
+        id: "mermaid-to-gullivers",
+        target: "ac-gullivers-office",
+        // Return ~1m behind the spawn ([0.00, 1.50, 1.73], yaw -0.004) to
+        // Gulliver's office, y dropped 0.3m. TUNE with logPose.
+        position: [0.0, 1.2, 2.73],
+        rotationY: -0.004,
+        loaderText: "⋆.˚returning to Gulliver's office ⋆˖࿔",
         render: {
           kind: "doorway",
           width: 1,
