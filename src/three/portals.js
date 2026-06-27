@@ -112,6 +112,7 @@ export function createPortalInteraction({ renderer, camera, dolly, getPortals, o
 
   function onPointerDown(e) {
     if (renderer.xr?.isPresenting) return;
+    if (window.__decoEditActive) return; // prop editor owns clicks while active
     if (pending) return;
     // Ignore HUD / picker / button clicks — only canvas presses are candidates.
     if (e.target !== dom) return;
@@ -183,6 +184,10 @@ export function createPortalInteraction({ renderer, camera, dolly, getPortals, o
   }
   function onPointerMove(e) {
     if (renderer.xr?.isPresenting) return;
+    if (window.__decoEditActive) {
+      clearHover();
+      return;
+    }
     if (e.pointerType !== "mouse") return;
     if (pending) return;
     if (e.target !== dom) {

@@ -593,7 +593,9 @@ export const SCENES = [
         position: [-3.25, 2.1, -8.82],
         rotationY: 0.7,
         animation: "bob",
-        bubble: "☆", // star bubble instead of the default ♡
+        // Pink glowing orb (sparkles + 🌟 inside) floating above her head,
+        // instead of the flat ☆ speech bubble.
+        bubble: { kind: "orb", glyph: "🌟", colorA: "#ff7ec0", colorB: "#ffd6ee", offsetY: 0.5 },
         loaderText: "˚.⋆⊹☆ entering the observatory ☆⊹⋆.˚",
         render: {
           kind: "glb",
@@ -653,25 +655,30 @@ export const SCENES = [
           // needed — position[1] is the ground the house stands on. TUNE size
           // from here; bump position[1] if the base floats or sinks.
           scale: 50,
+          // Boost color vividness — the raw textures read washed-out next to the
+          // splat. 1 = unchanged, >1 = more saturated. TUNE to taste.
+          saturate: 1.4,
         },
       },
       {
         id: "ac-to-sakura-spa",
         target: "ac-sakura-spa",
-        // Zen house. From a logPose() at [-6.50, 4.59, 9.12] facing yaw ≈ 1.845:
-        // pushed ~5m along that forward vector so it sits in front of you. These
         // AC house models face +Z, so rotationY = yaw (not yaw+π) turns the front
         // toward you. TUNE: window.portal("ac-to-sakura-spa", { x, y, z, ry, s }).
-        position: [-11.31, 3.59, 10.47],
+        position: [-12.00, 2.00, 11.00],
         rotationY: 1.845,
         animation: "none",
         bubble: false,
-        loaderText: "‧₊˚ ⊹ entering the sakura spa ⊹ ˚₊‧",
+        loaderText: "‧₊˚ ✿ entering the sakura spa ✿ ˚₊‧",
         render: {
           kind: "glb",
           url: import.meta.env.BASE_URL + "props/zen-house.glb",
-          // Assembles to ~1.46 units wide; scale 4.8 → ~7 wide. Clean origin
-          // (base at model origin), so offsetY: 0. TUNE size with window.portal.
+          // Assembles to ~1.46 units wide; scale 4.8 → ~7 wide. offsetY: 0.
+          // Re-converted OPAQUE (--no-alpha): wallmax_00.png has an embedded
+          // alpha channel whose transparent pixels are the door/window/arch
+          // regions — applied as a MASK cutout it punched see-through holes in
+          // the front wall (the "open archway"). The source .mtl is opaque, so
+          // don't re-run the converter with alpha on this model. TUNE size with window.portal.
           scale: 4.8,
           offsetY: 0,
         },
@@ -712,6 +719,246 @@ export const SCENES = [
         position: [-3.35, 1.50, -9.00],
         rotationY: 0.6,
         scale: 0.0550,
+      },
+
+      // --- Trees ---------------------------------------------------------
+      // All use `ground: true` (loader re-centers each GLB on its XZ footprint
+      // and drops the base to position[1]) so `position` is simply the trunk
+      // base on the ground and `scale` grows it from there. The XZ comes
+      // straight from each logPose() spot you stood on; position[1] is your
+      // logged eye-Y minus ~0.7 (rough eye→ground in AC's scale, same as the
+      // mushroom house grounding). The terrain is hilly, so nudge each Y (and
+      // scale) live with window.deco(i, { x, y, z, ry, s }) and paste back.
+      //
+      // Native heights at scale 1: palm 1.79, apple 457, pine 1.90, sakura 0.05
+      // — that's why the scales differ wildly. Palms/pines sit ~2.8 units tall;
+      // the sakuras were hand-tuned much larger (and some flipped upright via
+      // rotationX/Z) with the prop editor, hence their varied scales. The sakura
+      // + apple use alpha-BLEND foliage atlases, so they carry `alphaTest` to
+      // turn the leaves into depth-writing cutouts (otherwise the leaf cards
+      // smear over the houses/each other).
+      {
+        id: "palm-1",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
+        position: [12.02, 2.4, -0.04],
+        rotationX: 3.142,
+        rotationY: -1.477,
+        rotationZ: 3.142,
+        scale: 1.8449,
+        ground: true,
+      },
+      {
+        id: "palm-2",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
+        position: [10.85, 2.28, 1.13],
+        rotationY: 0.8,
+        scale: 1.6,
+        ground: true,
+      },
+      {
+        id: "palm-3",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
+        position: [13.03, 2.43, 2.63],
+        rotationY: 0.8,
+        scale: 1.6,
+        ground: true,
+      },
+      {
+        id: "palm-4",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
+        position: [7.17, 1.43, 1.47],
+        rotationY: -0.451,
+        scale: 1.8449,
+        ground: true,
+      },
+      {
+        id: "palm-5",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
+        position: [9.08, 1.43, 6.93],
+        rotationX: 3.142,
+        rotationY: -1.53,
+        rotationZ: 3.142,
+        scale: 1.8449,
+        ground: true,
+      },
+      {
+        id: "apple-1",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_apple_tree.glb",
+        position: [10.98, 2.94, -7.33],
+        rotationY: -1.157,
+        scale: 0.0073,
+        ground: true,
+        alphaTest: 0.4,
+      },
+      {
+        id: "apple-2",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_apple_tree.glb",
+        position: [12.8, 2.88, -9.91],
+        rotationY: -1.06,
+        scale: 0.0085,
+        ground: true,
+        alphaTest: 0.4,
+      },
+      {
+        id: "sakura-1",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-11.96, 3.01, 7.07],
+        rotationX: 3.142,
+        rotationY: -1.339,
+        rotationZ: 3.142,
+        scale: 64.0042,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      {
+        id: "sakura-2",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-9.79, 2.67, 14.31],
+        rotationX: 0.044,
+        rotationY: -0.557,
+        rotationZ: -0.006,
+        scale: 70.1424,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      // A loose grove along ~Z, hand-placed with the prop editor.
+      {
+        id: "sakura-row-1",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-21.5, 7.22, 11.95],
+        rotationY: -1.259,
+        scale: 98.2631,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      {
+        id: "sakura-row-2",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-19.72, 7.31, 14.63],
+        rotationY: 2.0,
+        scale: 93.0495,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      {
+        id: "sakura-row-3",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-17.33, 5.71, 17.65],
+        rotationY: -0.867,
+        scale: 90.29,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      // Duplicates placed live with the prop editor's `d` key (renamed from the
+      // editor's auto "-copy" ids). All share the sakura GLB + foliage cutout.
+      {
+        id: "sakura-3",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-22.74, 6.29, 6.82],
+        rotationX: 2.868,
+        rotationY: -1.441,
+        rotationZ: 2.761,
+        scale: 98.2631,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      {
+        id: "sakura-4",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-17.95, 5.11, 4.84],
+        rotationX: 2.868,
+        rotationY: -1.441,
+        rotationZ: 2.761,
+        scale: 98.2631,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      {
+        id: "sakura-5",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-12.83, 2.9, 18.09],
+        rotationY: -0.867,
+        scale: 90.29,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      {
+        id: "sakura-6",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-14.11, 3.41, 4.07],
+        rotationX: -3.043,
+        rotationY: -1.339,
+        rotationZ: 3.142,
+        scale: 64.0042,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      {
+        id: "sakura-7",
+        url: import.meta.env.BASE_URL + "props/sakura-tree.glb",
+        position: [-12.62, 3.44, 21.02],
+        rotationY: -0.681,
+        scale: 81.4906,
+        ground: true,
+        alphaTest: 0.5,
+      },
+      {
+        id: "pine-1",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
+        position: [4.98, 1.71, -14.38],
+        scale: 2.5842,
+        ground: true,
+      },
+      {
+        id: "pine-2",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
+        position: [11.35, 2.89, -2.59],
+        rotationY: 0.5,
+        scale: 1.5062,
+        ground: true,
+      },
+      {
+        id: "pine-3",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
+        position: [2.92, 1.76, -15.97],
+        scale: 2.5842,
+        ground: true,
+      },
+      {
+        id: "pine-4",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
+        position: [-3.54, 1.92, -13.74],
+        scale: 2.5842,
+        ground: true,
+      },
+      {
+        id: "pine-5",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
+        position: [2.06, 2.24, -17.82],
+        scale: 2.5842,
+        ground: true,
+      },
+      {
+        id: "pine-6",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
+        position: [-6.16, 2.24, -14.3],
+        scale: 2.5842,
+        ground: true,
+      },
+      {
+        id: "pine-7",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
+        position: [1.49, 1.76, -12.72],
+        scale: 2.5842,
+        ground: true,
+      },
+      {
+        id: "pine-8",
+        url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
+        position: [10.51, 2.89, -9.37],
+        rotationY: 0.5,
+        scale: 1.5062,
+        ground: true,
       },
     ],
   },
@@ -843,6 +1090,28 @@ export const SCENES = [
     // yaw ≈ -0.39), y dropped 0.3m to door center; rotationY = spawn yaw.
     portals: [
       {
+        id: "spooky-to-witchy",
+        target: "ac-witchy-coven",
+        // A second doorway in the spooky room straight through to the witchy
+        // coven (so the two themed rooms connect directly, not only via the
+        // observatory). PLACEHOLDER — placed ~3m in front of the spawn
+        // ([-0.05, 1.61, 0.52] facing yaw ≈ -0.39), y dropped ~0.4m to door
+        // center, rotationY = yaw + π so it faces back at you. TUNE: stand in
+        // front of the real opening, run window.logPose() (or
+        // window.portal("spooky-to-witchy", { x, y, z, ry, w, h })).
+        position: [0.40, 1, -6],
+        rotationY: 3.162,
+        loaderText: "‧₊˚.entering the witchy coven ⋆˚꩜｡",
+        render: {
+          kind: "doorway",
+          width: 2,
+          height: 2,
+          radius: 0.18,
+          colorA: "#7a5ded",
+          colorB: "#c098ff",
+        },
+      },
+      {
         id: "spooky-to-observatory",
         target: "ac-observatory",
         position: [-0.43, 1.31, 1.44],
@@ -966,8 +1235,8 @@ export const SCENES = [
     // TUNE — placeholder spawn. Walk to where you want to arrive, run
     // window.logPose(), and paste its position + quaternion here.
     spawn: {
-      position: [0, 1.5, 0],
-      quaternion: [0, 0, 0, 1],
+      position: [0.00, 1.50, 1.44],
+      quaternion: [0.000, 0.000, 0.000, 1.000],
     },
     portals: [
       {
@@ -977,15 +1246,15 @@ export const SCENES = [
         // real doorway, run window.logPose(), drop y ~0.3m to door center, and
         // set rotationY = logged-yaw + π so the plane faces back at you. (Or use
         // window.portal("sakura-to-onsen", { x, y, z, ry, w, h }).)
-        position: [0, 1.2, -3.5],
+        position: [0.45, 0.50, -9.00],
         rotationY: Math.PI,
         loaderText: "‧₊˚.into the onsen garden ⋆˚꩜｡",
         render: {
           kind: "doorway",
-          width: 1.9,
-          height: 2.5,
-          radius: 0.18,
-          colorA: "#ffb7d5",
+          width: 2,
+          height: 2,
+          radius: 1,
+          colorA: "#ffb7e8",
           colorB: "#ffe0ee",
         },
       },
@@ -995,7 +1264,7 @@ export const SCENES = [
         // Return outside to Animal Crossing. Where you LAND in AC is set by the
         // return-pose capture in world.js (back at the Zen house); this just
         // places the doorway ~1m behind the spawn. TUNE with logPose.
-        position: [0, 1.2, 1.0],
+        position: [0, 1.2, 2.5],
         rotationY: 0,
         loaderText: "ೃ⁀➷ back to Animal Crossing ࿐ೃ.",
         render: {
@@ -1020,8 +1289,8 @@ export const SCENES = [
     hideInPicker: true,
     // TUNE — placeholder spawn.
     spawn: {
-      position: [0, 1.5, 0],
-      quaternion: [0, 0, 0, 1],
+      position: [-2.09, 1.48, -5.64],
+      quaternion: [-0.024, -0.807, -0.033, 0.590],
     },
     portals: [
       {
@@ -1066,13 +1335,13 @@ export const SCENES = [
         // { x, y, z, ry }) for position, or render.size for the orb radius.
         id: "gullivers-to-mermaid",
         target: "ac-dreamy-mermaid-sanctuary",
-        position: [-4.40, 2.00, -5.34],
+        position: [-4.5, 2.00, -5],
         rotationY: 4.652,
         glyph: "🐚",
         loaderText: "‧₊˚.into the mermaid sanctuary ⋆˚꩜｡",
         render: {
           kind: "orb",
-          size: 0.3,
+          size: 0.4,
           colorA: "#8fd6e0",
           colorB: "#eaffff",
         },

@@ -9,6 +9,7 @@ import { ensureReady as ensureRapierReady, createPhysics } from "../three/physic
 import { createGrab } from "../three/grab.js";
 import { addPastelLighting } from "../three/lighting.js";
 import { loadCharacter } from "../three/loadCharacter.js";
+import { createDecoEditor } from "../three/decoEditor.js";
 import { fadeElement } from "../three/transition.js";
 import { createPortalInteraction } from "../three/portals.js";
 
@@ -88,6 +89,9 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   const controls = new SparkControls({ canvas: renderer.domElement });
   const vrLocomotion = createVRLocomotion(renderer);
   const touchControls = createTouchControls(renderer);
+  // While the prop editor drags a gizmo handle, freeze SparkControls so the
+  // same pointer drag doesn't also spin the camera (see update()).
+  let editorFreeze = false;
   const isCoarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
 
   let currentSplat = null;
@@ -110,7 +114,123 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // world change so each new world starts at object 0.
   let objectCycleIdx = 0;
   const currentPortals = []; // { root, target, baseY, animation, scale, loaderText, phase }
-  const currentDecorations = []; // { id, root } — static, non-interactive props
+  const currentDecorations = []; // { id, root, def } — static, non-interactive props
+  // --- prop editor adapters ---------------------------------------------
+  // The editor is generic over "editables": decorations and portals alike. Each
+  // adapter exposes a uniform interface (root to attach the gizmo, how scale
+  // maps, how to format an export line, what to do after a move) so the editor
+  // needs no portal-vs-prop special cases.
+  const _ef = (n, d) => Number(n.toFixed(d));
+  function decoExportLine(id, r) {
+    let s = `  { id: ${JSON.stringify(id)}, position: [${_ef(r.position.x, 2)}, ${_ef(r.position.y, 2)}, ${_ef(r.position.z, 2)}]`;
+    if (r.rotation.x) s += `, rotationX: ${_ef(r.rotation.x, 3)}`;
+    if (r.rotation.y) s += `, rotationY: ${_ef(r.rotation.y, 3)}`;
+    if (r.rotation.z) s += `, rotationZ: ${_ef(r.rotation.z, 3)}`;
+    return s + `, scale: ${_ef(r.scale.x, 4)} },`;
+  }
+  function decoEditable(entry) {
+    return {
+      raw: entry,
+      group: "deco",
+      id: entry.id,
+      root: entry.root,
+      kindLabel: "prop",
+      uniformScale: true,
+      onMoved: () => {},
+      exportLine: () => decoExportLine(entry.id, entry.root),
+    };
+  }
+  function portalEditable(p) {
+    const isDoorway = p.kind === "doorway" || p.kind === "floorpad";
+    const id = p.id ?? p.target;
+    return {
+      raw: p,
+      group: "portal",
+      id,
+      root: p.root,
+      kindLabel: p.kind,
+      // Doorways size with width/height, not a uniform scale — leave scale off.
+      uniformScale: !isDoorway,
+      // Keep baseY in sync so the bob (re)centers on the new spot when editing ends.
+      onMoved: () => {
+        p.baseY = p.root.position.y;
+      },
+      exportLine: () => {
+        const r = p.root;
+        const head = `  portal ${JSON.stringify(id)} → ${p.target} (${p.kind}): position [${_ef(r.position.x, 2)}, ${_ef(r.position.y, 2)}, ${_ef(r.position.z, 2)}], rotationY ${_ef(r.rotation.y, 3)}`;
+        if (isDoorway) {
+          return head + `, render { width ${_ef(p.width, 2)}, height ${_ef(p.height, 2)}, radius ${_ef(p.radius, 2)} }`;
+        }
+        const renderScale = (p.scale || 1) * r.scale.x;
+        return head + `, render.scale ${_ef(renderScale, 3)}`;
+      },
+    };
+  }
+  function getEditables() {
+    return [
+      ...currentDecorations.map(decoEditable),
+      ...currentPortals.map(portalEditable),
+    ];
+  }
+
+  // A fresh id for a duplicated editable, unique across both lists.
+  function uniqueCopyId(base) {
+    const taken = new Set(
+      [...currentDecorations.map((d) => d.id), ...currentPortals.map((p) => p.id)].filter(Boolean),
+    );
+    const stem = base || "prop";
+    let name = `${stem}-copy`;
+    let n = 2;
+    while (taken.has(name)) name = `${stem}-copy${n++}`;
+    return name;
+  }
+
+  // Duplicate the selected editable: clone its def from the CURRENT (possibly
+  // edited) transform, nudge it aside so it's visibly separate, and spawn a new
+  // live instance. Returns a Promise of the new root for the editor to select.
+  function duplicateEditable(editable) {
+    const r = editable.root;
+    const OFFSET = 1.0; // world units, so the copy isn't hidden behind the original
+    if (editable.group === "deco") {
+      const def = {
+        ...editable.raw.def,
+        id: uniqueCopyId(editable.raw.def.id),
+        position: [r.position.x + OFFSET, r.position.y, r.position.z],
+        rotationX: r.rotation.x || undefined,
+        rotationY: r.rotation.y || undefined,
+        rotationZ: r.rotation.z || undefined,
+        scale: r.scale.x,
+      };
+      return buildDecoration(def, loadToken).then((e) => e?.root ?? null);
+    }
+    // portal
+    const p = editable.raw;
+    const def = {
+      ...p.def,
+      id: uniqueCopyId(p.id ?? p.target),
+      position: [r.position.x + OFFSET, p.baseY ?? r.position.y, r.position.z],
+      rotationY: r.rotation.y || 0,
+    };
+    if (editable.uniformScale) {
+      def.render = { ...p.def.render, scale: (p.scale || 1) * r.scale.x };
+    }
+    return Promise.resolve(buildPortal(def, loadToken)).then((e) => e?.root ?? null);
+  }
+
+  const decoEditor = createDecoEditor({
+    renderer,
+    camera,
+    scene,
+    getEditables,
+    duplicate: duplicateEditable,
+    freezeControls: (on) => {
+      editorFreeze = on;
+      if (on) {
+        controls.pointerControls?.rotateVelocity?.set(0, 0, 0);
+        controls.pointerControls?.moveVelocity?.set(0, 0, 0);
+      }
+    },
+  });
   let portalClock = 0;
   // Held by loadScene so a follow-up loadScene can unblock the previous load's
   // awaiters before replacing the resolver. Cleared on resolve. enterPortal
@@ -419,6 +539,8 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   }
 
   function disposePortals() {
+    // Drop any gizmo selection before the roots are removed/disposed.
+    decoEditor.deselect();
     if (currentPortals.length === 0) return;
     // Drop the hovered portal reference in portals.js BEFORE wiping the array
     // — otherwise a subsequent pointermove can fire onHover(false) against a
@@ -451,50 +573,96 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // (user switched scenes mid-fetch) doesn't get added to the wrong scene.
   // Dispatches on render.kind: "glb" (character) or "doorway" (translucent
   // rounded-rect plane with animated swirl + hover sparkle/halo).
+  // Build one portal from its def, dispatching on render.kind. Returns the
+  // pushed entry (or a Promise of it for the async GLB path), or null if the
+  // load was stale. Used by spawnPortals and by the editor's duplicate.
+  function buildPortal(portalDef, myToken) {
+    const kind = portalDef.render?.kind ?? "glb";
+    if (kind === "doorway") return buildDoorwayPortal(portalDef, myToken);
+    // Same swirl/sparkle material as a doorway, laid flat on the ground.
+    if (kind === "floorpad") return buildDoorwayPortal(portalDef, myToken, { flat: true });
+    if (kind === "orb") return buildOrbPortal(portalDef, myToken);
+    return buildGLBPortal(portalDef, myToken);
+  }
+
   function spawnPortals(sceneDef, myToken) {
     const defs = sceneDef.portals;
     if (!defs || defs.length === 0) return;
-    for (const portalDef of defs) {
-      const kind = portalDef.render?.kind ?? "glb";
-      if (kind === "doorway") {
-        buildDoorwayPortal(portalDef, myToken);
-      } else if (kind === "floorpad") {
-        // Same swirl/sparkle material as a doorway, laid flat on the ground.
-        buildDoorwayPortal(portalDef, myToken, { flat: true });
-      } else if (kind === "orb") {
-        buildOrbPortal(portalDef, myToken);
-      } else {
-        buildGLBPortal(portalDef, myToken);
-      }
-    }
+    for (const portalDef of defs) buildPortal(portalDef, myToken);
   }
 
   // Static decorations: plain GLBs placed in the scene with no portal trigger,
   // bubble, or animation. Unlike portals, the load is raw (scale 1) and ALL
   // transforms live on the outer group, so window.deco() can mutate them live
   // and the logged values paste back 1:1 into the scene's `decorations` array.
-  function spawnDecorations(sceneDef, myToken) {
-    const defs = sceneDef.decorations;
-    if (!defs || defs.length === 0) return;
-    for (const def of defs) {
-      loadCharacter({ kind: "glb", url: def.url })
-        .then(({ root: inner }) => {
-          if (myToken !== loadToken) return;
+  // Build one decoration from its def. Returns a Promise of the pushed entry
+  // (or null if the load was stale). Used by spawnDecorations and the editor's
+  // duplicate.
+  function buildDecoration(def, myToken) {
+    return loadCharacter({ kind: "glb", url: def.url })
+      .then(({ root: inner }) => {
+        if (myToken !== loadToken) return null;
+        {
           const root = new THREE.Group();
+          root.add(inner);
+          // `ground: true` re-centers the GLB on its own XZ footprint and drops
+          // its base to the root origin, so def.position is simply where the
+          // base sits and def.scale grows it from the floor. Lets trees with
+          // off-origin pivots (e.g. the apple tree) place cleanly with just a
+          // position + scale. Computed with root still at identity so inner's
+          // world box equals its local box.
+          if (def.ground) {
+            inner.updateMatrixWorld(true);
+            const box = new THREE.Box3().setFromObject(inner);
+            if (!box.isEmpty()) {
+              const c = box.getCenter(new THREE.Vector3());
+              inner.position.x -= c.x;
+              inner.position.z -= c.z;
+              inner.position.y -= box.min.y;
+            }
+          }
+          // `alphaTest: n` converts any alpha-BLEND material (e.g. tree foliage
+          // atlases like sakura's M_ATLAS_VEG) to a depth-writing alpha CUTOUT.
+          // BLEND foliage skips depthWrite and renders order-dependent, so its
+          // leaf cards smear over nearby meshes (the "leaves cast onto the house"
+          // bug). Cutout clips per-pixel and writes depth, so it sorts correctly.
+          if (typeof def.alphaTest === "number") {
+            inner.traverse((obj) => {
+              if (!obj.isMesh) return;
+              const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+              for (const m of mats) {
+                if (!m || !m.transparent) continue;
+                m.transparent = false;
+                m.alphaTest = def.alphaTest;
+                m.depthWrite = true;
+                m.needsUpdate = true;
+              }
+            });
+          }
           root.position.fromArray(def.position);
           root.rotation.set(def.rotationX ?? 0, def.rotationY ?? 0, def.rotationZ ?? 0);
           root.scale.setScalar(def.scale ?? 1);
-          root.add(inner);
           scene.add(root);
-          currentDecorations.push({ id: def.id, root });
-        })
-        .catch((err) => {
-          console.warn(`[deco] failed to load ${def.id ?? def.url}:`, err);
-        });
-    }
+          const entry = { id: def.id, root, def };
+          currentDecorations.push(entry);
+          return entry;
+        }
+      })
+      .catch((err) => {
+        console.warn(`[deco] failed to load ${def.id ?? def.url}:`, err);
+        return null;
+      });
+  }
+
+  function spawnDecorations(sceneDef, myToken) {
+    const defs = sceneDef.decorations;
+    if (!defs || defs.length === 0) return;
+    for (const def of defs) buildDecoration(def, myToken);
   }
 
   function disposeDecorations() {
+    // Drop any gizmo selection before the roots are removed/disposed.
+    decoEditor.deselect();
     if (currentDecorations.length === 0) return;
     for (const d of currentDecorations) {
       scene.remove(d.root);
@@ -512,12 +680,43 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     currentDecorations.length = 0;
   }
 
+  // Boost color saturation on every material under `root` by `factor`
+  // (1 = unchanged, >1 = more vivid). Injects a tiny step into each standard
+  // material's shader that pushes the lit RGB away from its luminance, so it
+  // works on textured PBR materials without re-encoding the texture. Used by
+  // GLB portals via render.saturate (e.g. the washed-out mushroom house).
+  function applySaturation(root, factor) {
+    if (!factor || factor === 1) return;
+    root.traverse((obj) => {
+      if (!obj.isMesh) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const m of mats) {
+        if (!m || m.userData?._saturated) continue;
+        m.userData = m.userData || {};
+        m.userData._saturated = true;
+        m.onBeforeCompile = (shader) => {
+          shader.uniforms.uSaturation = { value: factor };
+          shader.fragmentShader =
+            "uniform float uSaturation;\n" +
+            shader.fragmentShader.replace(
+              "#include <colorspace_fragment>",
+              "vec3 _satLum = vec3(dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722)));\n" +
+                "gl_FragColor.rgb = mix(_satLum, gl_FragColor.rgb, uSaturation);\n" +
+                "#include <colorspace_fragment>",
+            );
+        };
+        m.needsUpdate = true;
+      }
+    });
+  }
+
   // Existing GLB path (Celeste-style character). Async because loadCharacter
   // fetches a GLB; the loadToken gate is checked once that resolves.
   function buildGLBPortal(portalDef, myToken) {
-    loadCharacter({ kind: "glb", ...portalDef.render })
+    return loadCharacter({ kind: "glb", ...portalDef.render })
       .then(({ root: inner }) => {
-        if (myToken !== loadToken) return;
+        if (myToken !== loadToken) return null;
+        if (portalDef.render?.saturate) applySaturation(inner, portalDef.render.saturate);
         // Wrap in an outer group so the portal's world pose lives here,
         // leaving any offsetX/Y/Z + rotationY that wrapWithScale baked into
         // `inner` intact (same fitup vocabulary as characters.js).
@@ -553,17 +752,39 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
           root.add(proxy);
         }
 
-        // Speech bubble above her head — anchored on the bind-pose top. Glyph is
-        // ♡ by default; set portalDef.bubble to a string (e.g. "★") to override,
-        // or false to disable.
+        // Indicator above her head — anchored on the bind-pose top. Default is
+        // the pink ♡ bubble; portalDef.bubble can be:
+        //   - a string  → that glyph in the pink bubble (e.g. "★")
+        //   - false     → none
+        //   - an object → a glowing ORB indicator, e.g.
+        //       { kind: "orb", glyph: "🌟", colorA: "#ff7ec0", colorB: "#ffd6ee", size }
+        // An orb's material is stored on the portal entry so update() animates it.
+        let orbBubbleMaterial = null;
         if (portalDef.bubble !== false && !localBox.isEmpty()) {
           const height = localBox.max.y - localBox.min.y;
           const width = Math.max(localBox.max.x - localBox.min.x, localBox.max.z - localBox.min.z);
-          const bubble = createBubble(typeof portalDef.bubble === "string" ? portalDef.bubble : "♡");
-          const bubbleSize = Math.max(height * 0.14, width * 0.2);
-          bubble.scale.set(bubbleSize, bubbleSize, 1);
-          bubble.position.set(0, localBox.max.y + bubbleSize * 0.65, 0);
-          root.add(bubble);
+          if (portalDef.bubble && typeof portalDef.bubble === "object") {
+            const cfg = portalDef.bubble;
+            const orbSize = cfg.size ?? Math.max(height * 0.07, width * 0.1);
+            // Gap between the head top and the orb's CENTER. Default sits it just
+            // above her head; cfg.offsetY overrides (world units). Tune per portal.
+            const gap = cfg.offsetY ?? orbSize * 1.0;
+            const { group, material } = createOrbVisual({
+              size: orbSize,
+              colorA: new THREE.Color(cfg.colorA ?? "#ff7ec0"),
+              colorB: new THREE.Color(cfg.colorB ?? "#ffd6ee"),
+              glyph: cfg.glyph ?? null,
+            });
+            group.position.set(0, localBox.max.y + gap, 0);
+            root.add(group);
+            orbBubbleMaterial = material;
+          } else {
+            const bubble = createBubble(typeof portalDef.bubble === "string" ? portalDef.bubble : "♡");
+            const bubbleSize = Math.max(height * 0.14, width * 0.2);
+            bubble.scale.set(bubbleSize, bubbleSize, 1);
+            bubble.position.set(0, localBox.max.y + bubbleSize * 0.65, 0);
+            root.add(bubble);
+          }
         }
 
         // Walk-into trigger radius (XZ). GLB portals have no authored width, so
@@ -573,9 +794,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
           ? 0.8
           : Math.max(localBox.max.x - localBox.min.x, localBox.max.z - localBox.min.z);
         scene.add(root);
-        currentPortals.push({
+        const entry = {
           id: portalDef.id,
           kind: "glb",
+          def: portalDef, // kept so the prop editor's duplicate can clone it
           root,
           proxy,
           target: portalDef.target,
@@ -590,10 +812,26 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
           armed: false,
           triggerRadius:
             portalDef.triggerRadius ?? Math.min(1.2, Math.max(0.6, glbFootprint / 2 + 0.3)),
-        });
+          // Set only when the bubble is an orb — gives update() a material whose
+          // uTime to advance (sparkle/pulse) and uHover to brighten.
+          material: orbBubbleMaterial ?? undefined,
+          // Hover wiring so the orb bubble brightens when the cursor/VR ray is
+          // over Celeste herself — it's the same portal as clicking her. The
+          // raycast hits her click proxy; portalInteraction calls onHover, which
+          // nudges hoverTarget, and update() smooths it into the orb's uHover.
+          hoverTarget: 0,
+          hoverValue: 0,
+          onHover: (hover) => {
+            const e = currentPortals.find((cp) => cp.root === root);
+            if (e) e.hoverTarget = hover ? 1 : 0;
+          },
+        };
+        currentPortals.push(entry);
+        return entry;
       })
       .catch((err) => {
         console.warn(`[portals] failed to load ${portalDef.id ?? portalDef.target}:`, err);
+        return null;
       });
   }
 
@@ -607,7 +845,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   function buildDoorwayPortal(portalDef, myToken, opts = {}) {
     // Token check is symmetrical with the GLB path even though we're sync —
     // future-proofs against any added await without changing the contract.
-    if (myToken !== loadToken) return;
+    if (myToken !== loadToken) return null;
     // `flat` lays the same plane down on the ground (a glowing floor pad) by
     // tilting it -90° about X. The swirl/sparkle shader works in UV space, so
     // orientation is irrelevant to it; only the mesh transform changes.
@@ -668,9 +906,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     }
 
     scene.add(root);
-    currentPortals.push({
+    const entry = {
       id: portalDef.id,
       kind: flat ? "floorpad" : "doorway",
+      def: portalDef, // kept so the prop editor's duplicate can clone it
       root,
       proxy,
       planeMesh,
@@ -696,10 +935,12 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       hoverTarget: 0,
       hoverValue: 0,
       onHover: (hover) => {
-        const entry = currentPortals.find((cp) => cp.root === root);
-        if (entry) entry.hoverTarget = hover ? 1 : 0;
+        const e = currentPortals.find((cp) => cp.root === root);
+        if (e) e.hoverTarget = hover ? 1 : 0;
       },
-    });
+    };
+    currentPortals.push(entry);
+    return entry;
   }
 
   // Rebuild a doorway portal's geometry + shader uniforms for new width/height/
@@ -741,20 +982,23 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // drawing over splats looks deliberate rather than broken. Bobs like the GLB
   // portals. render: { kind:"orb", size, colorA, colorB }.
   function buildOrbPortal(portalDef, myToken) {
-    if (myToken !== loadToken) return;
+    if (myToken !== loadToken) return null;
     const r = portalDef.render;
     const size = r.size ?? 0.25; // sphere radius (meters)
-    const colorA = new THREE.Color(r.colorA ?? "#bfe9ff");
-    const colorB = new THREE.Color(r.colorB ?? "#ffffff");
+    const glyph = portalDef.bubble === false
+      ? null
+      : (portalDef.glyph ?? (typeof portalDef.bubble === "string" ? portalDef.bubble : null));
 
-    const material = createOrbMaterial(colorA, colorB);
+    const { group, material } = createOrbVisual({
+      size,
+      colorA: new THREE.Color(r.colorA ?? "#bfe9ff"),
+      colorB: new THREE.Color(r.colorB ?? "#ffffff"),
+      glyph,
+    });
     const root = new THREE.Group();
     root.position.fromArray(portalDef.position);
     root.rotation.y = portalDef.rotationY ?? 0;
-
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(size, 24, 16), material);
-    orb.renderOrder = 20; // draw over splats
-    root.add(orb);
+    root.add(group);
 
     // Invisible click proxy — a touch larger than the orb so it's easy to hit.
     const proxy = new THREE.Mesh(
@@ -763,22 +1007,11 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     );
     root.add(proxy);
 
-    // Glyph sits INSIDE the orb (centered, billboarded toward camera) with no
-    // background/outline — just the symbol floating in the glow. portalDef.glyph
-    // sets it (e.g. "🐚"); portalDef.bubble:false (or no glyph) omits it.
-    const glyph = portalDef.glyph ?? (typeof portalDef.bubble === "string" ? portalDef.bubble : null);
-    if (glyph && portalDef.bubble !== false) {
-      const sprite = createGlyphSprite(glyph);
-      const glyphSize = size * 1.3; // a touch smaller than the orb so it reads as "within"
-      sprite.scale.set(glyphSize, glyphSize, 1);
-      sprite.position.set(0, 0, 0); // orb center
-      root.add(sprite);
-    }
-
     scene.add(root);
-    currentPortals.push({
+    const entry = {
       id: portalDef.id,
       kind: "orb",
+      def: portalDef, // kept so the prop editor's duplicate can clone it
       root,
       proxy,
       target: portalDef.target,
@@ -793,10 +1026,33 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       hoverTarget: 0,
       hoverValue: 0,
       onHover: (hover) => {
-        const entry = currentPortals.find((cp) => cp.root === root);
-        if (entry) entry.hoverTarget = hover ? 1 : 0;
+        const e = currentPortals.find((cp) => cp.root === root);
+        if (e) e.hoverTarget = hover ? 1 : 0;
       },
-    });
+    };
+    currentPortals.push(entry);
+    return entry;
+  }
+
+  // Builds the orb VISUAL (glowing sphere + optional centered glyph) as a group,
+  // independent of portal wiring — so it's reused both as a standalone orb portal
+  // and as the floating indicator above a GLB character portal (Celeste). Returns
+  // the group plus its material so the caller can register it for uTime animation.
+  function createOrbVisual({ size, colorA, colorB, glyph }) {
+    const group = new THREE.Group();
+    const material = createOrbMaterial(colorA, colorB);
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(size, 24, 16), material);
+    orb.renderOrder = 20; // draw over splats
+    group.add(orb);
+    // Glyph sits INSIDE the orb (centered, billboarded) with no background/outline.
+    if (glyph) {
+      const sprite = createGlyphSprite(glyph);
+      const glyphSize = size * 1.3; // a touch smaller than the orb so it reads as "within"
+      sprite.scale.set(glyphSize, glyphSize, 1);
+      sprite.position.set(0, 0, 0);
+      group.add(sprite);
+    }
+    return { group, material };
   }
 
   // Additive fresnel-glow sphere material for orb portals. uTime pulses it,
@@ -1265,7 +1521,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       noteVRDistance(dolly.position.distanceTo(dollySpawnPos));
     } else {
       touchControls.update(dt, camera);
-      controls.update(camera);
+      if (!editorFreeze) controls.update(camera);
     }
     // Unconditional: when presenting it stretches the wand rays + drives portal
     // hover; when not, it hides the rays (so they don't linger on the desktop
@@ -1284,7 +1540,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       // Feels responsive without snapping (snap looks twitchy on cursor pass).
       const hoverK = Math.min(1, dt * 6);
       for (const p of currentPortals) {
-        if (p.animation === "bob") {
+        // While the prop editor is open, portals hold still at baseY so a
+        // selected house doesn't bob out from under the gizmo (the editor keeps
+        // baseY in sync as you drag it). Bob resumes when the editor closes.
+        if (p.animation === "bob" && !window.__decoEditActive) {
           p.root.position.y = p.baseY + Math.sin(portalClock * 1.8 + p.phase) * 0.15 * p.scale;
         }
         if (p.material?.uniforms) {
@@ -1311,7 +1570,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       // one you're standing inside at the transient pre-spawn pose stays disarmed
       // until you leave it). Gating on the settle counter risked wedging walk-in
       // off permanently if that counter ever failed to reach 0.
-      if (!portalTransitioning) {
+      if (!portalTransitioning && !window.__decoEditActive) {
         // Head world position (see getHeadWorldMatrix — getCamera() reads
         // reference space in update(), which would drop the dolly's spawn-yaw
         // recenter and land us on the ≈opposite portal).
@@ -1465,6 +1724,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // rz, s }. Mutates the loaded group immediately and logs the full transform
   // in scene-def shape, so you can eyeball scale/placement then paste the
   // values back into scenes.js. e.g. window.deco(0, { s: 0.05, y: 1.2 })
+  // Toggle the in-world prop gizmo editor (same as pressing the ` key). Click a
+  // prop, w/e/r to move/rotate/scale, c to copy ALL transforms to the clipboard.
+  // The drag-and-drop replacement for the window.deco() workflow below.
+  window.decoEdit = () => decoEditor.toggle();
   window.deco = (i = 0, t = {}) => {
     const d = currentDecorations[i];
     if (!d) {

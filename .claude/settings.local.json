@@ -35,7 +35,12 @@
       "Bash(mkdir -p tmp_render/g4)",
       "Bash(cp /tmp/gren4/*.png tmp_render/g4/)",
       "Bash(python -)",
-      "Bash(PYTHONIOENCODING=utf-8 python -)"
+      "Bash(PYTHONIOENCODING=utf-8 python -)",
+      "Bash(rm zen-house.glb.bak)",
+      "Read(//c/tmp/**)",
+      "Bash(cp /tmp/zen-a.glb public/props/zen-house.glb)",
+      "Bash(rm -f public/props/zen-house.glb.bak /tmp/zen-a.glb /tmp/zen-b.glb)",
+      "Bash(node --check src/three/decoEditor.js)"
     ],
     "additionalDirectories": [
       "C:\\Users\\ashle\\Downloads"
