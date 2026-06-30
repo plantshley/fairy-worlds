@@ -435,7 +435,7 @@ export const SCENES = [
 
   {
     id: "lovely-melody-interior",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Lovely Melody Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-melody-interior.spz",
     objectTags: ["ac"],
@@ -508,7 +508,7 @@ export const SCENES = [
   },
   {
     id: "lovely-pink-interior",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Lovely Pink Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-pink-interior.spz",
     objectTags: ["ac"],
@@ -544,7 +544,7 @@ export const SCENES = [
   },
   {
     id: "lovely-mint-interior",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Lovely Mint Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-lovely-mint-interior.spz",
     objectTags: ["ac"],
@@ -575,7 +575,7 @@ export const SCENES = [
 
   {
     id: "animal-crossing",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Animal Crossing",
     url: import.meta.env.BASE_URL + "splats/Random-AnimalCrossing.spz",
     objectTags: ["ac"],
@@ -789,6 +789,7 @@ export const SCENES = [
         scale: 0.0073,
         ground: true,
         alphaTest: 0.4,
+        saturate: 1.5,
       },
       {
         id: "apple-2",
@@ -798,6 +799,7 @@ export const SCENES = [
         scale: 0.0085,
         ground: true,
         alphaTest: 0.4,
+        saturate: 1.5,
       },
       {
         id: "sakura-1",
@@ -809,6 +811,7 @@ export const SCENES = [
         scale: 64.0042,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       {
         id: "sakura-2",
@@ -820,6 +823,7 @@ export const SCENES = [
         scale: 70.1424,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       // A loose grove along ~Z, hand-placed with the prop editor.
       {
@@ -830,6 +834,7 @@ export const SCENES = [
         scale: 98.2631,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       {
         id: "sakura-row-2",
@@ -839,6 +844,7 @@ export const SCENES = [
         scale: 93.0495,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       {
         id: "sakura-row-3",
@@ -848,6 +854,7 @@ export const SCENES = [
         scale: 90.29,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       // Duplicates placed live with the prop editor's `d` key (renamed from the
       // editor's auto "-copy" ids). All share the sakura GLB + foliage cutout.
@@ -861,6 +868,7 @@ export const SCENES = [
         scale: 98.2631,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       {
         id: "sakura-4",
@@ -872,6 +880,7 @@ export const SCENES = [
         scale: 98.2631,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       {
         id: "sakura-5",
@@ -881,6 +890,7 @@ export const SCENES = [
         scale: 90.29,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       {
         id: "sakura-6",
@@ -892,6 +902,7 @@ export const SCENES = [
         scale: 64.0042,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       {
         id: "sakura-7",
@@ -901,6 +912,7 @@ export const SCENES = [
         scale: 81.4906,
         ground: true,
         alphaTest: 0.5,
+        saturate: 1.5,
       },
       {
         id: "pine-1",
@@ -965,13 +977,14 @@ export const SCENES = [
 
   {
     id: "ac-observatory",
-    world: "Random",
-    title: "AC Observatory",
+    world: "Animal Crossing",
+    title: "Observatory",
     url: import.meta.env.BASE_URL + "splats/Random-AC-observatory.spz",
     objectTags: ["ac"],
-    // Reached only by walking into / clicking the AC house — keep it out of the
-    // picker dropdown and the single/double-trigger cycle (same as the lovely
-    // interiors above).
+    // Reached by walking into / clicking the AC house. hideInPicker keeps it out
+    // of the single/double-trigger cycle (same as the lovely interiors above);
+    // it's still selectable in the dedicated Animal Crossing dropdown, which
+    // surfaces this world's hidden interiors (see worldPicker.js).
     hideInPicker: true,
     // TUNE — placeholder spawn. Walk to where you want to start inside the
     // observatory, run window.logPose(), and paste its position + quaternion.
@@ -1040,8 +1053,8 @@ export const SCENES = [
 
   {
     id: "ac-witchy-coven",
-    world: "Random",
-    title: "AC Witchy Coven",
+    world: "Animal Crossing",
+    title: "Witchy Coven",
     url: import.meta.env.BASE_URL + "splats/Random-AC-witchy-coven.spz",
     objectTags: ["ac"],
     hideInPicker: true,
@@ -1075,8 +1088,8 @@ export const SCENES = [
 
   {
     id: "ac-spooky",
-    world: "Random",
-    title: "AC Spooky Room",
+    world: "Animal Crossing",
+    title: "Spooky Room",
     url: import.meta.env.BASE_URL + "splats/Random-AC-spooky.spz",
     objectTags: ["ac"],
     hideInPicker: true,
@@ -1134,7 +1147,7 @@ export const SCENES = [
     // (ac-to-mushroom-forest). Like the other AC interiors, it's out of the
     // picker and the cycle — portal-only.
     id: "mushroom-forest",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Mystical Mushroom Forest",
     url: import.meta.env.BASE_URL + "splats/Random-AC-mystical-mushroom-forest.spz",
     objectTags: ["ac"],
@@ -1190,7 +1203,7 @@ export const SCENES = [
   {
     // Reached only via the doorway in the mushroom forest. Portal-only.
     id: "woodland-interior",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Woodland Interior",
     url: import.meta.env.BASE_URL + "splats/Random-AC-woodland-interior.spz",
     objectTags: ["ac"],
@@ -1227,7 +1240,7 @@ export const SCENES = [
     // Reached by entering the Zen house in Animal Crossing (ac-to-sakura-spa).
     // Portal-only, like the other AC interiors.
     id: "ac-sakura-spa",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Sakura Spa",
     url: import.meta.env.BASE_URL + "splats/Random-AC-sakura-spa.spz",
     objectTags: ["ac"],
@@ -1242,18 +1255,15 @@ export const SCENES = [
       {
         id: "sakura-to-onsen",
         target: "ac-onsen-garden",
-        // The one doorway through to the onsen garden. TUNE: stand facing the
-        // real doorway, run window.logPose(), drop y ~0.3m to door center, and
-        // set rotationY = logged-yaw + π so the plane faces back at you. (Or use
-        // window.portal("sakura-to-onsen", { x, y, z, ry, w, h }).)
-        position: [0.45, 0.50, -9.00],
-        rotationY: Math.PI,
+        // Lotus orb through to the onsen garden (was a doorway). A sphere is
+        // billboarded so rotationY is cosmetic; nudge x/y/z with
+        // window.portal("sakura-to-onsen", { x, y, z }) or the prop editor.
+        position: [0.45, 1.40, -9.00],
+        glyph: "🪷",
         loaderText: "‧₊˚.into the onsen garden ⋆˚꩜｡",
         render: {
-          kind: "doorway",
-          width: 2,
-          height: 2,
-          radius: 1,
+          kind: "orb",
+          size: 0.4,
           colorA: "#ffb7e8",
           colorB: "#ffe0ee",
         },
@@ -1282,7 +1292,7 @@ export const SCENES = [
   {
     // Reached only via the doorway in the sakura spa. Portal-only.
     id: "ac-onsen-garden",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Onsen Garden",
     url: import.meta.env.BASE_URL + "splats/Random-AC-onsen-garden.spz",
     objectTags: ["ac"],
@@ -1296,17 +1306,18 @@ export const SCENES = [
       {
         id: "onsen-to-sakura",
         target: "ac-sakura-spa",
-        // Return ~1m behind the spawn to the sakura spa. TUNE with logPose.
-        position: [0, 1.2, 1.0],
-        rotationY: 0,
+        // Matching lotus orb back to the sakura spa. Placed ~2.5m BEHIND the
+        // onsen spawn ([-2.09,1.48,-5.64], facing ~+X) so it's out of the way on
+        // arrival — turn around to find it. TUNE with window.portal("onsen-to-sakura",
+        // { x, y, z }) or the prop editor.
+        position: [-4.47, 1.40, -6.41],
+        glyph: "🪷",
         loaderText: "⋆.˚returning to the sakura spa ⋆˖࿔",
         render: {
-          kind: "doorway",
-          width: 1,
-          height: 1,
-          radius: 0.5,
-          colorA: "#cba6e2",
-          colorB: "#e6d6f5",
+          kind: "orb",
+          size: 0.4,
+          colorA: "#ffb7e8",
+          colorB: "#ffe0ee",
         },
       },
     ],
@@ -1316,7 +1327,7 @@ export const SCENES = [
     // Reached by entering the Tortimer shack in Animal Crossing
     // (ac-to-gullivers-office). Portal-only.
     id: "ac-gullivers-office",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Gulliver's Office",
     url: import.meta.env.BASE_URL + "splats/Random-AC-gullivers-office.spz",
     objectTags: ["ac"],
@@ -1370,7 +1381,7 @@ export const SCENES = [
   {
     // Reached only via the doorway in Gulliver's office. Portal-only.
     id: "ac-dreamy-mermaid-sanctuary",
-    world: "Random",
+    world: "Animal Crossing",
     title: "Dreamy Mermaid Sanctuary",
     url: import.meta.env.BASE_URL + "splats/Random-AC-dreamy-mermaid-sanctuary.spz",
     objectTags: ["ac"],
@@ -1404,8 +1415,7 @@ export const SCENES = [
   {
     // Portal hub. Reuses the Heart Pool Pavilion splat but is its own entry so
     // it can carry its own spawn + ring of portals without affecting the
-    // standalone heart-pool-1-1-1004 scene. Placed LAST in the Random group
-    // so cycleWorld's "walk back to first scene of group" never lands here.
+    // standalone heart-pool-1-1-1004 scene.
     //
     // Tuning: edit center/radius/height/portalSize/startAngle/hueStart in the
     // buildHubPortals call below — HMR re-renders the ring. To relocate the
@@ -1415,9 +1425,9 @@ export const SCENES = [
     world: "Random",
     title: "Portals Glade",
     // Reached via its own flower / hub button (#btn-portals-hub), so keep it out
-    // of the world-picker dropdown AND out of single/double-trigger cycling
-    // (cycleScene skips hideInPicker). cycleWorld never lands here anyway since
-    // it's last in the Random group.
+    // of the world-picker dropdown AND out of cycling. cycleScene + cycleWorld
+    // both skip hideInPicker, so neither the single/double-trigger cycle nor the
+    // world arrows ever land on the hub.
     hideInPicker: true,
     url: import.meta.env.BASE_URL + "splats/Heart%20Pool%20Pavilion.spz",
     spawn: {
@@ -1460,6 +1470,10 @@ export const SCENES = [
         { id: "swan-lake-suite-1-1",              label: "ೃ｡୨୧ Swan Lake Suite ୨୧˚࿐ೃ",     emoji: "🦢" },
         { id: "lavender-laundry-1-1",             label: "⸜♡⸝ Lavender Laundry ⸜♡⸝",           emoji: "🪻" },
         { id: "lovecore-patio-1-1",               label: "˚₊‧ ꒰ა  Random ໒꒱ ‧₊˚",                    emoji: "🦄" },
+        // Its own green portal into the Animal Crossing island (which fans out
+        // to all its interiors via in-world doorways). colorA/colorB override
+        // the rainbow so it reads as a distinct, branded leafy destination.
+        { id: "animal-crossing",                  label: "˚₊‧ ꒰ა Animal Crossing ໒꒱ ‧₊˚",      emoji: "🌳"},
       ],
     }),
   },

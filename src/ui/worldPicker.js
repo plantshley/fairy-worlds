@@ -19,12 +19,31 @@ export function createWorldPicker({ container, scenes, onSelectScene }) {
     container.innerHTML = "";
     const groups = new Map();
     for (const s of scenes) {
-      if (s.hideInPicker) continue;
       const world = s.world ?? "Other";
+      // Animal Crossing's interiors are hideInPicker (kept out of the
+      // single/double-trigger cycle), but we DO want them selectable inside the
+      // dedicated Animal Crossing dropdown. So only skip hideInPicker scenes
+      // OUTSIDE that group — e.g. the Portals Glade hub.
+      if (s.hideInPicker && world !== "Animal Crossing") continue;
       if (!groups.has(world)) groups.set(world, []);
       groups.get(world).push(s);
     }
-    for (const [world, sceneList] of groups) {
+    // Within each group, list cycle-visible scenes first, then portal-only
+    // interiors — so the main "Animal Crossing" scene heads its own dropdown
+    // ahead of its rooms. Array sort is stable, so order within each tier is
+    // preserved.
+    for (const sceneList of groups.values()) {
+      sceneList.sort((a, b) => (a.hideInPicker ? 1 : 0) - (b.hideInPicker ? 1 : 0));
+    }
+    // Pin Animal Crossing to the top of the nav; everything else keeps its
+    // natural (scene-array) order.
+    const worldNames = [...groups.keys()];
+    const orderedWorlds = [
+      ...worldNames.filter((w) => w === "Animal Crossing"),
+      ...worldNames.filter((w) => w !== "Animal Crossing"),
+    ];
+    for (const world of orderedWorlds) {
+      const sceneList = groups.get(world);
       const groupEl = document.createElement("div");
       groupEl.className = "scene-group";
       groupEl.dataset.world = world;

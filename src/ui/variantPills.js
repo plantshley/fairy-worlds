@@ -9,11 +9,18 @@ export function createVariantPills({ container, onSelectScene }) {
     container.innerHTML = "";
     if (!sceneDef) return;
     // Include the CURRENT scene in the list (marked .active) so the row reads
-    // like a tab strip. Hidden scenes (hub-from-itself, lovely interiors) are
-    // still filtered out.
+    // like a tab strip. Hidden scenes are normally filtered out, but Animal
+    // Crossing's portal-only interiors ARE surfaced here (same rule as
+    // worldPicker.js) so touring the AC island from the hub exposes every room.
     const siblings = allScenes.filter(
-      (s) => s.world === sceneDef.world && !s.hideInPicker,
+      (s) =>
+        s.world === sceneDef.world &&
+        (!s.hideInPicker || s.world === "Animal Crossing"),
     );
+    // List cycle-visible scenes first (e.g. the main "Animal Crossing" scene),
+    // then portal-only interiors — matches the dropdown's ordering. Stable sort
+    // preserves array order within each tier.
+    siblings.sort((a, b) => (a.hideInPicker ? 1 : 0) - (b.hideInPicker ? 1 : 0));
     for (const s of siblings) {
       const btn = document.createElement("button");
       btn.className = "scene-btn";

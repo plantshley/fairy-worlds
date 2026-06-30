@@ -51,12 +51,12 @@ per world. It's a whimsical way to jump straight to any world:
 ### ❀ The worlds
 
 Twelve themed worlds (most with a few versions you can flip between), plus a
-"Random" grab-bag of one-off scenes (I recommend talking to Celeste in Animal Crossing 👀):
+"Random" grab-bag of one-off scenes:
 
-> Heart Pool Pavilion · Berry Dream Kitchen · Twinkle Butterfly Patio ·
-> Swan Lake Suite · Sunkissed Sparkle Room · Pink Cherry Plane ·
-> Lavender Laundry · Jewel Princess Bathroom · Glitter Hibiscus Lodge ·
-> Frutiger Rainbow Cafe · Flowers of our Future Club · Angelic Quartz Chamber
+> Animal Crossing · Heart Pool Pavilion · Berry Dream Kitchen · 
+> Twinkle Butterfly Patio · Swan Lake Suite · Sunkissed Sparkle Room · 
+> Pink Cherry Plane · Lavender Laundry · Jewel Princess Bathroom · 
+> Glitter Hibiscus Lodge · Frutiger Rainbow Cafe · Flowers of our Future Club · Angelic Quartz Chamber
 
 ### ❀ Object mode
 

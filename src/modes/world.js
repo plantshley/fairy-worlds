@@ -523,9 +523,13 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     spawnPortals(sceneDef, myToken);
     spawnDecorations(sceneDef, myToken);
 
-    // "Random" is a catchall group, not a real world — each scene there has its
-    // own unrelated spawn, so always recenter when cycling within it.
-    const isNewWorld = sceneDef.world !== currentWorld || sceneDef.world === "Random";
+    // "Random" and "Animal Crossing" are catchall/portal-hub groups, not real
+    // worlds — each scene there has its own unrelated spawn (or an AC return
+    // pose), so always recenter when moving within them.
+    const isNewWorld =
+      sceneDef.world !== currentWorld ||
+      sceneDef.world === "Random" ||
+      sceneDef.world === "Animal Crossing";
     currentWorld = sceneDef.world;
 
     if (!isNewWorld) {
@@ -639,6 +643,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
               }
             });
           }
+          // `saturate: n` (>1) pushes the lit RGB away from luminance per-pixel,
+          // same shader hook the GLB portals use — for trees whose baked foliage
+          // atlases read washed-out under the splat lighting.
+          if (typeof def.saturate === "number") applySaturation(inner, def.saturate);
           root.position.fromArray(def.position);
           root.rotation.set(def.rotationX ?? 0, def.rotationY ?? 0, def.rotationZ ?? 0);
           root.scale.setScalar(def.scale ?? 1);
@@ -1619,10 +1627,12 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     }
   }
 
-  // Step until we land on a scene whose `world` differs from the current
-  // world group, then keep stepping while still inside that new group going
-  // backward so we land on its FIRST scene (in array order). For forward
-  // direction this naturally lands on the first scene of the next group.
+  // Step in `direction` to the next scene in a DIFFERENT, picker-visible world,
+  // then land on the FIRST visible scene of that world (array order) so each
+  // world has one stable entry point regardless of travel direction. Skipping
+  // hideInPicker on both the search and the landing keeps cycleWorld off the
+  // Portals Glade hub (a lone "Random" entry) and AC's portal-only interiors —
+  // for the Animal Crossing group it lands on the main "animal-crossing" scene.
   function cycleWorld(direction) {
     if (!currentSceneId) return;
     const startIdx = SCENES.findIndex((s) => s.id === currentSceneId);
@@ -1632,13 +1642,13 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     let idx = startIdx;
     for (let step = 0; step < n; step++) {
       idx = (idx + direction + n) % n;
-      if (SCENES[idx].world !== fromWorld) break;
+      if (SCENES[idx].world !== fromWorld && !SCENES[idx].hideInPicker) break;
     }
-    if (direction < 0) {
-      const targetWorld = SCENES[idx].world;
-      while (idx > 0 && SCENES[idx - 1].world === targetWorld) idx--;
-    }
-    loadScene(SCENES[idx]);
+    const targetWorld = SCENES[idx].world;
+    const firstVisible = SCENES.findIndex(
+      (s) => s.world === targetWorld && !s.hideInPicker,
+    );
+    loadScene(SCENES[firstVisible >= 0 ? firstVisible : idx]);
   }
 
   function activate(payload) {
