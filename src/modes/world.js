@@ -741,20 +741,26 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
         // vertex to ~origin. The bind-pose geometry.boundingBox is what we
         // actually want for sizing a click proxy + bubble anchor.
         const localBox = computeLocalBindBox(inner, root);
+        // Same box, but with far-flung stray geometry rejected — used to size the
+        // click proxy so junky exports (leftover fence/terrain meshes scattered
+        // units away from the actual building) don't balloon it. See computeProxyBox.
+        const proxyBox = computeProxyBox(inner, root);
 
         // Invisible click proxy. SkinnedMesh raycast pre-culls on the same
         // collapsed skinning bbox, so the ray never reaches per-triangle
         // tests on the actual character. A simple Box mesh raycasts reliably
         // regardless of skinning, and findHitPortal walks the parent chain
         // back to `root`, so a proxy hit registers as a portal hit.
+        // DoubleSide so the ray still hits if the camera ends up INSIDE the box
+        // (a FrontSide box is invisible to a ray cast from within it).
         let proxy = null;
-        if (!localBox.isEmpty()) {
+        if (!proxyBox.isEmpty()) {
           const size = new THREE.Vector3();
-          localBox.getSize(size);
+          proxyBox.getSize(size);
           const center = new THREE.Vector3();
-          localBox.getCenter(center);
+          proxyBox.getCenter(center);
           const geom = new THREE.BoxGeometry(size.x, size.y, size.z);
-          const mat = new THREE.MeshBasicMaterial({ visible: false });
+          const mat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
           proxy = new THREE.Mesh(geom, mat);
           proxy.position.copy(center);
           root.add(proxy);
@@ -1301,6 +1307,63 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       tmpBox.copy(geo.boundingBox).applyMatrix4(tmpMat);
       box.union(tmpBox);
     });
+    return box;
+  }
+
+  // Like computeLocalBindBox, but drops far-flung stray geometry before
+  // unioning — used to size the invisible click proxy. Some GLB exports (e.g. an
+  // FBX "house" that still carries leftover fence/terrain meshes 5-7 units from
+  // the building in an otherwise ~0.1-unit model) leave junk meshes scattered
+  // far from the bulk. Unioning everything balloons the proxy to hundreds of
+  // units, so the camera stands INSIDE it and the box never registers a hit.
+  // We collect per-mesh boxes, sort by distance from the median center, and cut
+  // at the first >5x jump in that distance. Clean models (a smooth distance ramp,
+  // or few meshes) pass through unfiltered.
+  function computeProxyBox(inner, stopAt) {
+    const tmpMat = new THREE.Matrix4();
+    const items = [];
+    inner.traverse((obj) => {
+      if (!obj.isMesh && !obj.isSkinnedMesh) return;
+      const geo = obj.geometry;
+      if (!geo) return;
+      if (!geo.boundingBox) geo.computeBoundingBox();
+      tmpMat.identity();
+      const chain = [];
+      let cursor = obj;
+      while (cursor && cursor !== stopAt) {
+        cursor.updateMatrix();
+        chain.push(cursor.matrix);
+        cursor = cursor.parent;
+      }
+      for (let i = chain.length - 1; i >= 0; i--) tmpMat.multiply(chain[i]);
+      const b = geo.boundingBox.clone().applyMatrix4(tmpMat);
+      items.push({ box: b, center: b.getCenter(new THREE.Vector3()) });
+    });
+    if (items.length === 0) return new THREE.Box3();
+    const box = new THREE.Box3();
+    // Too few meshes to have meaningful outliers — union them all (clean houses
+    // and characters land here).
+    if (items.length <= 8) {
+      for (const it of items) box.union(it.box);
+      return box;
+    }
+    // Median center per-axis (robust to the outliers we're trying to drop).
+    const med = new THREE.Vector3(
+      ...["x", "y", "z"].map((ax) => {
+        const s = items.map((it) => it.center[ax]).sort((a, b) => a - b);
+        return s[Math.floor(s.length / 2)];
+      }),
+    );
+    for (const it of items) it.d = it.center.distanceTo(med);
+    items.sort((a, b) => a.d - b.d);
+    let cut = items.length;
+    for (let i = 0; i < items.length - 1; i++) {
+      if (items[i].d > 1e-4 && items[i + 1].d / items[i].d > 5) {
+        cut = i + 1;
+        break;
+      }
+    }
+    for (let i = 0; i < cut; i++) box.union(items[i].box);
     return box;
   }
 

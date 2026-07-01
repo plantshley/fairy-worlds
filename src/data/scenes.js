@@ -616,7 +616,11 @@ export const SCENES = [
         position: [-0.65, -0.8, -15.4], // pushed back behind Celeste + lowered
         rotationY: 0.18, // = 3.455 − π, flipped 180° so its front faces you
         animation: "none", // a bobbing house looks wrong — keep it planted
-        bubble: false, // no ♡ speech bubble over a building
+        // Floating indicator orb above the roof (same system as Celeste's
+        // observatory orb) — pulses always, brightens on hover. size + offsetY
+        // are kept consistent across all AC buildings so they read as one set of
+        // wayfinding markers; glyph/color vary per destination. TUNE freely.
+        bubble: { kind: "orb", glyph: "🎀", colorA: "#ff2c87", colorB: "#ffdd53", size: 0.55, offsetY: 1.0 },
         loaderText: "·˚*୨୧ entering Celeste's home ୨୧*˚·",
         render: {
           kind: "glb",
@@ -644,7 +648,8 @@ export const SCENES = [
         position: [10.80, 3.10, -4.75],
         rotationY: -1.400,
         animation: "none", // a bobbing house looks wrong — keep it planted
-        bubble: false, // no ♡ speech bubble over a building
+        // Floating wayfinding orb above the roof — see the note on ac-to-melody.
+        bubble: { kind: "orb", glyph: "🍄", colorA: "#75b356", colorB: "#8dfbf6", size: 0.4, offsetY: 1.0 },
         loaderText: "‧₊˚ ⊹ entering the mystical mushroom room ⊹ ˚₊‧",
         render: {
           kind: "glb",
@@ -668,7 +673,8 @@ export const SCENES = [
         position: [-12.00, 2.00, 11.00],
         rotationY: 1.845,
         animation: "none",
-        bubble: false,
+        // Floating wayfinding orb above the roof — see the note on ac-to-melody.
+        bubble: { kind: "orb", glyph: "🌸", colorA: "#ff7bd5", colorB: "#aae7a0", size: 0.55, offsetY: 1.0 },
         loaderText: "‧₊˚ ✿ entering the sakura spa ✿ ˚₊‧",
         render: {
           kind: "glb",
@@ -693,7 +699,8 @@ export const SCENES = [
         position: [10.00, 0.70, 3.75],
         rotationY: -1.300,
         animation: "none",
-        bubble: false,
+        // Floating wayfinding orb above the roof — see the note on ac-to-melody.
+        bubble: { kind: "orb", glyph: "🫧", colorA: "#61b6f7", colorB: "#89fff7", size: 0.5, offsetY: 1.0 },
         loaderText: "‧₊˚ ⊹ entering Gulliver's office ⊹ ˚₊‧",
         render: {
           kind: "glb",
@@ -1332,7 +1339,7 @@ export const SCENES = [
     url: import.meta.env.BASE_URL + "splats/Random-AC-gullivers-office.spz",
     objectTags: ["ac"],
     hideInPicker: true,
-    // TUNE — placeholder spawn.
+
     spawn: {
       position: [-1.06, 1.41, 0.71],
       quaternion: [0.003, -0.158, 0.001, 0.987],

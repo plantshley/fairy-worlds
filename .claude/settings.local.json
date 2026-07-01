@@ -40,10 +40,18 @@
       "Read(//c/tmp/**)",
       "Bash(cp /tmp/zen-a.glb public/props/zen-house.glb)",
       "Bash(rm -f public/props/zen-house.glb.bak /tmp/zen-a.glb /tmp/zen-b.glb)",
-      "Bash(node --check src/three/decoEditor.js)"
+      "Bash(node --check src/three/decoEditor.js)",
+      "Bash(node -e \"console.log\\(require\\('@gltf-transform/core/package.json'\\).version\\)\")",
+      "Bash(node -e \"const{Document,NodeIO}=require\\('@gltf-transform/core'\\);const{prune,dedup}=require\\('@gltf-transform/functions'\\);console.log\\('core+functions load OK', typeof NodeIO, typeof prune, typeof dedup\\)\")",
+      "Bash(node tools/strip_glb_outliers.mjs public/props/ac-house-notreefence.glb /tmp/ac-house-clean.glb)",
+      "Bash(awk '{print $5, $NF}')",
+      "Bash(node /tmp/glbinspect.mjs /tmp/ac-house-clean.glb)",
+      "Bash(awk '{print \"new size:\", $5}')",
+      "Bash(node /tmp/glbinspect.mjs public/props/ac-house-notreefence.glb)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\ashle\\Downloads"
+      "C:\\Users\\ashle\\Downloads",
+      "\\tmp"
     ]
   }
 }
