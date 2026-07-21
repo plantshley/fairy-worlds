@@ -118,13 +118,23 @@ export function createCharacterPicker({
       colorSection.row.appendChild(wrap);
     }
     const accessoryColorRows = {};
+    const accessoryColorLabels = {};
     for (const { id, label, defaultColor } of PROCEDURAL_CUSTOMIZATION_SCHEMA.accessories) {
       const initial = state.accessoryColors?.[id] ?? defaultColor;
       const row = makeSphereColorRow(label, initial, (hex) => {
         character.setAccessoryColor?.(id, hex);
         onCustomize?.();
       });
-      row.hidden = !state.accessories[id];
+      // lashes shares its material with the always-visible eyeline arcs, so its
+      // color row stays visible even when the lashes accessory is off — it just
+      // relabels to "eyeline" so the eyeline color can still be changed
+      if (id === "lashes") {
+        const labelEl = row.querySelector("span:last-child");
+        accessoryColorLabels[id] = labelEl;
+        labelEl.textContent = state.accessories[id] ? "lashes" : "eyeline";
+      } else {
+        row.hidden = !state.accessories[id];
+      }
       accessoryColorRows[id] = row;
       colorSection.row.appendChild(row);
     }
@@ -161,7 +171,12 @@ export function createCharacterPicker({
         pill.classList.toggle("active", next);
         character.setAccessory(id, next);
         const colorRow = accessoryColorRows[id];
-        if (colorRow) colorRow.hidden = !next;
+        if (id === "lashes") {
+          const labelEl = accessoryColorLabels[id];
+          if (labelEl) labelEl.textContent = next ? "lashes" : "eyeline";
+        } else if (colorRow) {
+          colorRow.hidden = !next;
+        }
         onCustomize?.();
       });
       accSec.row.appendChild(pill);
