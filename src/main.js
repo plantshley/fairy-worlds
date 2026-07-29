@@ -33,6 +33,7 @@ setNavMode("picker");
 const CHARACTER_KEY = "fairy-worlds-character";
 const CONFIG_KEY = "fairy-worlds-character-config-v2";
 const OBJECT_MODE_KEY = "fairy-worlds-object-mode";
+const THIRD_PERSON_KEY = "fairy-worlds-third-person";
 localStorage.removeItem("fairy-worlds-character-config");
 
 function loadSavedCharacterId() {
@@ -131,7 +132,7 @@ const worldPicker = createWorldPicker({
     } else {
       picker?.close();
       await manager.transitionTo("world", { scene: sceneDef });
-      companion.show();
+      syncCompanionVisibility();
     }
     worldPicker.setActiveScene(sceneDef.id);
   },
@@ -221,6 +222,8 @@ const picker = createCharacterPicker({
     if (character?.getState) saveConfig(character.getState());
     picker.setActive(id, character, def);
     companion.setCharacter(id, character?.getState?.());
+    worldMode.setCharacter(def, character?.getState?.());
+    applyThirdPerson(); // hides/shows the ꩜ toggle + drops TP for non-fairy
   },
   onCustomize: () => {
     const character = homeMode.getCharacter();
@@ -228,6 +231,8 @@ const picker = createCharacterPicker({
       const state = character.getState();
       saveConfig(state);
       companion.applyState(state);
+      // Keep the in-world third-person fairy in sync with live customization.
+      worldMode.setCharacter(CHARACTERS.find((c) => c.id === savedId), state);
     }
   },
 });
@@ -239,6 +244,7 @@ const initialCharacter = await homeMode.setCharacter(savedId, initialConfig);
 picker.setActive(savedId, initialCharacter, CHARACTERS.find((c) => c.id === savedId));
 saveCharacterId(savedId);
 companion.setCharacter(savedId, initialCharacter?.getState?.());
+worldMode.setCharacter(CHARACTERS.find((c) => c.id === savedId), initialCharacter?.getState?.());
 
 // First-run nudge: leave the picker closed (per design) but gently pulse the
 // "pick a character" button so new visitors notice it. Clears on first click.
@@ -259,7 +265,7 @@ document.getElementById("btn-enter-world")?.addEventListener("click", async () =
   setNavMode("picker");
   picker.close();
   await manager.transitionTo("world");
-  companion.show();
+  syncCompanionVisibility();
 });
 document.getElementById("btn-home")?.addEventListener("click", goHomeOrHub);
 document.getElementById("btn-portals-hub")?.addEventListener("click", async () => {
@@ -267,7 +273,7 @@ document.getElementById("btn-portals-hub")?.addEventListener("click", async () =
   if (!hub) return;
   picker.close();
   await manager.transitionTo("world", { scene: hub });
-  companion.show();
+  syncCompanionVisibility();
   // onSceneLoaded fires after the splat finishes loading and sets navMode to "hub".
 });
 document.getElementById("btn-recenter")?.addEventListener("click", () => {
@@ -315,6 +321,77 @@ objectModeToggle?.addEventListener("click", () => {
 spawnBoxBtn?.addEventListener("click", () => {
   if (manager.currentName() === "world") worldMode.spawnBox();
 });
+
+// ---- hidden third-person (fairy) mode ---------------------------------
+const tpHomeBtn = document.getElementById("btn-third-person-home");
+const tpWorldBtn = document.getElementById("btn-third-person-world");
+
+function characterIsFairy(id) {
+  return CHARACTERS.find((c) => c.id === id)?.kind === "procedural";
+}
+function isThirdPersonOn() {
+  return localStorage.getItem(THIRD_PERSON_KEY) === "1";
+}
+// Companion cameo is hidden while third person drives the in-world fairy.
+function syncCompanionVisibility() {
+  const inWorld = manager.currentName() === "world";
+  const tpActive = characterIsFairy(savedId) && isThirdPersonOn();
+  if (inWorld && !tpActive) companion.show();
+  else companion.hide();
+}
+// Park the home ꩜ button just left of the object-mode pill. Measured at runtime
+// (the pill's width changes with its on/off label) so the two never overlap —
+// on desktop both are position:fixed and can't be flexed together.
+function positionHomeTpButton() {
+  if (!tpHomeBtn || !objectModeToggle || tpHomeBtn.hasAttribute("hidden")) return;
+  const rect = objectModeToggle.getBoundingClientRect();
+  if (rect.width === 0) return; // not laid out (hidden / not home mode)
+  tpHomeBtn.style.right = window.innerWidth - rect.left + 8 + "px";
+}
+function updateThirdPersonButtons() {
+  const fairy = characterIsFairy(savedId);
+  const on = fairy && isThirdPersonOn();
+  for (const btn of [tpHomeBtn, tpWorldBtn]) {
+    if (!btn) continue;
+    btn.toggleAttribute("hidden", !fairy);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  // Drives the mobile in-scene layout: when third person is on, CSS surfaces the
+  // ✿ home button (companion cameo is hidden, so it carries the way home).
+  document.body.dataset.thirdPerson = on ? "on" : "off";
+  positionHomeTpButton();
+}
+window.addEventListener("resize", positionHomeTpButton);
+// Re-measure once the display font swaps in (it changes the pill's width).
+document.fonts?.ready?.then(positionHomeTpButton);
+// Apply the current preference across world mode, object mode, and the UI.
+// Third person forces object mode OFF (they'd fight over the physics world).
+function applyThirdPerson() {
+  const on = characterIsFairy(savedId) && isThirdPersonOn();
+  if (on && localStorage.getItem(OBJECT_MODE_KEY) !== "0") {
+    localStorage.setItem(OBJECT_MODE_KEY, "0");
+    applyObjectModeUI();
+    window.dispatchEvent(new Event("objectmodechange"));
+  }
+  worldMode.setThirdPerson(on);
+  updateThirdPersonButtons();
+  syncCompanionVisibility();
+}
+function toggleThirdPerson() {
+  if (!characterIsFairy(savedId)) return;
+  localStorage.setItem(THIRD_PERSON_KEY, isThirdPersonOn() ? "0" : "1");
+  applyThirdPerson();
+}
+
+tpHomeBtn?.addEventListener("click", toggleThirdPerson);
+tpWorldBtn?.addEventListener("click", toggleThirdPerson);
+window.addEventListener("keydown", (e) => {
+  if (e.key !== "3") return;
+  if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+  toggleThirdPerson();
+});
+
+applyThirdPerson();
 
 document.getElementById("btn-change-character")?.addEventListener("click", () => {
   const character = homeMode.getCharacter();

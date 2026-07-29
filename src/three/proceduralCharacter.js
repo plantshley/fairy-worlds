@@ -130,30 +130,32 @@ function makeBody(skinMat) {
   return group;
 }
 
-function makeLegs(skinMat, shoesMat) {
-  const group = new THREE.Group();
+// Legs/arms live on the shared limb pivots (see createProceduralCharacter) so
+// the host can swing them for a walk gait. All positions below are relative to
+// the pivot (shoulder or hip), preserving the source's world-space rest pose.
+function makeLegs(skinMat, shoesMat, limbs) {
   for (const side of [-1, 1]) {
+    const pivot = side > 0 ? limbs.legL : limbs.legR;
     const leg = new THREE.Mesh(
       new THREE.CapsuleGeometry(BODY.legRadius, ANCHORS.hip - ANCHORS.ankle - 0.05, 8, 16),
       skinMat,
     );
-    leg.position.set(side * BODY.hipHalfWidth, (ANCHORS.hip + ANCHORS.ankle) / 2, 0);
-    group.add(leg);
+    leg.position.set(0, (ANCHORS.hip + ANCHORS.ankle) / 2 - ANCHORS.hip, 0);
+    pivot.add(leg);
 
     const foot = new THREE.Mesh(
       new THREE.SphereGeometry(0.08, 16, 12),
       shoesMat,
     );
-    foot.position.set(side * BODY.hipHalfWidth, ANCHORS.floor + 0.03, 0.04);
+    foot.position.set(0, ANCHORS.floor + 0.03 - ANCHORS.hip, 0.04);
     foot.scale.set(0.95, 0.5, 1.4);
-    group.add(foot);
+    pivot.add(foot);
   }
-  return group;
 }
 
-function makeArms(skinMat) {
-  const group = new THREE.Group();
+function makeArms(skinMat, limbs) {
   for (const side of [-1, 1]) {
+    const pivot = side > 0 ? limbs.armL : limbs.armR;
     const arm = new THREE.Group();
     const armMesh = new THREE.Mesh(
       new THREE.CapsuleGeometry(BODY.armRadius, BODY.armLength - 2 * BODY.armRadius, 8, 16),
@@ -170,11 +172,9 @@ function makeArms(skinMat) {
     hand.scale.set(1, 0.9, 0.9);
     arm.add(hand);
 
-    arm.position.set(side * BODY.shoulderHalfWidth * 0.82, ANCHORS.shoulder, 0);
     arm.rotation.z = side * 0.32; // slight outward flare
-    group.add(arm);
+    pivot.add(arm);
   }
-  return group;
 }
 
 function makeHead(skinMat, blushMat) {
@@ -523,8 +523,11 @@ function makeHairVariant(id, material) {
 // `accentMaterial` (the bottom color) is used only by the overalls bib + straps,
 // so the dungarees track whatever bottom color is selected; `buttonMaterial` is a
 // slightly darker shade of that color for the strap buttons
-function makeShirtVariant(id, material, accentMaterial, buttonMaterial) {
+// Returns { group, limbParts }: `group` mounts on the root; `limbParts` are the
+// sleeves, parented onto the arm pivots so they swing with the walk gait.
+function makeShirtVariant(id, material, accentMaterial, buttonMaterial, limbs) {
   const group = new THREE.Group();
+  const limbParts = [];
   const top = ANCHORS.shoulder + 0.02;
   const bottom = id === "crop" ? (ANCHORS.shoulder + ANCHORS.waist) / 2 + 0.02 : ANCHORS.waist+0.025;
   const h = top - bottom;
@@ -542,14 +545,15 @@ function makeShirtVariant(id, material, accentMaterial, buttonMaterial) {
         new THREE.SphereGeometry(BODY.armRadius + 0.018, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6),
         material,
       );
-      sleeve.position.set(side * BODY.shoulderHalfWidth * 0.82, ANCHORS.shoulder, 0);
       sleeve.rotation.z = side * 0.32;
-      group.add(sleeve);
+      const pivot = side > 0 ? limbs.armL : limbs.armR;
+      pivot.add(sleeve); // pivot sits exactly at the shoulder anchor
+      limbParts.push(sleeve);
     }
   }
 
   if (id === "long") {
-    // full sleeves down the arms — match arm position/rotation in makeArms
+    // full sleeves down the arms — match arm rotation in makeArms
     for (const side of [-1, 1]) {
       const sleeveLen = BODY.armLength * 0.8;
       const sleeve = new THREE.Mesh(
@@ -557,11 +561,12 @@ function makeShirtVariant(id, material, accentMaterial, buttonMaterial) {
         material,
       );
       const arm = new THREE.Group();
-      arm.position.set(side * BODY.shoulderHalfWidth * 0.82, ANCHORS.shoulder, 0);
       arm.rotation.z = side * 0.32;
       sleeve.position.y = -sleeveLen / 2;
       arm.add(sleeve);
-      group.add(arm);
+      const pivot = side > 0 ? limbs.armL : limbs.armR;
+      pivot.add(arm);
+      limbParts.push(arm);
     }
   }
 
@@ -631,11 +636,12 @@ function makeShirtVariant(id, material, accentMaterial, buttonMaterial) {
     }
   }
 
-  return group;
+  return { group, limbParts };
 }
 
-// yoke + crotch seat + two trouser legs — shared by pants and overalls
-function addTrouserBase(group, material, waistY) {
+// yoke + crotch seat + two trouser legs — shared by pants and overalls.
+// The trouser legs go onto the leg pivots (via limbParts) to ride the gait.
+function addTrouserBase(group, material, waistY, limbs, limbParts) {
   const yokeHeight = 0.1;
   const seatY = waistY - yokeHeight + 0.01;
   const yokeBottomR = BODY.hipHalfWidth + BODY.legRadius + 0.0;
@@ -662,13 +668,18 @@ function addTrouserBase(group, material, waistY) {
       new THREE.CylinderGeometry(BODY.legRadius + 0.0075, BODY.legRadius + 0.0175, legTop - ANCHORS.ankle - 0.03, 20),
       material,
     );
-    leg.position.set(side * BODY.hipHalfWidth, 0.03 + (legTop + ANCHORS.ankle) / 2, 0);
-    group.add(leg);
+    leg.position.set(0, 0.03 + (legTop + ANCHORS.ankle) / 2 - ANCHORS.hip, 0);
+    const pivot = side > 0 ? limbs.legL : limbs.legR;
+    pivot.add(leg);
+    limbParts.push(leg);
   }
 }
 
-function makeBottomVariant(id, material) {
+// Returns { group, limbParts } like makeShirtVariant — trouser legs and shorts
+// cuffs ride the leg pivots; skirt/yoke/seat stay on the body.
+function makeBottomVariant(id, material, limbs) {
   const group = new THREE.Group();
+  const limbParts = [];
   const waistY = ANCHORS.waist;
   if (id === "skirt") {
     const h = 0.26;
@@ -688,7 +699,7 @@ function makeBottomVariant(id, material) {
     hem.material.side = THREE.DoubleSide;
     group.add(hem);
   } else if (id === "pants") {
-    addTrouserBase(group, material, waistY);
+    addTrouserBase(group, material, waistY, limbs, limbParts);
   } else if (id === "shorts") {
     const yokeHeight = 0.1;
     const shortsHeight = 0.1;
@@ -714,11 +725,13 @@ function makeBottomVariant(id, material) {
         new THREE.CylinderGeometry(BODY.legRadius + 0.0075, BODY.legRadius + 0.0175, 0.2, 18),
         material,
       );
-      cuff.position.set(side * BODY.hipHalfWidth, 0.015 + waistY - shortsHeight - 0.005, 0);
-      group.add(cuff);
+      cuff.position.set(0, 0.015 + waistY - shortsHeight - 0.005 - ANCHORS.hip, 0);
+      const pivot = side > 0 ? limbs.legL : limbs.legR;
+      pivot.add(cuff);
+      limbParts.push(cuff);
     }
   }
-  return group;
+  return { group, limbParts };
 }
 
 function makeWingsVariant(id, material) {
@@ -989,28 +1002,36 @@ function buildStar(material) {
   return star;
 }
 
-function buildSocks(material) {
-  const group = new THREE.Group();
+// Socks ride the leg pivots so they swing with the gait. The returned node is
+// an empty marker kept in the accessories group; the actual meshes live on the
+// pivots and are listed in node.userData.parts, which visibility fans out to.
+function buildSocks(material, limbs) {
+  const node = new THREE.Group();
+  const parts = [];
   const sockBottom = ANCHORS.ankle + 0.0;
   const sockTop = ANCHORS.ankle + 0.22; // mid-shin
   const sockH = sockTop - sockBottom;
   for (const side of [-1, 1]) {
+    const pivot = side > 0 ? limbs.legL : limbs.legR;
     const sock = new THREE.Mesh(
       new THREE.CylinderGeometry(BODY.legRadius + 0.005, BODY.legRadius + 0.001, sockH, 20),
       material,
     );
-    sock.position.set(side * BODY.hipHalfWidth, (sockBottom + sockTop) / 2, 0);
-    group.add(sock);
+    sock.position.set(0, (sockBottom + sockTop) / 2 - ANCHORS.hip, 0);
+    pivot.add(sock);
+    parts.push(sock);
     // rolled cuff at the top — slightly thicker torus to suggest a folded edge
     const cuff = new THREE.Mesh(
       new THREE.TorusGeometry(BODY.legRadius + 0.001, 0.001, 20, 20),
       material,
     );
     cuff.rotation.x = Math.PI / 2;
-    cuff.position.set(side * BODY.hipHalfWidth, sockTop, 0);
-    group.add(cuff);
+    cuff.position.set(0, sockTop - ANCHORS.hip, 0);
+    pivot.add(cuff);
+    parts.push(cuff);
   }
-  return group;
+  node.userData.parts = parts;
+  return node;
 }
 
 // pivot at head center oriented so its local +z is the head-surface normal at
@@ -1202,7 +1223,7 @@ function buildBlushStar(material) {
   return group;
 }
 
-function makeAccessories() {
+function makeAccessories(limbs) {
   const group = new THREE.Group();
   const materials = {};
   const nodes = {};
@@ -1246,7 +1267,7 @@ function makeAccessories() {
     else if (def.id === "lashes") node = buildLashes(mat);
     else if (def.id === "mustache") node = buildMustache(mat);
     else if (def.id === "star") node = buildStar(mat);
-    else if (def.id === "socks") node = buildSocks(mat);
+    else if (def.id === "socks") node = buildSocks(mat, limbs);
     else if (def.id === "glasses") node = buildGlasses(mat);
     else if (def.id === "freckles") node = buildFreckles(mat);
     else if (def.id === "flowerCrown") node = buildFlowerCrown(mat);
@@ -1274,6 +1295,23 @@ export function createProceduralCharacter(initialState = {}) {
   const root = new THREE.Group();
   root.name = "procedural-character";
 
+  // Limb pivots at the shoulders and hips — the host rotates these (.rotation.x)
+  // for the walk gait (see stepGait in src/three/gait.js). Arms/legs AND
+  // limb-riding outfit parts (sleeves, socks, trouser legs, cuffs) are parented
+  // here so the whole limb swings as one. At rotation 0 the rest pose is
+  // identical to the pre-rig character, so home/companion render unchanged.
+  const limbs = {
+    armL: new THREE.Group(),
+    armR: new THREE.Group(),
+    legL: new THREE.Group(),
+    legR: new THREE.Group(),
+  };
+  limbs.armL.position.set(BODY.shoulderHalfWidth * 0.82, ANCHORS.shoulder, 0);
+  limbs.armR.position.set(-BODY.shoulderHalfWidth * 0.82, ANCHORS.shoulder, 0);
+  limbs.legL.position.set(BODY.hipHalfWidth, ANCHORS.hip, 0);
+  limbs.legR.position.set(-BODY.hipHalfWidth, ANCHORS.hip, 0);
+  root.add(limbs.armL, limbs.armR, limbs.legL, limbs.legR);
+
   const skinMat = softMat(state.colors.skin);
   const hairMat = softMat(state.colors.hair, { roughness: 0.75 });
   const shirtMat = softMat(state.colors.shirt);
@@ -1292,16 +1330,16 @@ export function createProceduralCharacter(initialState = {}) {
   });
 
   root.add(makeBody(skinMat));
-  root.add(makeLegs(skinMat, shoesMat));
-  root.add(makeArms(skinMat));
+  makeLegs(skinMat, shoesMat, limbs);
+  makeArms(skinMat, limbs);
   root.add(makeHead(skinMat, blushMat));
   root.add(makeEyes(irisMat, pupilMat));
 
   let hairGroup = makeHairVariant(state.variants.hair, hairMat);
-  let bottomGroup = makeBottomVariant(state.variants.bottom, bottomMat);
+  let { group: bottomGroup, limbParts: bottomParts } = makeBottomVariant(state.variants.bottom, bottomMat, limbs);
   let wingsGroup = makeWingsVariant(state.variants.wings, wingsMat);
-  const { group: accessoriesGroup, materials: accessoryMaterials, nodes: accessoryNodes } = makeAccessories();
-  let shirtGroup = makeShirtVariant(state.variants.shirt, shirtMat, bottomMat, overallButtonMat);
+  const { group: accessoriesGroup, materials: accessoryMaterials, nodes: accessoryNodes } = makeAccessories(limbs);
+  let { group: shirtGroup, limbParts: shirtParts } = makeShirtVariant(state.variants.shirt, shirtMat, bottomMat, overallButtonMat, limbs);
 
   root.add(shirtGroup);
   root.add(hairGroup);
@@ -1312,10 +1350,25 @@ export function createProceduralCharacter(initialState = {}) {
   // they share the lashes accessory material so color stays in sync
   root.add(buildLashArcs(accessoryMaterials.lashes));
 
+  // Visibility helper: socks live on the leg pivots, so their marker node
+  // fans visibility out to userData.parts; every other accessory is direct.
+  function setNodeVisibility(node, visible) {
+    node.visible = visible;
+    if (node.userData.parts) node.userData.parts.forEach((p) => { p.visible = visible; });
+  }
+
+  // detach + dispose the limb-riding parts of a replaced shirt/bottom variant
+  function detachLimbParts(parts) {
+    parts.forEach((p) => {
+      if (p.parent) p.parent.remove(p);
+      p.traverse((obj) => obj.geometry?.dispose?.());
+    });
+  }
+
   // apply initial accessory visibility + colors
   for (const def of ACCESSORY_DEFS) {
     const node = accessoryNodes[def.id];
-    if (node) node.visible = !!state.accessories[def.id];
+    if (node) setNodeVisibility(node, !!state.accessories[def.id]);
     const color = state.accessoryColors[def.id] ?? def.defaultColor;
     applyAccessoryColor(def.id, color);
   }
@@ -1362,7 +1415,8 @@ export function createProceduralCharacter(initialState = {}) {
       root.add(hairGroup);
     } else if (partId === "bottom") {
       root.remove(bottomGroup);
-      bottomGroup = makeBottomVariant(variantId, bottomMat);
+      detachLimbParts(bottomParts);
+      ({ group: bottomGroup, limbParts: bottomParts } = makeBottomVariant(variantId, bottomMat, limbs));
       root.add(bottomGroup);
     } else if (partId === "wings") {
       root.remove(wingsGroup);
@@ -1370,7 +1424,8 @@ export function createProceduralCharacter(initialState = {}) {
       root.add(wingsGroup);
     } else if (partId === "shirt") {
       root.remove(shirtGroup);
-      shirtGroup = makeShirtVariant(variantId, shirtMat, bottomMat, overallButtonMat);
+      detachLimbParts(shirtParts);
+      ({ group: shirtGroup, limbParts: shirtParts } = makeShirtVariant(variantId, shirtMat, bottomMat, overallButtonMat, limbs));
       root.add(shirtGroup);
     }
   }
@@ -1378,7 +1433,7 @@ export function createProceduralCharacter(initialState = {}) {
   function setAccessory(id, visible) {
     state.accessories[id] = visible;
     const node = accessoryNodes[id];
-    if (node) node.visible = visible;
+    if (node) setNodeVisibility(node, visible);
   }
 
   function setAccessoryColor(id, hex) {
@@ -1408,6 +1463,7 @@ export function createProceduralCharacter(initialState = {}) {
 
   return {
     root,
+    limbs,
     setColor,
     setVariant,
     setAccessory,

@@ -315,6 +315,14 @@ export function createPhysics({ scene }) {
   let sceneCollider = null; // { body, mesh } | null  (mesh is always present for cursor raycasting; visible only in debug)
   let sceneColliderToken = 0;
 
+  // True once a per-scene trimesh collider is installed (not merely requested).
+  // Third-person spawn uses this to know whether a downward floor raycast will
+  // hit the real floor vs. only the flat y=0 net — so it can defer the spawn
+  // until the collider is actually in the world.
+  function hasSceneCollider() {
+    return !!sceneCollider;
+  }
+
   function clearSceneCollider() {
     if (!sceneCollider) return;
     if (sceneCollider.mesh) {
@@ -401,6 +409,17 @@ export function createPhysics({ scene }) {
       body,
     );
 
+    // A freshly created collider is NOT in the raycast/query broad-phase until
+    // the world steps — an immediate castRay against it returns null (verified).
+    // The third-person spawn raycasts for the floor the instant this resolves,
+    // so without this it misses and the fairy spawns on the fallback estimate
+    // until the next ⊙. Step once with a near-zero timestep to build the query
+    // structures without meaningfully advancing any dynamics.
+    const _prevTs = world.timestep;
+    world.timestep = 1e-6;
+    world.step();
+    world.timestep = _prevTs;
+
     // Wireframe overlay only in debug — dragging raycasts the Rapier collider,
     // not this mesh, so it isn't needed for interaction.
     let mesh = null;
@@ -424,6 +443,125 @@ export function createPhysics({ scene }) {
     sceneCollider = { body, mesh };
   }
 
+  // Kinematic capsule character controller for the third-person fairy. Collides
+  // against the scene trimesh + the y=0 ground net (which doubles as a fallback
+  // floor where a collider has gaps). `radius`/`halfHeight` describe the capsule
+  // (total height = 2*halfHeight + 2*radius); feet sit at center.y −
+  // (halfHeight + radius). The controller resolves walls/slopes/steps; we run
+  // gravity ourselves and reset it on contact so the fairy hugs the floor.
+  function createCharacter({ radius = 0.22, halfHeight = 0.42, offset = 0.02 } = {}) {
+    const controller = world.createCharacterController(offset);
+    controller.setUp({ x: 0, y: 1, z: 0 });
+    const SNAP = halfHeight * 0.45;
+    // Step/snap heights are relative to the capsule so they scale with the fairy
+    // instead of teleporting it up ~quarter-its-height on small ledges.
+    controller.enableAutostep(halfHeight * 0.5, radius * 0.6, true); // climb small ledges
+    controller.enableSnapToGround(SNAP); // stay glued over dips
+    controller.setMaxSlopeClimbAngle((55 * Math.PI) / 180);
+    controller.setMinSlopeSlideAngle((35 * Math.PI) / 180);
+    controller.setApplyImpulsesToDynamicBodies(true);
+
+    const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased());
+    const collider = world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius), body);
+
+    // Jump take-off speed. h ≈ v²/(2g); ~4.6 m/s clears ~1.1m so the fairy can
+    // hop onto typical dropped props / low ledges. Scales with the capsule.
+    const JUMP_SPEED = 4.6 * (halfHeight / 0.42);
+    const JUMP_BUFFER = 0.15; // s a jump press stays valid, so a press just before landing still fires
+    let vY = 0; // accumulated vertical velocity (gravity + jump)
+    let grounded = false;
+    let jumpBufferT = 0; // seconds remaining on a buffered jump request
+    let airborne = false; // snap-to-ground is off while true (a jump would be cancelled by it)
+    const _next = { x: 0, y: 0, z: 0 };
+    const _disp = { x: 0, y: 0, z: 0 };
+    const _res = { position: _next, grounded: false };
+
+    // Walk on the real scene floor, not the flat y=0 net — Marble floors often
+    // sit a little below y=0, and the net would pop the fairy up above them. The
+    // net stays as a fallback until a scene collider is loaded (same reasoning as
+    // castSurfaceRay's _surfaceFilter). If the trimesh has a hole the fairy can
+    // fall through; ⊙ / toggling off respawns it at the scene spawn.
+    const _charFilter = (c) => !(sceneCollider && c.handle === groundCollider.handle);
+
+    // `desired` is the horizontal step for this frame ({x,z} already scaled by
+    // speed*dt). Gravity is applied on Y internally. Returns the new capsule
+    // center + grounded flag.
+    function move(desired, dt) {
+      // Take off: only from the ground. Turn snap-to-ground OFF so the controller
+      // doesn't immediately glue the fairy back down and swallow the jump. The
+      // buffer lets a press land within JUMP_BUFFER seconds of becoming grounded
+      // (e.g. tapped a hair before touchdown, or on the first frame after spawn).
+      if (jumpBufferT > 0) {
+        if (grounded) {
+          vY = JUMP_SPEED;
+          controller.disableSnapToGround();
+          airborne = true;
+          grounded = false;
+          jumpBufferT = 0;
+        } else {
+          jumpBufferT = Math.max(0, jumpBufferT - dt);
+        }
+      }
+
+      vY = Math.max(vY + GRAVITY.y * dt, -20); // clamp terminal velocity
+      _disp.x = desired.x || 0;
+      _disp.y = vY * dt;
+      _disp.z = desired.z || 0;
+      controller.computeColliderMovement(collider, _disp, undefined, undefined, _charFilter);
+      grounded = controller.computedGrounded();
+      if (grounded && vY <= 0) {
+        vY = 0;
+        if (airborne) {
+          // Landed — re-enable snapping so walking over dips/stairs stays glued.
+          controller.enableSnapToGround(SNAP);
+          airborne = false;
+        }
+      }
+      const corrected = controller.computedMovement();
+      const t = body.translation();
+      _next.x = t.x + corrected.x;
+      _next.y = t.y + corrected.y;
+      _next.z = t.z + corrected.z;
+      body.setNextKinematicTranslation(_next);
+      _res.grounded = grounded;
+      return _res;
+    }
+
+    // Request a jump; fires on the next grounded move() within JUMP_BUFFER.
+    function jump() {
+      jumpBufferT = JUMP_BUFFER;
+    }
+
+    // Hard-set the capsule center (used on spawn/teleport). Sets both the
+    // current and next translation so there's no one-frame interpolation slide.
+    function teleport(pos) {
+      body.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
+      body.setNextKinematicTranslation({ x: pos.x, y: pos.y, z: pos.z });
+      vY = 0;
+      jumpBufferT = 0;
+      // Fresh spawn: assume grounded-pending and snapping on (spawn is placed on
+      // the floor by a raycast, so the first move should glue, not fall through).
+      if (airborne) {
+        controller.enableSnapToGround(SNAP);
+        airborne = false;
+      }
+      grounded = false;
+    }
+
+    function getPosition() {
+      const t = body.translation();
+      return { x: t.x, y: t.y, z: t.z };
+    }
+
+    function dispose() {
+      world.removeCollider(collider, false);
+      world.removeRigidBody(body);
+      world.removeCharacterController(controller);
+    }
+
+    return { move, jump, teleport, getPosition, dispose, radius, halfHeight };
+  }
+
   function dispose() {
     clearAll();
     clearSceneCollider();
@@ -443,7 +581,9 @@ export function createPhysics({ scene }) {
     clearAll,
     loadSceneCollider,
     clearSceneCollider,
+    hasSceneCollider,
     castSurfaceRay,
+    createCharacter,
     dispose,
   };
 }

@@ -379,6 +379,30 @@ export const SCENES = [
   
 
   {
+    id: "twinkle-fairy-village-1-1",
+    world: "Twinkle Fairy Village",
+    title: "Twinkle Fairy Village 1.1",
+    url: import.meta.env.BASE_URL + "splats/Twinkle%20Fairy%20Village%201-1.spz",
+    // TUNE — placeholder spawn. Walk to where you want to start, run
+    // window.logPose(), and paste its position + quaternion here.
+    spawn: {
+      position: [0, 1.5, 0.82],
+      quaternion: [0, 0, 0, 1],
+    },
+  },
+  {
+    id: "twinkle-fairy-village-1-1-pano",
+    world: "Twinkle Fairy Village",
+    title: "Twinkle Fairy Village 1.1-pano",
+    url: import.meta.env.BASE_URL + "splats/Twinkle%20Fairy%20Village%201-1-pano.spz",
+    // TUNE — placeholder spawn.
+    spawn: {
+      position: [0, 1.5, 0.82],
+      quaternion: [0, 0, 0, 1],
+    },
+  },
+
+  {
     id: "lovecore-patio-1-1",
     world: "Random",
     title: "Lovecore Patio",
@@ -430,6 +454,31 @@ export const SCENES = [
     spawn: {
       position: [0.00, 1.17, 0.30],
       quaternion: [0.014, -0.027, 0.001, 1.000],
+    },
+  },
+
+  {
+    id: "deep-sea-cocoon",
+    world: "Random",
+    title: "Deep Sea Cocoon",
+    url: import.meta.env.BASE_URL + "splats/Deep%20Sea%20Cocoon%201-1.spz",
+    // TUNE — placeholder spawn. Walk to where you want to start, run
+    // window.logPose(), and paste its position + quaternion here.
+    spawn: {
+      position: [0, 1.5, 0.82],
+      quaternion: [0, 0, 0, 1],
+    },
+  },
+
+  {
+    id: "the-future-we-were-promised-1-1",
+    world: "Random",
+    title: "The Future We Were Promised",
+    url: import.meta.env.BASE_URL + "splats/The%20Future%20We%20Were%20Promised%201-1.spz",
+    // TUNE — placeholder spawn.
+    spawn: {
+      position: [0, 1.5, 0.82],
+      quaternion: [0, 0, 0, 1],
     },
   },
 
@@ -746,6 +795,7 @@ export const SCENES = [
       // smear over the houses/each other).
       {
         id: "palm-1",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
         position: [12.02, 2.4, -0.04],
         rotationX: 3.142,
@@ -756,6 +806,7 @@ export const SCENES = [
       },
       {
         id: "palm-2",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
         position: [10.85, 2.28, 1.13],
         rotationY: 0.8,
@@ -764,6 +815,7 @@ export const SCENES = [
       },
       {
         id: "palm-3",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
         position: [13.03, 2.43, 2.63],
         rotationY: 0.8,
@@ -772,6 +824,7 @@ export const SCENES = [
       },
       {
         id: "palm-4",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
         position: [7.17, 1.43, 1.47],
         rotationY: -0.451,
@@ -780,6 +833,7 @@ export const SCENES = [
       },
       {
         id: "palm-5",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_coconut_palm_tree.glb",
         position: [9.08, 1.43, 6.93],
         rotationX: 3.142,
@@ -923,6 +977,7 @@ export const SCENES = [
       },
       {
         id: "pine-1",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
         position: [4.98, 1.71, -14.38],
         scale: 2.5842,
@@ -930,6 +985,7 @@ export const SCENES = [
       },
       {
         id: "pine-2",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
         position: [11.35, 2.89, -2.59],
         rotationY: 0.5,
@@ -938,6 +994,7 @@ export const SCENES = [
       },
       {
         id: "pine-3",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
         position: [2.92, 1.76, -15.97],
         scale: 2.5842,
@@ -945,6 +1002,7 @@ export const SCENES = [
       },
       {
         id: "pine-4",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
         position: [-3.54, 1.92, -13.74],
         scale: 2.5842,
@@ -952,6 +1010,7 @@ export const SCENES = [
       },
       {
         id: "pine-5",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
         position: [2.06, 2.24, -17.82],
         scale: 2.5842,
@@ -959,6 +1018,7 @@ export const SCENES = [
       },
       {
         id: "pine-6",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
         position: [-6.16, 2.24, -14.3],
         scale: 2.5842,
@@ -966,6 +1026,7 @@ export const SCENES = [
       },
       {
         id: "pine-7",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
         position: [1.49, 1.76, -12.72],
         scale: 2.5842,
@@ -973,6 +1034,7 @@ export const SCENES = [
       },
       {
         id: "pine-8",
+        alphaTest: 0.5,
         url: import.meta.env.BASE_URL + "props/animal_crossing_pine_tree.glb",
         position: [10.51, 2.89, -9.37],
         rotationY: 0.5,
@@ -1223,6 +1285,22 @@ export const SCENES = [
     },
     portals: [
       {
+        // Orb into the tart apple suite. Billboarded sphere, so rotationY is
+        // cosmetic (omitted). PLACEHOLDER position — TUNE with
+        // window.portal("woodland-to-tart-apple", { x, y, z }) or the prop editor.
+        id: "woodland-to-tart-apple",
+        target: "ac-tart-apple-suite",
+        position: [-3.00, 1.50, -2.50],
+        glyph: "🍎",
+        loaderText: "‧₊˚.into the tart apple suite ⋆˚꩜｡",
+        render: {
+          kind: "orb",
+          size: 0.3,
+          colorA: "#ff5c7a",
+          colorB: "#ffe08a",
+        },
+      },
+      {
         id: "woodland-to-mushroom",
         target: "mushroom-forest",
         // Return ~1m behind the spawn ([-0.49, 1.49, 2.11], yaw -0.052) to the
@@ -1238,6 +1316,39 @@ export const SCENES = [
           radius: 0.5,
           colorA: "#cba6e2",
           colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    // Reached only via the orb in the woodland interior. Portal-only.
+    id: "ac-tart-apple-suite",
+    world: "Animal Crossing",
+    title: "Tart Apple Suite",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-tart-apple-suite.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    // TUNE — placeholder spawn. Walk to where you want to arrive, run
+    // window.logPose(), and paste its position + quaternion here.
+    spawn: {
+      position: [0.00, 1.50, 1.73],
+      quaternion: [0.000, 0.000, 0.000, 1.000],
+    },
+    portals: [
+      {
+        // Matching return orb back to the woodland room. ~1m behind the spawn;
+        // TUNE with window.portal("tart-apple-to-woodland", { x, y, z }).
+        id: "tart-apple-to-woodland",
+        target: "woodland-interior",
+        position: [0.00, 1.40, 2.73],
+        glyph: "🍎",
+        loaderText: "⋆.˚returning to the woodland room ⋆˖࿔",
+        render: {
+          kind: "orb",
+          size: 0.4,
+          colorA: "#ff5c7a",
+          colorB: "#ffe08a",
         },
       },
     ],
@@ -1400,6 +1511,22 @@ export const SCENES = [
     },
     portals: [
       {
+        // Orb into the gothic blossom chamber. Billboarded sphere, so rotationY
+        // is cosmetic (omitted). PLACEHOLDER position — TUNE with
+        // window.portal("mermaid-to-gothic", { x, y, z }) or the prop editor.
+        id: "mermaid-to-gothic",
+        target: "ac-blossom-gothic-chamber",
+        position: [0.25, 1.00, -2.75],
+        glyph: "🥀",
+        loaderText: "‧₊˚.into the gothic blossom chamber ⋆˚꩜｡",
+        render: {
+          kind: "orb",
+          size: 0.4,
+          colorA: "#d12a86",
+          colorB: "#e79bd0",
+        },
+      },
+      {
         id: "mermaid-to-gullivers",
         target: "ac-gullivers-office",
         // Return ~1m behind the spawn ([0.00, 1.50, 1.73], yaw -0.004) to
@@ -1414,6 +1541,37 @@ export const SCENES = [
           radius: 0.5,
           colorA: "#cba6e2",
           colorB: "#e6d6f5",
+        },
+      },
+    ],
+  },
+
+  {
+    // Reached only via the orb in the dreamy mermaid sanctuary. Portal-only.
+    id: "ac-blossom-gothic-chamber",
+    world: "Animal Crossing",
+    title: "Gothic Blossom Chamber",
+    url: import.meta.env.BASE_URL + "splats/Random-AC-blossom-gothic-chamber.spz",
+    objectTags: ["ac"],
+    hideInPicker: true,
+    spawn: {
+      position: [-0.20, 1.66, 0.79],
+      quaternion: [0.005, -0.195, 0.001, 0.981],
+    },
+    portals: [
+      {
+        // Matching return orb back to the mermaid sanctuary. ~1m behind the
+        // spawn; TUNE with window.portal("gothic-to-mermaid", { x, y, z }).
+        id: "gothic-to-mermaid",
+        target: "ac-dreamy-mermaid-sanctuary",
+        position: [0.00, 1.40, 2.73],
+        glyph: "🥀",
+        loaderText: "⋆.˚returning to the mermaid sanctuary ⋆˖࿔",
+        render: {
+          kind: "orb",
+          size: 0.4,
+          colorA: "#d12a86",
+          colorB: "#e79bd0",
         },
       },
     ],
@@ -1437,6 +1595,9 @@ export const SCENES = [
     // world arrows ever land on the hub.
     hideInPicker: true,
     url: import.meta.env.BASE_URL + "splats/Heart%20Pool%20Pavilion.spz",
+    // Same splat as heart-pool-1-1-1004, so reuse its collider (the hub id has no
+    // collider file of its own). Needed for third-person floor/wall collision.
+    collider: import.meta.env.BASE_URL + "colliders/heart-pool-1-1-1004_collider.glb",
     spawn: {
       position: [-0.02, 1.92, -3.69],
       quaternion: [-0.004, 0.993, 0.039, 0.109],

@@ -153,7 +153,85 @@ html, body {
     rgba(255, 172, 234, 0.75) 50%,
     rgba(200, 179, 251, 0.75) 100%);
 }
-body:not([data-mode="home"]) .object-mode-toggle { display: none; }
+body:not([data-mode="home"]) .object-mode-toggle:not(.tp-toggle) { display: none; }
+
+/* Hidden third-person (fairy) toggle — circular ꩜ button. The home instance
+   (shares .object-mode-toggle) sits just left of object-mode; the world instance
+   (shares .recenter-btn) sits right of the ⊙ origin button. Both only appear
+   when the fairy is selected (JS toggles the [hidden] attribute). */
+.tp-toggle {
+  width: 34px;
+  height: 34px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  white-space: normal;
+
+}
+.tp-toggle[hidden] { display: none !important; }
+/* Home ꩜ sits left of the object-mode pill (id beats .object-mode-toggle's right).
+   Sized just slightly taller than the portals-glade / object-mode pills beside it
+   (those are ~27px tall) rather than the default 34px .tp-toggle circle. */
+#btn-third-person-home {
+  right: 168px;
+  width: 25px;
+  height: 25px;
+  font-size: 14px;
+}
+body:not([data-mode="home"]) #btn-third-person-home { display: none; }
+.tp-toggle[aria-pressed="true"] {
+  border-color: rgba(255, 216, 242, 0.95);
+  box-shadow: 0 0 14px rgba(255, 172, 234, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+}
+/* Mobile in-scene third-person toggle. On desktop the ꩜ button rides inside the
+   centered #world-hud bar; on the mobile layout that bar's contents are hidden, so
+   surface it as a fixed circle in the TOP-RIGHT corner — clear of the world-picker
+   title, which sits centered on the same row. Only when the fairy is selected (JS
+   keeps the [hidden] attr in sync, hence :not([hidden]) so a plain id rule can't
+   override it and show the button for non-fairy characters).
+   Breakpoint matches the rest of the mobile HUD (max-width:900px OR a coarse/no-hover
+   pointer) — width-gated so it applies even where the device reports pointer:fine. */
+@media (max-width: 900px), (pointer: coarse), (hover: none) {
+  #btn-third-person-world:not([hidden]) {
+    display: flex !important;
+    position: fixed !important;
+    top: 8px !important;
+    right: 8px !important;
+    left: auto !important;
+    z-index: 13 !important;
+    margin: 0 !important;
+    width: 23px !important;
+    height: 23px !important;
+    font-size: 12px !important;
+  }
+  /* AC portal-nav layout parks the drop-object circle at top-right; slide the ꩜
+     toggle just left of it so they never stack. (In third person object mode is
+     forced off, so this only bites when toggling in from a portal scene.) */
+  body[data-nav-mode="portal"] #btn-third-person-world:not([hidden]) {
+    right: 52px !important;
+  }
+  /* In third person the companion cameo is hidden — and with it the tap-home
+     affordance — so pin the ✿ home button top-left, mirroring the ꩜ toggle.
+     Force-shown past the phone rules that hide #world-hud .home-btn. */
+  body[data-third-person="on"] #world-hud .home-btn,
+  body[data-third-person="on"] .home-btn {
+    display: flex !important;
+    position: fixed !important;
+    top: 8px !important;
+    left: 8px !important;
+    right: auto !important;
+    z-index: 13 !important;
+    margin: 0 !important;
+    width: 23px !important;
+    height: 23px !important;
+    font-size: 12px !important;
+  }
+}
 
 /* #home-toolbar wraps portals-hub + object-mode so mobile can lay them out
    as a centered (or right-anchored) flex pair. On desktop it's display:contents,
@@ -884,6 +962,50 @@ canvas { touch-action: none; }
   box-shadow: 0 0 12px rgba(255, 172, 234, 0.65);
   pointer-events: none;
   transition: transform 80ms ease-out;
+}
+
+/* Third-person mobile controls: joystick bottom-left, jump bottom-right. The
+   joystick reuses .touch-stick (which is position:relative), so anchor it here.
+   Both are created/toggled by thirdPersonController.js and only shown on coarse
+   pointers while third person is active. */
+#tp-joystick {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 16;
+}
+#tp-joystick[hidden] { display: none; }
+#tp-jump {
+  position: fixed;
+  right: 18px;
+  bottom: 22px;
+  z-index: 16;
+  width: 84px;
+  height: 84px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 38px;
+  line-height: 1;
+  color: rgba(90, 40, 90, 0.85);
+  background: radial-gradient(circle at 50% 40%,
+    rgba(255,255,255,0.28) 0%,
+    rgba(255, 172, 234, 0.32) 55%,
+    rgba(168, 131, 255, 0.42) 100%);
+  border: 1px solid rgba(255,255,255,0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px rgba(120, 60, 140, 0.25);
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 60ms ease-out, box-shadow 60ms ease-out;
+}
+#tp-jump[hidden] { display: none; }
+#tp-jump.pressed {
+  transform: scale(0.9);
+  box-shadow: 0 0 16px rgba(255, 172, 234, 0.75);
 }
 
 /* ---- touch devices (mobile + tablet). keyed on the PRIMARY pointer being coarse

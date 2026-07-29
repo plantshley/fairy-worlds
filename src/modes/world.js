@@ -5,10 +5,12 @@ import { getColliderForScene, getObjectsForScene } from "../data/sceneAssets.js"
 import { showLoader, updateLoader, hideLoader } from "../ui/loader.js";
 import { createVRLocomotion } from "../three/vrLocomotion.js";
 import { createTouchControls } from "../three/touchControls.js";
+import { createThirdPersonController } from "../three/thirdPersonController.js";
 import { ensureReady as ensureRapierReady, createPhysics } from "../three/physics.js";
 import { createGrab } from "../three/grab.js";
 import { addPastelLighting } from "../three/lighting.js";
 import { loadCharacter } from "../three/loadCharacter.js";
+import { clone as cloneGLB } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { createDecoEditor } from "../three/decoEditor.js";
 import { fadeElement } from "../three/transition.js";
 import { createPortalInteraction } from "../three/portals.js";
@@ -31,6 +33,39 @@ const OBJECT_TARGET_SIZE = 0.4;
 // vertex gets snapped to (spawn.y − this), which is approximately where the
 // splat's floor sits.
 const ASSUMED_EYE_HEIGHT = 1.6;
+
+// World scale of the third-person fairy (capsule + visual + camera all scale
+// together). <1 makes it smaller so its collision capsule fits through tighter
+// collider gaps and is easier to steer around scene geometry. Tune here.
+const TP_CHARACTER_SCALE = 0.8;
+
+// Max device-pixel-ratio on mobile (coarse-pointer) devices. Phones are
+// fragment-bound here (the splat + alpha foliage overdraw), and a retina phone
+// renders at up to 3× native — a full-DPR buffer both tanks framerate and can
+// make the GPU kill the WebGL context (the "crashes on my phone" symptom).
+// Desktop is unaffected; it keeps each scene's own cap (default 2).
+const MOBILE_MAX_DPR = 1.5;
+
+// Session cache of parsed decoration GLB templates, keyed by URL. Each unique
+// tree/prop GLB is fetched + parsed ONCE; every placement is a lightweight
+// SkeletonUtils clone that SHARES the template's geometry + materials (and thus
+// GPU buffers/textures). Without this, 8 pine trees = 8 full parses + 8 separate
+// GPU uploads of the same 12 MB model. Templates persist for the whole session
+// (one copy per URL) so re-entering a world is cheap — which is why
+// disposeDecorations only detaches the clone groups and never disposes the
+// shared GL resources (that would corrupt the cache and break live instances).
+const _decoTemplateCache = new Map(); // url -> Promise<Object3D>
+function loadDecoTemplate(url) {
+  let p = _decoTemplateCache.get(url);
+  if (!p) {
+    p = loadCharacter({ kind: "glb", url }).then(({ root }) => root);
+    // Don't cache a failed load — drop it so a later placement can retry.
+    p.catch(() => _decoTemplateCache.delete(url));
+    _decoTemplateCache.set(url, p);
+  }
+  return p;
+}
+
 import {
   trackWorldEnter,
   sceneVersionFromTitle,
@@ -110,6 +145,13 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   let physics = null;
   let grab = null;
   let physicsPromise = null;
+  // Hidden third-person mode (fairy only). When on, the splat is driven from a
+  // rigged in-world fairy with an orbit camera + capsule collision instead of
+  // first-person fly controls. Fairy-only; main.js gates the toggle to it.
+  let thirdPersonEnabled = false;
+  let tpController = null;
+  let currentCharacterDef = null; // set by setCharacter (from main.js)
+  let currentCharacterState = null;
   // Round-robin index into the current world's mapped object GLBs. Resets on
   // world change so each new world starts at object 0.
   let objectCycleIdx = 0;
@@ -326,6 +368,21 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     // known-safe pose. Reset walk-in arm state so portals re-arm from here
     // (arm-on-exit) rather than firing the instant the head lands near one.
     for (const p of currentPortals) p.armed = false;
+    // In third person, also drop the fairy at this spawn (feet on the floor).
+    // But only once the scene's real collider is loaded — otherwise the floor
+    // raycast hits nothing (or the flat y=0 net) and the fairy spawns embedded
+    // in geometry or floating outside the splat. When the collider isn't ready
+    // yet (fresh scene load), hide the fairy; loadScene re-spawns + shows it the
+    // moment the collider finishes loading. Scenes with no collider at all fall
+    // through to the estimate immediately (handled in loadScene).
+    if (thirdPersonEnabled && tpController) {
+      if (physics?.hasSceneCollider?.()) {
+        spawnThirdPerson(sceneDef, override);
+        tpController.setVisible(true);
+      } else {
+        tpController.setVisible(false);
+      }
+    }
   }
 
   // Cache the in-flight promise so concurrent callers share one init instead of
@@ -338,6 +395,147 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       grab = createGrab({ renderer, camera, dolly, physics });
     })();
     return physicsPromise;
+  }
+
+  // Scenes whose version tag ends in "e2" (in the title or id) are treated as
+  // FLAT-FLOOR *in third person only*: we skip their trimesh collider so the
+  // fairy walks the flat y=0 ground net instead. Their baked colliders navigate
+  // poorly in third person (tight gaps / stray geometry), so a plain floor is the
+  // better experience there. Object mode still loads the real collider (dropped
+  // objects need the furniture geometry). Rename a scene's version away from "e2"
+  // to opt it back into its collider everywhere.
+  function usesFlatFloor(sceneDef) {
+    const tag = (sceneDef.title || sceneDef.id || "").trim().toLowerCase();
+    return tag.endsWith("e2");
+  }
+
+  // Collider GLB URL for a scene, or null when the scene should use just the flat
+  // floor (see usesFlatFloor) — which is only when third person is driving. In
+  // any other mode the real collider loads. Explicit sceneDef.collider still wins
+  // otherwise, and the id-derived convention is the fallback.
+  function colliderUrlFor(sceneDef) {
+    if (thirdPersonEnabled && usesFlatFloor(sceneDef)) return null;
+    return sceneDef.collider ?? getColliderForScene(sceneDef.id);
+  }
+
+  // Collider load options for a scene. autoAlignFloor: true snaps the collider's
+  // lowest vertex to the splat's estimated floor Y, so Marble exports with random
+  // baked offsets self-correct.
+  function colliderOptsFor(sceneDef) {
+    return {
+      offset: sceneDef.colliderOffset,
+      autoAlignFloorY: sceneDef.autoAlignFloor
+        ? sceneDef.spawn.position[1] - ASSUMED_EYE_HEIGHT
+        : undefined,
+    };
+  }
+
+  // ---- third-person (hidden fairy mode) ---------------------------------
+  const _tpRayOrigin = new THREE.Vector3();
+  const _tpRayDir = new THREE.Vector3(0, -1, 0);
+
+  // Find the floor Y under a scene's spawn XZ by raycasting the physics world
+  // downward (castSurfaceRay skips the flat y=0 net when a real collider is
+  // present, so this lands on the actual floor). Falls back to the eye-height
+  // estimate when physics/collider isn't ready yet — gravity settles the fairy
+  // onto the real floor once it loads.
+  function floorYForSpawn(sceneDef, override) {
+    const spawn = override ?? sceneDef.spawn;
+    const [px, py, pz] = spawn.position;
+    const fallback = py - ASSUMED_EYE_HEIGHT;
+    if (!physics) return fallback;
+    // Cast DOWN FROM THE EYE, not from above it. The spawn eye is the
+    // first-person camera position: inside the room, above the floor and BELOW
+    // any modeled ceiling/roof. Starting above the eye (e.g. py+2) begins the
+    // ray above the roof, so in interiors with a modeled ceiling it hits the
+    // roof and drops the fairy on top of the building. From the eye, the first
+    // hit going down is the actual floor. castSurfaceRay skips the flat y=0 net
+    // when a real collider is present. Start a hair below the eye so we never
+    // graze a head-height fixture right at the camera. Cast far to reach deep
+    // floors in large/scaled scenes.
+    _tpRayOrigin.set(px, py - 0.05, pz);
+    const hit = physics.castSurfaceRay(_tpRayOrigin, _tpRayDir, 80);
+    return hit ? hit.point.y : fallback;
+  }
+
+  // Position the fairy at a scene's spawn (feet on the floor, facing spawn yaw).
+  function spawnThirdPerson(sceneDef, override = null) {
+    if (!tpController) return;
+    const spawn = override ?? sceneDef.spawn;
+    const [px, py, pz] = spawn.position;
+    _spawnQuat.set(...spawn.quaternion);
+    const yaw = extractYaw(_spawnQuat);
+    const floorY = floorYForSpawn(sceneDef, override);
+    // Hidden-mode diagnostic: tells us which failure mode a bad spawn hit.
+    // hasCollider=false → spawned before/without the trimesh (floats on the y=0
+    // net); rayHit=false → the down-cast found no floor (collider gap / bad
+    // alignment) and fell back to the eye-height estimate. Watch this in the
+    // console when a scene spawns the fairy in the wrong place.
+    const rayHit = !!physics && floorY !== py - ASSUMED_EYE_HEIGHT;
+    console.log(
+      `[tp] spawn ${sceneDef.id}: floorY=${floorY.toFixed(2)} eyeY=${py.toFixed(2)} ` +
+        `hasCollider=${physics?.hasSceneCollider?.() ?? false} rayHit=${rayHit} ` +
+        `xz=(${px.toFixed(2)}, ${pz.toFixed(2)})`,
+    );
+    tpController.spawnAt({ x: px, y: floorY, z: pz }, yaw);
+  }
+
+  // main.js sets the active character (def + saved procedural state) so third
+  // person can build the matching fairy. TP is only offered for the procedural
+  // fairy (the sole procedural character); main.js gates the toggle to it.
+  function setCharacter(def, state) {
+    currentCharacterDef = def;
+    currentCharacterState = state ?? null;
+    if (tpController && def?.kind === "procedural") {
+      tpController.setCharacterState(currentCharacterState);
+    }
+  }
+
+  function isThirdPerson() {
+    return thirdPersonEnabled;
+  }
+
+  // Build physics + controller and start driving the fairy in the current scene.
+  async function enableThirdPersonNow() {
+    const sceneDef = currentSceneId ? SCENES.find((s) => s.id === currentSceneId) : null;
+    await ensurePhysics();
+    if (physics && sceneDef) {
+      const colliderUrl = colliderUrlFor(sceneDef);
+      if (colliderUrl) await physics.loadSceneCollider(colliderUrl, colliderOptsFor(sceneDef));
+      else physics.clearSceneCollider(); // flat-floor scene: no trimesh, walk the y=0 net
+    }
+    if (!thirdPersonEnabled) return; // toggled back off while awaiting
+    if (!tpController) {
+      tpController = createThirdPersonController({
+        renderer,
+        camera,
+        scene,
+        physics,
+        characterDef: currentCharacterDef,
+        characterState: currentCharacterState,
+        scale: TP_CHARACTER_SCALE,
+      });
+    }
+    tpController.enable();
+    if (sceneDef) spawnThirdPerson(sceneDef);
+  }
+
+  function disableThirdPersonNow() {
+    tpController?.disable();
+    const sceneDef = currentSceneId ? SCENES.find((s) => s.id === currentSceneId) : null;
+    if (sceneDef) applySpawn(sceneDef); // restore first-person eye pose
+  }
+
+  // Set the third-person preference (fairy only). Applied immediately when world
+  // mode is active; otherwise stored and applied on the next activate(). Toggling
+  // it on the home page just records the preference.
+  function setThirdPerson(on) {
+    if (on && currentCharacterDef?.kind !== "procedural") on = false;
+    if (on === thirdPersonEnabled) return;
+    thirdPersonEnabled = on;
+    if (!isActive) return; // activate() will apply it
+    if (on) enableThirdPersonNow();
+    else disableThirdPersonNow();
   }
 
   // Drops something in front of the player. If the current world has mapped
@@ -434,7 +632,7 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     disposePortals();
     disposeDecorations();
 
-    if (isObjectMode() && !physics) ensurePhysics();
+    if ((isObjectMode() || thirdPersonEnabled) && !physics) ensurePhysics();
     const sceneChanged = sceneDef.id !== currentSceneId;
     // Boxes/objects clear on every scene change (the dropped state was
     // positioned against the old collider — keeping it after a swap would
@@ -444,36 +642,57 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       // calls setKinematicPose on a freed Rapier handle next frame.
       grab?.releaseAll();
       physics.clearAll();
+      // Drop the previous scene's collider synchronously so hasSceneCollider()
+      // reads false until the new one loads. Otherwise a stale collider would
+      // make applySpawn's floor raycast land on the OLD scene's geometry.
+      physics.clearSceneCollider();
       objectCycleIdx = 0;
     }
+    // Hide the fairy for the duration of the load — the collider it needs to
+    // stand on isn't in the world yet. The deferred collider load below
+    // re-spawns it onto the real floor and reveals it. (Covers same-world scene
+    // changes too, which return before applySpawn.)
+    if (sceneChanged && thirdPersonEnabled && tpController) tpController.setVisible(false);
     // Collider URL is auto-derived from scene id via the asset-manifest plugin
     // (see src/data/sceneAssets.js). Explicit sceneDef.collider still wins if
     // present, so a scene can override the convention. We only load the
     // collider if object mode is on OR physics is already initialized — no
     // point spinning up Rapier just to install a collider nobody can interact
     // with yet.
-    const colliderUrl = sceneDef.collider ?? getColliderForScene(sceneDef.id);
-    if (sceneChanged && (isObjectMode() || physics)) {
-      // Pack collider load options. autoAlignFloor: true on a scene snaps the
-      // collider's lowest vertex to the splat's estimated floor Y, so Marble
-      // exports with random baked offsets self-correct.
-      const colliderOpts = {
-        offset: sceneDef.colliderOffset,
-        autoAlignFloorY: sceneDef.autoAlignFloor
-          ? sceneDef.spawn.position[1] - ASSUMED_EYE_HEIGHT
-          : undefined,
-      };
+    const colliderUrl = colliderUrlFor(sceneDef);
+    if (sceneChanged && (isObjectMode() || thirdPersonEnabled || physics)) {
       ensurePhysics().then(() => {
-        if (!physics) return;
-        if (colliderUrl) physics.loadSceneCollider(colliderUrl, colliderOpts);
-        else physics.clearSceneCollider();
+        if (!physics || myToken !== loadToken) return; // stale load, bail
+        if (colliderUrl) {
+          physics.loadSceneCollider(colliderUrl, colliderOptsFor(sceneDef)).then(() => {
+            if (myToken !== loadToken) return;
+            // Collider is now in the world — drop the fairy onto the real floor
+            // (applySpawn deferred this) and reveal it.
+            if (thirdPersonEnabled && tpController) {
+              spawnThirdPerson(sceneDef, opts.spawnOverride);
+              tpController.setVisible(true);
+            }
+          });
+        } else {
+          physics.clearSceneCollider();
+          // No collider for this scene: spawn on the eye-height estimate now so
+          // the fairy doesn't stay hidden. It walks the flat y=0 net here.
+          if (thirdPersonEnabled && tpController) {
+            spawnThirdPerson(sceneDef, opts.spawnOverride);
+            tpController.setVisible(true);
+          }
+        }
       });
     }
 
     // Per-scene DPR override — default 2 matches the cap set in sceneManager;
     // drop a scene to 1.5 (or lower) if its splats are dense enough that the
-    // perf cost outweighs the crispness gain.
-    const targetPR = Math.min(window.devicePixelRatio, sceneDef.pixelRatio ?? 2);
+    // perf cost outweighs the crispness gain. On mobile (coarse pointer) we
+    // additionally clamp to MOBILE_MAX_DPR regardless of the scene's own cap —
+    // see the constant. Desktop keeps the scene cap untouched.
+    const sceneCap = sceneDef.pixelRatio ?? 2;
+    const dprCap = isCoarsePointer ? Math.min(sceneCap, MOBILE_MAX_DPR) : sceneCap;
+    const targetPR = Math.min(window.devicePixelRatio, dprCap);
     if (renderer.getPixelRatio() !== targetPR) {
       renderer.setPixelRatio(targetPR);
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -603,9 +822,17 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // (or null if the load was stale). Used by spawnDecorations and the editor's
   // duplicate.
   function buildDecoration(def, myToken) {
-    return loadCharacter({ kind: "glb", url: def.url })
-      .then(({ root: inner }) => {
+    return loadDecoTemplate(def.url)
+      .then((template) => {
         if (myToken !== loadToken) return null;
+        // Clone the cached template. SkeletonUtils.clone shares the template's
+        // geometry + materials (GPU buffers/textures) across every instance, so
+        // N placements of a tree cost one upload, not N. The clone gets its own
+        // transform nodes, so grounding/positioning below is per-instance. Note
+        // materials are shared, so the alphaTest/saturate mutations below apply
+        // once and are reused by every clone of the same URL — which is exactly
+        // what we want (all instances of a tree type get identical treatment).
+        const inner = cloneGLB(template);
         {
           const root = new THREE.Group();
           root.add(inner);
@@ -669,21 +896,17 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   }
 
   function disposeDecorations() {
-    // Drop any gizmo selection before the roots are removed/disposed.
+    // Drop any gizmo selection before the roots are removed.
     decoEditor.deselect();
     if (currentDecorations.length === 0) return;
+    // Decorations are SkeletonUtils clones of cached templates — their geometry
+    // and materials are shared with the template (in _decoTemplateCache) and
+    // reused by every instance and every future load of this world. So we only
+    // detach the clone group from the scene; disposing the shared GL resources
+    // here would corrupt the cache and blank out other live instances. The
+    // lightweight clone wrappers themselves are GC'd once dropped from the array.
     for (const d of currentDecorations) {
       scene.remove(d.root);
-      d.root.traverse((obj) => {
-        if (obj.isMesh) obj.geometry?.dispose?.();
-        if (obj.isMesh) {
-          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-          for (const m of mats) {
-            m?.map?.dispose?.();
-            m?.dispose?.();
-          }
-        }
-      });
     }
     currentDecorations.length = 0;
   }
@@ -1590,6 +1813,10 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       pollRecenterButton();
       pollSpawnButton();
       noteVRDistance(dolly.position.distanceTo(dollySpawnPos));
+    } else if (thirdPersonEnabled && tpController) {
+      // Third person owns the camera + character; SparkControls/touch are left
+      // inert (not updated) so they don't fight the orbit follow.
+      tpController.update(dt);
     } else {
       touchControls.update(dt, camera);
       if (!editorFreeze) controls.update(camera);
@@ -1642,10 +1869,15 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
       // until you leave it). Gating on the settle counter risked wedging walk-in
       // off permanently if that counter ever failed to reach 0.
       if (!portalTransitioning && !window.__decoEditActive) {
-        // Head world position (see getHeadWorldMatrix — getCamera() reads
-        // reference space in update(), which would drop the dolly's spawn-yaw
-        // recenter and land us on the ≈opposite portal).
-        _portalHeadPos.setFromMatrixPosition(getHeadWorldMatrix());
+        // Trigger from the fairy's feet in third person, else the head world
+        // position (see getHeadWorldMatrix — getCamera() reads reference space in
+        // update(), which would drop the dolly's spawn-yaw recenter and land us
+        // on the ≈opposite portal).
+        if (thirdPersonEnabled && tpController) {
+          _portalHeadPos.copy(tpController.getPlayerPosition());
+        } else {
+          _portalHeadPos.setFromMatrixPosition(getHeadWorldMatrix());
+        }
         for (const p of currentPortals) {
           const dx = _portalHeadPos.x - p.root.position.x;
           const dz = _portalHeadPos.z - p.root.position.z;
@@ -1724,12 +1956,19 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     const targetScene = payload?.scene;
     if (targetScene) loadScene(targetScene);
     else if (!currentSceneId) loadDefault();
+    // Resume third person if it was left on (and the fairy is still selected).
+    if (thirdPersonEnabled && currentCharacterDef?.kind === "procedural") {
+      enableThirdPersonNow();
+    } else {
+      thirdPersonEnabled = false;
+    }
   }
 
   function deactivate() {
     document.getElementById("world-hud")?.setAttribute("hidden", "");
     document.exitPointerLock?.();
     touchControls.disable();
+    tpController?.disable(); // release keyboard/pointer listeners; keep the flag
     isActive = false;
   }
 
@@ -1940,5 +2179,8 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
     tryPortal,
     enterPortal,
     getCurrentSceneId,
+    setThirdPerson,
+    isThirdPerson,
+    setCharacter,
   };
 }

@@ -90,6 +90,7 @@ export async function loadCharacter(def, initialState) {
     return {
       kind: "procedural",
       root: proc.root,
+      limbs: proc.limbs,
       setColor: proc.setColor,
       setVariant: proc.setVariant,
       setAccessory: proc.setAccessory,

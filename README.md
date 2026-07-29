@@ -179,6 +179,45 @@ Persisted to `localStorage`: the selected character id
 (`fairy-worlds-character-config-v2`), and the object-mode toggle
 (`fairy-worlds-object-mode`).
 
+### ✦ In-world deco editor
+
+There's a hidden authoring tool for placing decorations and positioning
+houses/portals directly in the running scene — no reload-per-tweak, no pasting
+console helpers. It lives in
+[src/three/decoEditor.js](src/three/decoEditor.js) and is **desktop-only**
+(transform gizmos don't map to VR wands). It's a dev/authoring aid, not part of
+the visitor experience.
+
+**Toggle it with the backtick key (`` ` ``)** while in a world. A HUD appears in
+the bottom-left showing the current mode and selection.
+
+| Key / action | What it does |
+| --- | --- |
+| **Click** a prop, house, or portal | Select it and attach the transform gizmo |
+| **`w` / `e` / `r`** | Switch gizmo to **translate / rotate / scale** |
+| **`q`** | Toggle gizmo space between **world** and **local** |
+| **`[` / `]`** | Cycle to the previous / next editable in the scene |
+| **`d`** | **Duplicate** the selection *(props only — portals can't be duplicated)* |
+| **`c`** | **Copy all** transforms to the clipboard in scene-def shape |
+| **`Esc`** | Deselect; press again to exit the editor |
+| **`` ` ``** | Exit the editor |
+
+Two kinds of editable are unified behind one "editables" abstraction that
+[world.js](src/modes/world.js) hands the editor, so props and portals need no
+special-casing:
+
+- **Props / decorations** — freely scalable (uniform scale), duplicatable.
+- **Houses & portals** — GLB houses use a uniform scale; **doorway portals have
+  no meaningful scale**, so the editor won't let you scale them (a scale keypress
+  is ignored / bounced to translate).
+
+**The authoring loop:** enter a world, press `` ` ``, drag things into place,
+press `c` to copy, then paste the output back into
+[src/data/scenes.js](src/data/scenes.js). The clipboard text is emitted as
+`decorations:` and `portals:` blocks matching the scene-def shape, ready to drop
+in. (While the editor is active, `window.__decoEditActive` is set so a
+select-tap doesn't also trigger a portal.)
+
 
 ### ✦ Deployment
 
