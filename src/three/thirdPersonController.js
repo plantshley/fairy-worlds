@@ -118,6 +118,16 @@ export function createThirdPersonController({ renderer, camera, scene, physics, 
         character3d.jump();
       }
       e.preventDefault();
+    } else if (e.code === "KeyP") {
+      // Dev: capture the fairy's current pose as a paste-ready `tpSpawn` for
+      // scenes.js. Walk to a good open standing spot (room behind for the camera),
+      // face the way the scene should open on, press P, paste the logged line into
+      // the scene def. `heading` is already in the convention spawnAt expects, so
+      // it round-trips exactly. Only fires while third person is active.
+      const h = ((heading % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      console.log(
+        `[tp] tpSpawn: { position: [${feet.x.toFixed(2)}, ${feet.y.toFixed(2)}, ${feet.z.toFixed(2)}], heading: ${h.toFixed(3)} },`,
+      );
     }
   }
   function onKeyUp(e) {
@@ -304,9 +314,16 @@ export function createThirdPersonController({ renderer, camera, scene, physics, 
   // Called by world mode after resolving the floor Y via a downward raycast.
   function spawnAt(pos, yaw = 0) {
     heading = yaw;
-    feetY = pos.y;
-    character3d.teleport({ x: pos.x, y: pos.y + feetToCenter, z: pos.z });
-    pivot.position.set(pos.x, pos.y, pos.z);
+    // teleport de-penetrates the capsule out of any geometry it lands in, so the
+    // final resting center may differ from what we asked for — sync the visual to
+    // where the capsule actually is, not the requested spot.
+    const center = character3d.teleport({ x: pos.x, y: pos.y + feetToCenter, z: pos.z });
+    const fx = center?.x ?? pos.x;
+    const fy = (center?.y ?? pos.y + feetToCenter) - feetToCenter;
+    const fz = center?.z ?? pos.z;
+    feetY = fy;
+    feet.set(fx, fy, fz);
+    pivot.position.set(fx, fy, fz);
     pivot.rotation.y = heading;
     // Park the camera behind the new facing (the fairy's face is +Z, so +π puts
     // the camera on its back) so it doesn't sweep across the scene on frame one.

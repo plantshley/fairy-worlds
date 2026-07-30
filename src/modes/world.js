@@ -461,10 +461,28 @@ export function createWorldMode({ renderer, onSceneLoaded, onPortalEnter, onRetu
   // Position the fairy at a scene's spawn (feet on the floor, facing spawn yaw).
   function spawnThirdPerson(sceneDef, override = null) {
     if (!tpController) return;
+    // Per-scene third-person override: some scenes' first-person spawn is a poor
+    // place to STAND a body + orbit a camera (tucked against a wall, or right at
+    // the splat edge so the follow-cam parks outside the splat). `tpSpawn` gives a
+    // hand-picked feet position + heading just for third person. Capture one by
+    // walking there and pressing P (see thirdPersonController). Portal entries pass
+    // an explicit `override`, which always wins over the scene's static tpSpawn.
+    if (!override && sceneDef.tpSpawn) {
+      const [tx, ty, tz] = sceneDef.tpSpawn.position;
+      console.log(`[tp] spawn ${sceneDef.id}: tpSpawn override -> xz=(${tx.toFixed(2)}, ${tz.toFixed(2)})`);
+      tpController.spawnAt({ x: tx, y: ty, z: tz }, sceneDef.tpSpawn.heading ?? 0);
+      return;
+    }
     const spawn = override ?? sceneDef.spawn;
     const [px, py, pz] = spawn.position;
     _spawnQuat.set(...spawn.quaternion);
-    const yaw = extractYaw(_spawnQuat);
+    // extractYaw returns the CAMERA look-yaw θ (camera-forward = (-sinθ,-cosθ)).
+    // The fairy should face the same way that first-person camera looked into the
+    // scene, but its heading convention is different: pivot.rotation.y = h makes the
+    // fairy's +Z face point (sin h, cos h), which equals the camera-forward only at
+    // h = θ + π. Without this offset the fairy (and the follow-camera parked on its
+    // back) spawn facing the exact opposite of the scene's intended forward.
+    const yaw = extractYaw(_spawnQuat) + Math.PI;
     const floorY = floorYForSpawn(sceneDef, override);
     // Hidden-mode diagnostic: tells us which failure mode a bad spawn hit.
     // hasCollider=false → spawned before/without the trimesh (floats on the y=0

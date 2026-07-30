@@ -404,7 +404,7 @@ export function createPhysics({ scene }) {
     console.log(`[physics] collider loaded: ${tris.length / 3} triangles, ${verts.length / 3} verts`);
     const bodyDesc = RAPIER.RigidBodyDesc.fixed();
     const body = world.createRigidBody(bodyDesc);
-    world.createCollider(
+    const trimeshCollider = world.createCollider(
       RAPIER.ColliderDesc.trimesh(verts, tris).setFriction(0.7).setRestitution(0.1),
       body,
     );
@@ -440,7 +440,7 @@ export function createPhysics({ scene }) {
       scene.add(mesh);
     }
 
-    sceneCollider = { body, mesh };
+    sceneCollider = { body, mesh, collider: trimeshCollider };
   }
 
   // Kinematic capsule character controller for the third-person fairy. Collides
@@ -532,11 +532,63 @@ export function createPhysics({ scene }) {
       jumpBufferT = JUMP_BUFFER;
     }
 
+    // Spawn de-penetration: the authored spawn is a first-person camera eye,
+    // often tucked against a wall or inside furniture. A kinematic controller
+    // only resolves MOVEMENT — it can't push a capsule out of geometry it starts
+    // embedded in, so the fairy would be stuck (every direction reads blocked,
+    // and a jump just shoves it deeper). Before teleporting, probe outward for a
+    // capsule position that doesn't overlap the scene trimesh and use that.
+    const _probeShape = new RAPIER.Capsule(halfHeight, radius);
+    const _probeRot = { x: 0, y: 0, z: 0, w: 1 };
+    function overlapsScene(x, y, z) {
+      if (!sceneCollider?.collider) return false;
+      const sceneHandle = sceneCollider.collider.handle;
+      let hit = false;
+      world.intersectionsWithShape(
+        { x, y, z },
+        _probeRot,
+        _probeShape,
+        (other) => {
+          if (other.handle === sceneHandle) {
+            hit = true;
+            return false; // stop — we only care about the scene trimesh
+          }
+          return true; // keep scanning other colliders (boxes/ground don't block spawn)
+        },
+      );
+      return hit;
+    }
+    // Return a clear capsule-center near `center`, or `center` unchanged if it's
+    // already clear (or nothing clear is found within reach). Horizontal escapes
+    // are tried before vertical at each radius — sliding out of a wall keeps the
+    // fairy on the floor, whereas pushing straight up just drops it back in.
+    function findClearSpawn(center) {
+      if (!overlapsScene(center.x, center.y, center.z)) return center;
+      const DIRS = 12;
+      const STEP = 0.15 * (halfHeight / 0.42); // scale probe spacing with the fairy
+      const MAX_R = 3.0 * (halfHeight / 0.42);
+      for (let r = STEP; r <= MAX_R + 1e-6; r += STEP) {
+        for (let i = 0; i < DIRS; i++) {
+          const a = (i / DIRS) * Math.PI * 2;
+          const x = center.x + Math.cos(a) * r;
+          const z = center.z + Math.sin(a) * r;
+          if (!overlapsScene(x, center.y, z)) return { x, y: center.y, z };
+        }
+        if (!overlapsScene(center.x, center.y + r, center.z)) {
+          return { x: center.x, y: center.y + r, z: center.z };
+        }
+      }
+      return center; // give up rather than fling the fairy across the room
+    }
+
     // Hard-set the capsule center (used on spawn/teleport). Sets both the
     // current and next translation so there's no one-frame interpolation slide.
+    // Returns the resolved center (post de-penetration) so the caller can sync
+    // the visual to where the capsule actually landed.
     function teleport(pos) {
-      body.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
-      body.setNextKinematicTranslation({ x: pos.x, y: pos.y, z: pos.z });
+      const p = findClearSpawn(pos);
+      body.setTranslation({ x: p.x, y: p.y, z: p.z }, true);
+      body.setNextKinematicTranslation({ x: p.x, y: p.y, z: p.z });
       vY = 0;
       jumpBufferT = 0;
       // Fresh spawn: assume grounded-pending and snapping on (spawn is placed on
@@ -546,6 +598,7 @@ export function createPhysics({ scene }) {
         airborne = false;
       }
       grounded = false;
+      return p;
     }
 
     function getPosition() {
