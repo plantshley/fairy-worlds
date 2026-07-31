@@ -155,6 +155,37 @@ html, body {
 }
 body:not([data-mode="home"]) .object-mode-toggle:not(.tp-toggle) { display: none; }
 
+/* Small footer link to the GitHub README (user guide + VR controls).
+   Bottom-right of the home page only. */
+#repo-link {
+  position: fixed;
+  right: 14px;
+  bottom: 12px;
+  z-index: 20;
+  font: 11px/1 var(--font-ui);
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0);
+  transition: color 120ms, text-shadow 120ms;
+}
+#repo-link:hover {
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 172, 234, 0.85);
+}
+body:not([data-mode="home"]) #repo-link { display: none; }
+/* Mobile: shrink it and tuck it into the bottom-left corner. */
+@media (max-width: 900px), (pointer: coarse), (hover: none) {
+  #repo-link {
+    right: auto;
+    left: 10px;
+    bottom: 8px;
+    transform: none;
+    font-size: 9px;
+    white-space: nowrap;
+  }
+}
+
 /* Hidden third-person (fairy) toggle — circular ꩜ button. The home instance
    (shares .object-mode-toggle) sits just left of object-mode; the world instance
    (shares .recenter-btn) sits right of the ⊙ origin button. Both only appear
